@@ -1,0 +1,48 @@
+/* Notes.css */
+
+.notes-container {
+  margin-top: 20px;
+  width: 100%; /* Match the task list width */
+}
+
+.notes-input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.notes-form-control {
+  margin-bottom: 10px; /* Add spacing between textarea and counter */
+}
+
+.notes-char-counter {
+  margin-bottom: 10px;
+  color: gray;
+}
+
+.notes-add-button {
+  align-self: flex-start; /* Align button to the left */
+  margin-top: 5px; /* Add some spacing above the button */
+}
+
+.notes-list-group {
+  list-style-type: none;
+  padding: 0;
+}
+
+.notes-list-group-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #dee2e6;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  width: 100%; /* Match the task list width */
+}
+
+.notes-content {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}

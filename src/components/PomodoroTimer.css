@@ -1,0 +1,12 @@
+/* PomodoroTimer.css */
+
+.timer {
+    width: 60px;
+    text-align: center;
+  }
+  
+  /* Button spacing */
+  .btn-sm {
+    margin-left: 5px;
+  }
+  
