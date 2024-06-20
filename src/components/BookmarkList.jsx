@@ -1,44 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
+import React, { useEffect } from 'react';
+import { getBookmarks, deleteBookmark } from '../services/firebaseConfig';
 import './BookmarkList.css';
 
-const BookmarkList = ({ user }) => {
-  const [bookmarks, setBookmarks] = useState([]);
-  const [loading, setLoading] = useState(true);
-
+const BookmarkList = ({ user, bookmarks, setBookmarks }) => {
   useEffect(() => {
     if (user) {
       const fetchBookmarks = async () => {
-        const bookmarksCollection = collection(db, 'bookmarks');
-        const q = query(bookmarksCollection, where('userId', '==', user.uid));
-        const querySnapshot = await getDocs(q);
-        const fetchedBookmarks = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const fetchedBookmarks = await getBookmarks(user.uid);
         setBookmarks(fetchedBookmarks);
-        setLoading(false);
       };
 
       fetchBookmarks();
     }
-  }, [user]);
+  }, [user, setBookmarks]);
 
-  if (loading) {
-    return <div>Loading bookmarks...</div>;
-  }
+  const handleDelete = async (id) => {
+    await deleteBookmark(id);
+    setBookmarks(bookmarks.filter(bookmark => bookmark.id !== id));
+  };
 
   return (
-    <div className="bookmark-list">
-      <h2>My Bookmarks</h2>
-      <ul className="list-group">
-        {bookmarks.map((bookmark) => (
-          <li key={bookmark.id} className="list-group-item">
-            <a href={bookmark.url} target="_blank" rel="noopener noreferrer">
-              <img src={bookmark.image} alt={bookmark.title} className="bookmark-image" />
-              <span>{bookmark.title}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
+    <div className="card">
+      <div className="card-body">
+        <h2 className="card-title">My Bookmarks</h2>
+        <ul className="list-group">
+          {bookmarks.map((bookmark) => (
+            <li key={bookmark.id} className="list-group-item d-flex justify-content-between align-items-center">
+              <a href={bookmark.url} target="_blank" rel="noopener noreferrer" className="d-flex align-items-center">
+                <img src={bookmark.image} alt={bookmark.title} className="bookmark-image" />
+                <span>{bookmark.title}</span>
+              </a>
+              <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(bookmark.id)}>Delete</button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 };

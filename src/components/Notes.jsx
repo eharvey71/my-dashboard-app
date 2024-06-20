@@ -4,9 +4,10 @@ import './Notes.css';
 
 const Notes = ({ user }) => {
   const [notes, setNotes] = useState([]);
-  const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(true);
-  const [charCount, setCharCount] = useState(0);
+  const [newNote, setNewNote] = useState('');
+  const [error, setError] = useState(null);
+  const maxChars = 200;
 
   useEffect(() => {
     if (user) {
@@ -26,15 +27,15 @@ const Notes = ({ user }) => {
   }, [user]);
 
   const handleAddNote = async () => {
-    if (newNote.trim() === '' || newNote.length > 200) return;
+    if (newNote.trim() === '') return;
     try {
       await addNote(newNote, user.uid);
       const notes = await getNotes(user.uid);
       setNotes(notes);
       setNewNote('');
-      setCharCount(0);
     } catch (error) {
       console.error("Error adding note:", error);
+      setError('Failed to add note');
     }
   };
 
@@ -48,38 +49,46 @@ const Notes = ({ user }) => {
     }
   };
 
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp.seconds * 1000);
+    return date.toLocaleString();
+  };
+
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>Loading notes...</div>;
   }
 
   return (
-    <div className="notes-container">
-      <h2>Notes</h2>
-      <div className="notes-input-group mb-3">
-        <textarea
-          className="notes-form-control"
-          placeholder="New Note"
-          value={newNote}
-          onChange={(e) => {
-            setNewNote(e.target.value);
-            setCharCount(e.target.value.length);
-          }}
-          maxLength="200"
-        />
-        <div className="notes-char-counter">{200 - charCount} characters remaining</div>
-        <button className="btn btn-sm btn-outline-secondary notes-add-button" onClick={handleAddNote}>Add Note</button>
+    <div className="card">
+      <div className="card-body">
+        <h2 className="card-title">Notes</h2>
+        <div className="mb-3">
+          <textarea
+            className="form-control"
+            placeholder="New Note"
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            maxLength={maxChars}
+            rows="3"
+          />
+          <div className="character-count">
+            {maxChars - newNote.length} characters remaining
+          </div>
+        </div>
+        <button className="btn btn-outline-secondary mb-3" onClick={handleAddNote}>Add Note</button>
+        <ul className="list-group">
+          {notes.map((note) => (
+            <li key={note.id} className="list-group-item">
+              <span>{note.content}</span>
+              <div className="float-end">
+                <small className="text-muted">{formatTimestamp(note.createdAt)}</small>
+                <button className="btn btn-sm btn-outline-danger ms-2" onClick={() => handleDeleteNote(note.id)}>Delete</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+        {error && <p className="text-danger">{error}</p>}
       </div>
-      <ul className="notes-list-group">
-        {notes.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds).map(note => (
-          <li key={note.id} className="notes-list-group-item">
-            <div className="notes-content">
-              <p>{note.content}</p>
-              <small>{new Date(note.createdAt.seconds * 1000).toLocaleString()}</small>
-            </div>
-            <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteNote(note.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 };

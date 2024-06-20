@@ -1,0 +1,28 @@
+.bookmark-list {
+    margin-top: 20px;
+  }
+  
+  .bookmark-list ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .bookmark-list li {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .bookmark-image {
+    width: 50px; /* Fixed width */
+    height: 50px; /* Fixed height */
+    object-fit: cover; /* Ensure the image covers the area without distortion */
+    margin-right: 10px;
+    border-radius: 4px; /* Optional: for a nicer look */
+  }
+  
+  .bookmark-list button {
+    margin-left: auto;
+  }
+  
