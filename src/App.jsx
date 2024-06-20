@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import TaskList from './components/TaskList';
-import Notes from './components/Notes';
 import NavBar from './components/NavBar';
 import Signup from './components/Signup';
 import Login from './components/Login';
+import Dashboard from './components/Dashboard';
 import { auth, onAuthStateChanged } from './services/firebaseConfig';
 
-function App() {
+const App = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,27 +25,16 @@ function App() {
 
   return (
     <Router>
-      <NavBar />
+      <NavBar user={user} />
       <div className="container mt-5">
         <Routes>
           <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
+          <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
         </Routes>
       </div>
     </Router>
   );
-}
-
-const Dashboard = ({ user }) => (
-  <div className="row">
-    <div className="col-md-6">
-      <TaskList user={user} />
-    </div>
-    <div className="col-md-6">
-      <Notes user={user} />
-    </div>
-  </div>
-);
+};
 
 export default App;

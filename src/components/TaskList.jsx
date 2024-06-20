@@ -83,71 +83,73 @@ const TaskList = ({ user }) => {
   }
 
   return (
-    <div className="container">
-      <h2>Task List</h2>
-      <div className="input-group mb-3">
-        <input
-          type="text"
-          className="form-control"
-          placeholder="New Task"
-          value={newTask}
-          onChange={(e) => setNewTask(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') {
-              handleAddTask();
-            }
-          }}
-        />
-        <button className="btn btn-outline-secondary" onClick={handleAddTask}>Add Task</button>
-      </div>
-      <ul className="list-group">
-        {tasks.sort((a, b) => a.completed - b.completed).map((task) => (
-          <li
-            key={task.id}
-            className={`list-group-item ${task.completed ? 'completed' : ''}`}
-            onMouseEnter={() => setHoveredTaskId(task.id)}
-            onMouseLeave={() => setHoveredTaskId(null)}
-          >
-            <div className="task-row">
-              <div className="task-details">
-                {editTaskId === task.id ? (
-                  <div className="task-edit">
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={editTaskTitle}
-                      onChange={(e) => setEditTaskTitle(e.target.value)}
-                    />
-                    <button className="btn btn-sm btn-outline-primary" onClick={() => handleSaveTask(task.id)}>Save</button>
-                  </div>
-                ) : (
-                  <>
-                    <span>{task.title}</span>
-                    <div className={`task-actions ${hoveredTaskId === task.id ? 'visible' : ''}`}>
-                      <button className="btn btn-sm btn-outline-secondary me-2" onClick={() => handleToggleComplete(task.id, task.completed)}>
-                        {task.completed ? 'Undo' : 'Complete'}
-                      </button>
-                      {!task.completed && (
-                        <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleUpdateTask(task.id)}>Update</button>
-                      )}
-                      <button className="btn btn-sm btn-outline-danger me-2" onClick={() => handleDeleteTask(task.id)}>Delete</button>
+    <div className="card">
+      <div className="card-body">
+        <h2 className="card-title">Task List</h2>
+        <div className="input-group mb-3">
+          <input
+            type="text"
+            className="form-control"
+            placeholder="New Task"
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddTask();
+              }
+            }}
+          />
+          <button className="btn btn-outline-secondary" onClick={handleAddTask}>Add Task</button>
+        </div>
+        <ul className="list-group">
+          {tasks.sort((a, b) => a.completed - b.completed).map((task) => (
+            <li
+              key={task.id}
+              className={`list-group-item ${task.completed ? 'completed' : ''}`}
+              onMouseEnter={() => setHoveredTaskId(task.id)}
+              onMouseLeave={() => setHoveredTaskId(null)}
+            >
+              <div className="task-row d-flex justify-content-between">
+                <div className="task-details">
+                  {editTaskId === task.id ? (
+                    <div className="task-edit">
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editTaskTitle}
+                        onChange={(e) => setEditTaskTitle(e.target.value)}
+                      />
+                      <button className="btn btn-sm btn-outline-primary" onClick={() => handleSaveTask(task.id)}>Save</button>
                     </div>
-                  </>
+                  ) : (
+                    <>
+                      <span>{task.title}</span>
+                      <div className={`task-actions ${hoveredTaskId === task.id ? 'visible' : ''}`}>
+                        <button className="btn btn-sm btn-outline-secondary me-2" onClick={() => handleToggleComplete(task.id, task.completed)}>
+                          {task.completed ? 'Undo' : 'Complete'}
+                        </button>
+                        {!task.completed && (
+                          <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleUpdateTask(task.id)}>Update</button>
+                        )}
+                        <button className="btn btn-sm btn-outline-danger me-2" onClick={() => handleDeleteTask(task.id)}>Delete</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {!task.completed && (
+                  <div className="task-timer">
+                    <PomodoroTimer
+                      taskId={task.id}
+                      initialSeconds={task.timerSeconds || 1500}
+                      isHovered={hoveredTaskId === task.id}
+                    />
+                  </div>
                 )}
               </div>
-              {!task.completed && (
-                <div className="task-timer">
-                  <PomodoroTimer
-                    taskId={task.id}
-                    initialSeconds={task.timerSeconds || 1500}
-                    isHovered={hoveredTaskId === task.id}
-                  />
-                </div>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 };
