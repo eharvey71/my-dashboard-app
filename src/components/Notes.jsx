@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getNotes, addNote, deleteNote } from '../services/firebaseConfig';
+import { indexContent } from '../services/pineconeService';
 import './Notes.css';
 
 const Notes = ({ user }) => {
@@ -16,6 +17,11 @@ const Notes = ({ user }) => {
           const notes = await getNotes(user.uid);
           setNotes(notes);
           setLoading(false);
+
+          // Index existing notes in Pinecone
+          notes.forEach(note => {
+            indexContent(user.uid, note.content, 'note');
+          });
         } catch (error) {
           console.error("Error fetching notes:", error);
           setLoading(false);
@@ -33,6 +39,9 @@ const Notes = ({ user }) => {
       const notes = await getNotes(user.uid);
       setNotes(notes);
       setNewNote('');
+
+      // Index the new note in Pinecone
+      indexContent(user.uid, newNote, 'note');
     } catch (error) {
       console.error("Error adding note:", error);
       setError('Failed to add note');

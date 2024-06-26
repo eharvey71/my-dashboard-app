@@ -3,12 +3,14 @@ import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
+  authDomain: "mydashboard-ff9ae.firebaseapp.com",
+  databaseURL: "https://mydashboard-ff9ae-default-rtdb.firebaseio.com",
+  projectId: "mydashboard-ff9ae",
+  storageBucket: "mydashboard-ff9ae.appspot.com",
+  messagingSenderId: "856197649644",
+  appId: "1:856197649644:web:48150da4f5db80617b41c9",
+  measurementId: "G-NPL3YL1MBE",
 };
 
 // Initialize Firebase
