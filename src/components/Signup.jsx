@@ -7,6 +7,7 @@ const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -21,7 +22,7 @@ const Signup = () => {
       return;
     }
     try {
-      await signup(email, password);
+      await signup(email, password, displayName);
       navigate('/');
     } catch (error) {
       setError(error.message);
@@ -32,6 +33,17 @@ const Signup = () => {
     <div className="auth-container">
       <h2>Signup</h2>
       <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="displayName">Display Name:</label>
+          <input
+            type="text"
+            id="displayName"
+            className="form-control"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            required
+          />
+        </div>
         <div className="form-group">
           <label htmlFor="email">Email:</label>
           <input

@@ -30,7 +30,7 @@ export const analyzeContent = async (prompt) => {
         { role: 'user', content: prompt },
       ],
       model: 'gpt-3.5-turbo', // Use the chat completion model
-      max_tokens: 150,
+      max_tokens: 2000,
       temperature: 0.7,
     }, {
       headers: {

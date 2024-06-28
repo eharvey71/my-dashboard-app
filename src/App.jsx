@@ -4,15 +4,25 @@ import NavBar from './components/NavBar';
 import Signup from './components/Signup';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
-import { auth, onAuthStateChanged } from './services/firebaseConfig';
+import { auth, onAuthStateChanged, db } from './services/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 const App = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          setDisplayName(userDoc.data().displayName || '');
+        }
+      } else {
+        setDisplayName('');
+      }
       setLoading(false);
     });
 
@@ -25,7 +35,7 @@ const App = () => {
 
   return (
     <Router>
-      <NavBar user={user} />
+      <NavBar user={user} displayName={displayName} />
       <div className="container mt-5">
         <Routes>
           <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { auth, logout } from '../services/firebaseConfig';
+import { logout } from '../services/firebaseConfig';
 
-const NavBar = ({ user }) => {
+const NavBar = ({ user, displayName }) => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -14,10 +14,12 @@ const NavBar = ({ user }) => {
     }
   };
 
+  const appTitle = user && displayName ? `${displayName}'s Cognify` : 'My Cognify';
+
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
       <div className="container-fluid">
-        <Link className="navbar-brand" to="/">MyApp</Link>
+        <Link className="navbar-brand" to="/">{appTitle}</Link>
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
           <span className="navbar-toggler-icon"></span>
         </button>

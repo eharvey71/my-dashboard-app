@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getNotes, addNote, deleteNote } from '../services/firebaseConfig';
-import { indexContent } from '../services/pineconeService';
+//import { indexContent } from '../services/pineconeService';
 import './Notes.css';
 
 const Notes = ({ user }) => {
@@ -14,17 +14,18 @@ const Notes = ({ user }) => {
     if (user) {
       const fetchNotes = async () => {
         try {
-          const notes = await getNotes(user.uid);
-          setNotes(notes);
+          const fetchedNotes = await getNotes(user.uid);
+          setNotes(fetchedNotes);
           setLoading(false);
 
           // Index existing notes in Pinecone
-          notes.forEach(note => {
-            indexContent(user.uid, note.content, 'note');
-          });
+          //notes.forEach(note => {
+          //  indexContent(user.uid, note.content, 'note');
+          //});
         } catch (error) {
           console.error("Error fetching notes:", error);
           setLoading(false);
+          setError('Failed to fetch notes');
         }
       };
 
@@ -36,12 +37,12 @@ const Notes = ({ user }) => {
     if (newNote.trim() === '') return;
     try {
       await addNote(newNote, user.uid);
-      const notes = await getNotes(user.uid);
-      setNotes(notes);
+      const updateNotes = await getNotes(user.uid);
+      setNotes(updateNotes);
       setNewNote('');
 
       // Index the new note in Pinecone
-      indexContent(user.uid, newNote, 'note');
+      // indexContent(user.uid, newNote, 'note');
     } catch (error) {
       console.error("Error adding note:", error);
       setError('Failed to add note');
@@ -51,10 +52,11 @@ const Notes = ({ user }) => {
   const handleDeleteNote = async (id) => {
     try {
       await deleteNote(id);
-      const notes = await getNotes(user.uid);
-      setNotes(notes);
+      const updatedNotes = await getNotes(user.uid);
+      setNotes(updatedNotes);
     } catch (error) {
       console.error("Error deleting note:", error);
+      setError('Failed to delete note');
     }
   };
 
@@ -70,7 +72,7 @@ const Notes = ({ user }) => {
   return (
     <div className="card">
       <div className="card-body">
-        <h2 className="card-title">Notes</h2>
+        <h2 className="card-title">Quick Notes</h2>
         <div className="mb-3">
           <textarea
             className="form-control"
