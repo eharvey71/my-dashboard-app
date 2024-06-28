@@ -13,47 +13,47 @@ let index = null;
 
 const ensureInitialized = async () => {
   if (!index) {
-    //await initializeClient();
+    await initializeClient();
     index = pinecone.Index(indexName);
   }
 };
 
-// const initializeClient = async () => {
-//   try {
-//     console.log("Initializing Pinecone client...");
-//     const existingIndexes = await pinecone.listIndexes();
-//     console.log(
-//       "Contents of existingIndexes:",
-//       JSON.stringify(existingIndexes)
-//     );
+const initializeClient = async () => {
+  try {
+    console.log("Initializing Pinecone client...");
+    const existingIndexes = await pinecone.listIndexes();
+    console.log(
+      "Contents of existingIndexes:",
+      JSON.stringify(existingIndexes)
+    );
 
-//     const indexExists = existingIndexes.indexes.some(
-//       (idx) => idx.name === indexName
-//     );
+    const indexExists = existingIndexes.indexes.some(
+      (idx) => idx.name === indexName
+    );
 
-//     if (!indexExists) {
-//       console.log(`Creating index ${indexName}...`);
-//       await pinecone.createIndex({
-//         name: indexName,
-//         dimension: EMBEDDING_DIMENSION, // Ensure this matches the dimension of your embedding model
-//         spec: {
-//           serverless: {
-//             cloud: "aws",
-//             region: "us-east-1",
-//           },
-//         },
-//       });
-//       console.log(`Index ${indexName} created.`);
-//     } else {
-//       console.log(`Index ${indexName} already exists.`);
-//     }
+    if (!indexExists) {
+      console.log(`Creating index ${indexName}...`);
+      await pinecone.createIndex({
+        name: indexName,
+        dimension: EMBEDDING_DIMENSION, // Ensure this matches the dimension of your embedding model
+        spec: {
+          serverless: {
+            cloud: "aws",
+            region: "us-east-1",
+          },
+        },
+      });
+      console.log(`Index ${indexName} created.`);
+    } else {
+      console.log(`Index ${indexName} already exists.`);
+    }
 
-//     index = pinecone.Index(indexName);
-//   } catch (error) {
-//     console.error("Error initializing Pinecone client:", error);
-//     throw error;
-//   }
-// };
+    index = pinecone.Index(indexName);
+  } catch (error) {
+    console.error("Error initializing Pinecone client:", error);
+    throw error;
+  }
+};
 
 export const indexContent = async (
   userId,
