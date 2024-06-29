@@ -1,7 +1,27 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, setDoc, updateDoc, getDoc } from 'firebase/firestore'; // Ensure updateDoc and deleteDoc are imported
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged } from 'firebase/auth';
-import { deleteVector, indexContent, updateVector } from './pineconeService';
+import { initializeApp } from "firebase/app";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  setDoc,
+  updateDoc,
+  getDoc,
+} from "firebase/firestore";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  setPersistence,
+  browserLocalPersistence,
+  onAuthStateChanged,
+} from "firebase/auth";
+import { deleteVector, indexContent, updateVector } from "./pineconeService";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
@@ -22,10 +42,10 @@ const auth = getAuth(app);
 // Set persistence
 setPersistence(auth, browserLocalPersistence);
 
-const createUserProfile = async (userId, email) => {
-  const userDoc = doc(db, 'users', userId);
+/* const createUserProfile = async (userId, email) => {
+  const userDoc = doc(db, "users", userId);
   await setDoc(userDoc, { email });
-};
+}; */
 
 const addItem = async (content, userId, type) => {
   const collectionRef = collection(db, `${type}s`);
@@ -35,11 +55,47 @@ const addItem = async (content, userId, type) => {
       content: content,
       createdAt: new Date(),
       userId,
-      ...(type === 'task' ? { completed: false, timerSeconds: 1500, timerActive: false } : {})
+      indexedInPinecone: false,
+      ...(type === "task"
+        ? { completed: false, timerSeconds: 1500, timerActive: false }
+        : {}),
     });
-    await indexContent(userId, content, type, docRef.id);
-    console.log(`${type} added to Firebase and indexed in Pinecone with ID: ${docRef.id}`);
-    return docRef.id;
+
+    console.log(`${type} added to Firebase with ID: ${docRef.id}`);
+
+    // Try to index the item in Pinecone
+    try {
+      await indexContent(userId, content, type, docRef.id);
+      await updateDoc(docRef, { indexedInPinecone: true });
+      console.log(`${type} indexed in Pinecone with ID: ${docRef.id}`);
+      // Return the full item object
+      return {
+        id: docRef.id,
+        title: content,
+        content: content,
+        createdAt: new Date(),
+        userId,
+        indexedInPinecone: true,
+        ...(type === "task"
+          ? { completed: false, timerSeconds: 1500, timerActive: false }
+          : {}),
+      };
+    } catch (pineconeError) {
+      console.error(`Error indexing ${type} in Pinecone:`, pineconeError);
+    }
+
+    // If Pinecone indexing failed, return the item with indexedInPinecone set to false
+    return {
+      id: docRef.id,
+      title: content,
+      content: content,
+      createdAt: new Date(),
+      userId,
+      indexedInPinecone: false,
+      ...(type === "task"
+        ? { completed: false, timerSeconds: 1500, timerActive: false }
+        : {}),
+    };
   } catch (error) {
     console.error(`Error adding ${type}:`, error);
     throw error;
@@ -61,8 +117,11 @@ const updateItem = async (id, updates, type) => {
 
     await updateDoc(itemDoc, updates);
 
-    if ((updates.content || updates.title) &&
-        (updates.content !== currentItem.content || updates.title !== currentItem.title)) {
+    if (
+      (updates.content || updates.title) &&
+      (updates.content !== currentItem.content ||
+        updates.title !== currentItem.title)
+    ) {
       const newContent = updates.content || updates.title;
       await updateVector(currentItem.userId, id, newContent, type);
     }
@@ -84,7 +143,9 @@ const deleteItem = async (id, type) => {
     const itemData = itemSnapshot.data();
     await deleteDoc(itemDoc);
     await deleteVector(itemData.userId, id, type);
-    console.log(`${type} ${id} deleted from Firebase and Pinecone for user ${itemData.userId}`);
+    console.log(
+      `${type} ${id} deleted from Firebase and Pinecone for user ${itemData.userId}`
+    );
   } catch (error) {
     console.error(`Error deleting ${type}:`, error);
     throw error;
@@ -95,35 +156,34 @@ const getItems = async (userId, type) => {
   const itemsCollection = collection(db, `${type}s`);
   const q = query(itemsCollection, where("userId", "==", userId));
   const itemSnapshot = await getDocs(q);
-  return itemSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return itemSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
-
 // Specific functions for tasks and notes
-const addTask = (content, userId) => addItem(content, userId, 'task');
-const updateTask = (id, updates) => updateItem(id, updates, 'task');
-const deleteTask = (id) => deleteItem(id, 'task');
-const getTasks = (userId) => getItems(userId, 'task');
+const addTask = (content, userId) => addItem(content, userId, "task");
+const updateTask = (id, updates) => updateItem(id, updates, "task");
+const deleteTask = (id) => deleteItem(id, "task");
+const getTasks = (userId) => getItems(userId, "task");
 
-const addNote = (content, userId) => addItem(content, userId, 'note');
-const updateNote = (id, updates) => updateItem(id, updates, 'note');
-const deleteNote = (id) => deleteItem(id, 'note');
-const getNotes = (userId) => getItems(userId, 'note');
+const addNote = (content, userId) => addItem(content, userId, "note");
+//const updateNote = (id, updates) => updateItem(id, updates, "note");
+const deleteNote = (id) => deleteItem(id, "note");
+const getNotes = (userId) => getItems(userId, "note");
 
 const getBookmarks = async (userId) => {
-  const bookmarksCollection = collection(db, 'bookmarks');
+  const bookmarksCollection = collection(db, "bookmarks");
   const q = query(bookmarksCollection, where("userId", "==", userId));
   const bookmarkSnapshot = await getDocs(q);
-  return bookmarkSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return bookmarkSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
 const addBookmark = async (url, title, image, userId) => {
-  const bookmarksCollection = collection(db, 'bookmarks');
+  const bookmarksCollection = collection(db, "bookmarks");
   const bookmarkData = {
     url,
     title,
     image,
-    userId
+    userId,
   };
 
   console.log("Attempting to add bookmark with data:", bookmarkData);
@@ -137,27 +197,31 @@ const addBookmark = async (url, title, image, userId) => {
 };
 
 const deleteBookmark = async (id) => {
-  const bookmarkDoc = doc(db, 'bookmarks', id);
+  const bookmarkDoc = doc(db, "bookmarks", id);
   await deleteDoc(bookmarkDoc);
 };
 
 const signup = async (email, password, displayName) => {
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
     const user = userCredential.user;
 
     // Store user info in Firestore
-    await setDoc(doc(db, 'users', user.uid), {
+    await setDoc(doc(db, "users", user.uid), {
       email: user.email,
-      displayName: displayName
+      displayName: displayName,
     });
 
-    console.log('User signed up successfully');
+    console.log("User signed up successfully");
   } catch (error) {
-    console.error('Error signing up:', error);
+    console.error("Error signing up:", error);
     throw error;
   }
-};;
+};
 
 const login = async (email, password) => {
   await signInWithEmailAndPassword(auth, email, password);
@@ -167,4 +231,21 @@ const logout = async () => {
   await signOut(auth);
 };
 
-export { db, getTasks, addTask, updateTask, deleteTask, getNotes, addNote, deleteNote, getBookmarks, addBookmark, deleteBookmark, signup, login, logout, auth, onAuthStateChanged };
+export {
+  db,
+  getTasks,
+  addTask,
+  updateTask,
+  deleteTask,
+  getNotes,
+  addNote,
+  deleteNote,
+  getBookmarks,
+  addBookmark,
+  deleteBookmark,
+  signup,
+  login,
+  logout,
+  auth,
+  onAuthStateChanged,
+};

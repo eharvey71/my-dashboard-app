@@ -1,67 +1,80 @@
-import React, { useState, useEffect } from 'react';
-import { getNotes, addNote, deleteNote } from '../services/firebaseConfig';
-//import { indexContent } from '../services/pineconeService';
-import './Notes.css';
+import React, { useState, useEffect } from "react";
+import { getNotes, addNote, deleteNote } from "../services/firebaseConfig";
+import { indexContent } from "../services/pineconeService";
+import "./Notes.css";
 
 const Notes = ({ user }) => {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [newNote, setNewNote] = useState('');
+  const [newNote, setNewNote] = useState("");
   const [error, setError] = useState(null);
   const maxChars = 200;
 
   useEffect(() => {
     if (user) {
-      const fetchNotes = async () => {
-        try {
-          const fetchedNotes = await getNotes(user.uid);
-          setNotes(fetchedNotes);
-          setLoading(false);
-
-          // Index existing notes in Pinecone
-          //notes.forEach(note => {
-          //  indexContent(user.uid, note.content, 'note');
-          //});
-        } catch (error) {
-          console.error("Error fetching notes:", error);
-          setLoading(false);
-          setError('Failed to fetch notes');
-        }
-      };
-
       fetchNotes();
     }
   }, [user]);
 
+  const fetchNotes = async () => {
+    try {
+      const fetchedNotes = await getNotes(user.uid);
+      setNotes(fetchedNotes);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+      setLoading(false);
+      setError("Failed to fetch notes");
+    }
+  };
+
   const handleAddNote = async () => {
     if (newNote.trim() === '') return;
+    setError(null);
     try {
-      await addNote(newNote, user.uid);
-      const updateNotes = await getNotes(user.uid);
-      setNotes(updateNotes);
+      const addedNote = await addNote(newNote, user.uid);
+
+      setNotes((prevNotes) => [addedNote, ...prevNotes]);
       setNewNote('');
 
-      // Index the new note in Pinecone
-      // indexContent(user.uid, newNote, 'note');
+      if (!addedNote.indexedInPinecone) {
+
+        setError('Note added, but not indexed in Pinecone. Retrying...');
+
+        try {
+          await indexContent(user.uid, addedNote.content, 'note', addedNote.id);
+          setNotes(prevNotes => prevNotes.map(note =>
+            note.id === addedNote.id ? { ...note, indexedInPinecone: true } : note
+          ));
+          setError(null);
+        } catch (pineconeError) {
+          console.error("Error re-indexing note in Pinecone:", pineconeError);
+          setError("Failed to index note in Pinecone. Somefeatures may be limited.");
+        }
+      }
     } catch (error) {
       console.error("Error adding note:", error);
-      setError('Failed to add note');
+      setError("Failed to add note");
     }
   };
 
   const handleDeleteNote = async (id) => {
+    setError(null);
     try {
       await deleteNote(id);
-      const updatedNotes = await getNotes(user.uid);
-      setNotes(updatedNotes);
+      // Optimistically update the UI
+      setNotes((prevNotes) => prevNotes.filter((note) => note.id !== id));
     } catch (error) {
       console.error("Error deleting note:", error);
-      setError('Failed to delete note');
+      setError("Failed to delete note");
     }
   };
 
   const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp.seconds * 1000);
+    const date =
+      timestamp instanceof Date
+        ? timestamp
+        : new Date(timestamp.seconds * 1000);
     return date.toLocaleString();
   };
 
@@ -86,14 +99,27 @@ const Notes = ({ user }) => {
             {maxChars - newNote.length} characters remaining
           </div>
         </div>
-        <button className="btn btn-outline-secondary mb-3" onClick={handleAddNote}>Add Note</button>
+        <button
+          className="btn btn-outline-secondary mb-3"
+          onClick={handleAddNote}
+        >
+          Add Note
+        </button>
         <ul className="list-group">
           {notes.map((note) => (
             <li key={note.id} className="list-group-item">
               <span>{note.content}</span>
+              {!note.indexedInPinecone && <span className="text-warning"> (Not indexed in Pinecone)</span>}
               <div className="float-end">
-                <small className="text-muted">{formatTimestamp(note.createdAt)}</small>
-                <button className="btn btn-sm btn-outline-danger ms-2" onClick={() => handleDeleteNote(note.id)}>Delete</button>
+                <small className="text-muted">
+                  {formatTimestamp(note.createdAt)}
+                </small>
+                <button
+                  className="btn btn-sm btn-outline-danger ms-2"
+                  onClick={() => handleDeleteNote(note.id)}
+                >
+                  Delete
+                </button>
               </div>
             </li>
           ))}

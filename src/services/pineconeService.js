@@ -71,6 +71,7 @@ export const indexContent = async (
 
     const contextualizedContent = `${type.toUpperCase()}: ${content}\nContext: ${additionalContext}`;
     const embedding = await generateEmbedding(contextualizedContent);
+    console.log(`Generated embedding for ${type} ${id}`);
 
     // if (embedding.length !== EMBEDDING_DIMENSION) {
     //   throw new Error(
