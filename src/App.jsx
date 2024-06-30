@@ -4,6 +4,8 @@ import NavBar from './components/NavBar';
 import Signup from './components/Signup';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import FullPageNotes from './components/FullPageNotes';
+import FullPageTasks from './components/FullPageTasks';
 import { auth, onAuthStateChanged, db } from './services/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -41,6 +43,14 @@ const App = () => {
           <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
           <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+          <Route 
+            path="/notes" 
+            element={user ? <FullPageNotes user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/tasks" 
+            element={user ? <FullPageTasks user={user} /> : <Navigate to="/login" />} 
+          />
         </Routes>
       </div>
     </Router>

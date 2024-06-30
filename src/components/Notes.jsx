@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { Link } from 'react-router-dom';
 import { getNotes, addNote, deleteNote } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
 import "./Notes.css";
 
-const Notes = ({ user }) => {
+const Notes = ({ user, limit }) => {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState("");
@@ -38,7 +39,6 @@ const Notes = ({ user }) => {
       setNewNote('');
 
       if (!addedNote.indexedInPinecone) {
-
         setError('Note added, but not indexed in Pinecone. Retrying...');
 
         try {
@@ -49,7 +49,7 @@ const Notes = ({ user }) => {
           setError(null);
         } catch (pineconeError) {
           console.error("Error re-indexing note in Pinecone:", pineconeError);
-          setError("Failed to index note in Pinecone. Somefeatures may be limited.");
+          setError("Failed to index note in Pinecone. Some features may be limited.");
         }
       }
     } catch (error) {
@@ -62,7 +62,6 @@ const Notes = ({ user }) => {
     setError(null);
     try {
       await deleteNote(id);
-      // Optimistically update the UI
       setNotes((prevNotes) => prevNotes.filter((note) => note.id !== id));
     } catch (error) {
       console.error("Error deleting note:", error);
@@ -81,6 +80,9 @@ const Notes = ({ user }) => {
   if (loading) {
     return <div>Loading notes...</div>;
   }
+
+  const displayedNotes = limit ? notes.slice(0, limit) : notes;
+  const hasMoreNotes = limit && notes.length > limit;
 
   return (
     <div className="card">
@@ -106,7 +108,7 @@ const Notes = ({ user }) => {
           Add Note
         </button>
         <ul className="list-group">
-          {notes.map((note) => (
+          {displayedNotes.map((note) => (
             <li key={note.id} className="list-group-item">
               <span>{note.content}</span>
               {!note.indexedInPinecone && <span className="text-warning"> (Not indexed in Pinecone)</span>}
@@ -124,6 +126,11 @@ const Notes = ({ user }) => {
             </li>
           ))}
         </ul>
+        {hasMoreNotes && (
+          <div className="text-center mt-3">
+            <Link to="/notes" className="btn btn-link">View More</Link>
+          </div>
+        )}
         {error && <p className="text-danger">{error}</p>}
       </div>
     </div>

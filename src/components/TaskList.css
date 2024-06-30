@@ -1,73 +1,70 @@
-.container {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
+.task-list-card {
+  margin-bottom: 20px;
 }
 
-.task-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+.task-list {
+  margin-bottom: 0;
 }
 
-.task-details {
-  flex: 1;
-  position: relative;
-}
-
-.task-actions {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  margin-top: 8px;
-  visibility: hidden;
-  position: absolute;
-  top: 100%;
-  left: 0;
-}
-
-.task-actions.visible {
-  visibility: visible;
-}
-
-.task-actions button {
-  margin-right: 8px;
-}
-
-.task-timer {
-  margin-left: 16px;
-}
-
-.list-group-item {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 15px;
+.task-list .list-group-item {
   border: 1px solid #ddd;
   border-radius: 4px;
   margin-bottom: 10px;
   transition: background-color 0.2s;
+  padding: 10px 15px;
 }
 
-.list-group-item.completed {
+.task-list .list-group-item.completed {
   background-color: #f8f9fa;
-  text-decoration: line-through;
   color: #6c757d;
 }
 
-.list-group-item:hover {
+.task-list .list-group-item:hover {
   background-color: #f1f1f1;
 }
 
-.task-edit {
+.task-row {
   display: flex;
-  flex-direction: row;
   align-items: center;
 }
 
-.task-edit input {
-  flex: 1;
+.task-checkbox {
+  flex-shrink: 0;
+  width: 20px;
   margin-right: 10px;
+}
+
+.task-content {
+  flex-grow: 1;
+  min-width: 0; /* Allows content to shrink below its minimum content size */
+  margin-right: 10px;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-content span {
+  cursor: pointer;
+  display: block; /* Ensures the span takes full width */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-actions {
+  flex-shrink: 0;
+  width: 30px; /* Fixed width for the trashcan icon container */
+  display: flex;
+  justify-content: center;
+}
+
+.task-timer {
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.task-edit {
+  width: 100%;
 }
 
 .input-group {
@@ -76,4 +73,14 @@
 
 .btn-outline-secondary {
   background-color: white;
+}
+
+.completed .task-content span {
+  text-decoration: line-through;
+}
+
+/* Ensure the input field doesn't overflow when editing */
+.task-content input.form-control {
+  width: 100%;
+  max-width: 100%;
 }

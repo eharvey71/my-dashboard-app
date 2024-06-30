@@ -1,99 +1,62 @@
 import React, { useState, useEffect } from "react";
-import {
-  getTasks,
-  addTask,
-  updateTask,
-  deleteTask,
-} from "../services/firebaseConfig";
-import PomodoroTimer from "./PomodoroTimer";
+import { Link } from 'react-router-dom';
+import { getTasks, addTask } from "../services/firebaseConfig";
+import Task from "./Task";
 import "./TaskList.css";
 
-const TaskList = ({ user }) => {
+const TaskList = ({ user, limit = 5 }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState("");
-  const [editTaskId, setEditTaskId] = useState(null);
-  const [editTaskTitle, setEditTaskTitle] = useState("");
-  const [hoveredTaskId, setHoveredTaskId] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (user) {
-      const fetchTasks = async () => {
-        try {
-          const tasks = await getTasks(user.uid);
-          setTasks(tasks);
-          setLoading(false);
-        } catch (error) {
-          console.error("Error fetching tasks:", error);
-          setLoading(false);
-        }
-      };
-
       fetchTasks();
     }
   }, [user]);
+
+  const fetchTasks = async () => {
+    try {
+      const fetchedTasks = await getTasks(user.uid);
+      setTasks(fetchedTasks);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      setLoading(false);
+      setError("Failed to fetch tasks");
+    }
+  };
 
   const handleAddTask = async () => {
     if (newTask.trim() === "") return;
     try {
       await addTask(newTask, user.uid);
-      const updatedTasks = await getTasks(user.uid);
-      setTasks(updatedTasks);
+      await fetchTasks();
       setNewTask('');
     } catch (error) {
       console.error("Error adding task:", error);
+      setError("Failed to add task");
     }
   };
 
-  const handleToggleComplete = async (id, completed) => {
-    try {
-      await updateTask(id, { completed: !completed });
-      const updatedTasks = await getTasks(user.uid);
-      setTasks(updatedTasks);
-    } catch (error) {
-      console.error("Error updating task:", error);
-    }
+  const handleTaskUpdate = async () => {
+    await fetchTasks();
   };
 
-  const handleSaveTask = async (id) => {
-    try {
-      //console.log(`Saving task with ID ${id} and new title: ${editTaskTitle}`);
-      await updateTask(id, { title: editTaskTitle });
-      const updatedTasks = await getTasks(user.uid);
-      setTasks(updatedTasks);
-      setEditTaskId(null);
-      setEditTaskTitle('');
-    } catch (error) {
-      console.error("Error saving task:", error);
-      setError("Failed to update task");
-    }
-  };
-
-  const handleDeleteTask = async (id) => {
-    try {
-      //console.log(`Deleting task with ID ${id}`);
-      await deleteTask(id);
-      const updatedTasks = await getTasks(user.uid);
-      setTasks(updatedTasks);
-      console.log(`Task with ID ${id} deleted`);
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      setError("Failed to delete task");
-    }
-  };
-
-  const handleUpdateTask = (id) => {
-    setEditTaskId(id);
-    const task = tasks.find((task) => task.id === id);
-    setEditTaskTitle(task.title);
+  const handleTaskDelete = (taskId) => {
+    setTasks(tasks.filter(task => task.id !== taskId));
   };
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
+  const displayedTasks = tasks.slice(0, limit);
+  const hasMoreTasks = tasks.length > limit;
+
   return (
-    <div className="card">
+    <div className="card task-list-card">
       <div className="card-body">
         <h2 className="card-title">Task List</h2>
         <div className="input-group mb-3">
@@ -113,82 +76,24 @@ const TaskList = ({ user }) => {
             Add Task
           </button>
         </div>
-        <ul className="list-group">
-          {tasks
+        <ul className="list-group task-list">
+          {displayedTasks
             .sort((a, b) => a.completed - b.completed)
             .map((task) => (
-              <li
+              <Task
                 key={task.id}
-                className={`list-group-item ${
-                  task.completed ? "completed" : ""
-                }`}
-                onMouseEnter={() => setHoveredTaskId(task.id)}
-                onMouseLeave={() => setHoveredTaskId(null)}
-              >
-                <div className="task-row d-flex justify-content-between">
-                  <div className="task-details">
-                    {editTaskId === task.id ? (
-                      <div className="task-edit">
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={editTaskTitle}
-                          onChange={(e) => setEditTaskTitle(e.target.value)}
-                        />
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => handleSaveTask(task.id)}
-                        >
-                          Save
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <span>{task.title || task.content}</span>
-                        <div
-                          className={`task-actions ${
-                            hoveredTaskId === task.id ? "visible" : ""
-                          }`}
-                        >
-                          <button
-                            className="btn btn-sm btn-outline-secondary me-2"
-                            onClick={() =>
-                              handleToggleComplete(task.id, task.completed)
-                            }
-                          >
-                            {task.completed ? "Undo" : "Complete"}
-                          </button>
-                          {!task.completed && (
-                            <button
-                              className="btn btn-sm btn-outline-primary me-2"
-                              onClick={() => handleUpdateTask(task.id)}
-                            >
-                              Update
-                            </button>
-                          )}
-                          <button
-                            className="btn btn-sm btn-outline-danger me-2"
-                            onClick={() => handleDeleteTask(task.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  {!task.completed && (
-                    <div className="task-timer">
-                      <PomodoroTimer
-                        taskId={task.id}
-                        initialSeconds={task.timerSeconds || 1500}
-                        isHovered={hoveredTaskId === task.id}
-                      />
-                    </div>
-                  )}
-                </div>
-              </li>
+                task={task}
+                onTaskUpdate={handleTaskUpdate}
+                onTaskDelete={handleTaskDelete}
+              />
             ))}
+          {hasMoreTasks && (
+            <li className="list-group-item text-center">
+              <Link to="/tasks">View More</Link>
+            </li>
+          )}
         </ul>
+        {error && <p className="text-danger">{error}</p>}
       </div>
     </div>
   );

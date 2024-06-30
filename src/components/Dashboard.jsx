@@ -15,7 +15,7 @@ const Dashboard = ({ user }) => {
           <TaskList user={user} />
         </div>
         <div className="col-md-6 mb-4">
-          <Notes user={user} />
+          <Notes user={user} limit={5} />
         </div>
         <div className="col-md-6 mb-4">
           <Bookmark user={user} setBookmarks={setBookmarks} />
