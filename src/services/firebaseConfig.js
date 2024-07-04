@@ -21,7 +21,12 @@ import {
   browserLocalPersistence,
   onAuthStateChanged,
 } from "firebase/auth";
-import { deleteVector, indexContent, updateVector } from "./pineconeService";
+import {
+  deleteVector,
+  indexContent,
+  updateVector,
+  deleteVectors,
+} from "./pineconeService";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
@@ -197,8 +202,37 @@ const addBookmark = async (url, title, image, userId) => {
 };
 
 const deleteBookmark = async (id) => {
-  const bookmarkDoc = doc(db, "bookmarks", id);
-  await deleteDoc(bookmarkDoc);
+  try {
+    const bookmarkRef = doc(db, "bookmarks", id);
+    const bookmarkDoc = await getDoc(bookmarkRef);
+
+    if (bookmarkDoc.exists()) {
+      const bookmarkData = bookmarkDoc.data();
+      const url = bookmarkData.url;
+
+      console.log(`Attempting to delete bookmark with ID: ${id} and URL: ${url}`);
+
+      // Delete the bookmark from Firebase
+      await deleteDoc(bookmarkRef);
+      console.log(`Bookmark deleted from Firebase with ID: ${id}`);
+
+      // Delete vectors from Pinecone
+      try {
+        await deleteVectors(bookmarkData.userId, url);
+        console.log(`Associated vectors deleted for URL: ${url}`);
+      } catch (pineconeError) {
+        console.error("Error deleting vectors from Pinecone:", pineconeError);
+        // Optionally, you can choose to throw this error or handle it differently
+      }
+      
+      console.log(`Bookmark deletion process completed for URL: ${url}`);
+    } else {
+      console.log(`Bookmark with ID ${id} not found`);
+    }
+  } catch (error) {
+    console.error("Error in deleteBookmark function:", error);
+    throw error;
+  }
 };
 
 const signup = async (email, password, displayName) => {

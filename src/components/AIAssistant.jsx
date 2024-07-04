@@ -22,7 +22,7 @@ const AIAssistant = ({ user }) => {
     try {
       const userContent = await queryPinecone(user.uid, input);
       const prompt = `
-You are an AI assistant with access to the user's tasks and notes. 
+You are an AI assistant with access to the user's tasks, notes, and bookmarked content. 
 Below is the relevant information from the user's data:
 
 ${userContent || "No specific user data found for this query."}
@@ -30,7 +30,13 @@ ${userContent || "No specific user data found for this query."}
 Now, please answer the following question or request from the user:
 User: ${input}
 
-Assistant: Let me analyze the information and provide a response based on your tasks and notes.
+In your response, please:
+1. Directly address the user's query.
+2. Identify and explain any correlations between tasks, notes, and bookmarked content.
+3. Provide insights or suggestions based on the combined information.
+4. If relevant, suggest any actions the user might take based on the analyzed information.
+
+A: Certainly! I've analyzed your tasks, notes, and bookmarked content. Here's my response:
 `;
       const aiResponse = await analyzeContent(prompt);
 
@@ -52,35 +58,38 @@ Assistant: Let me analyze the information and provide a response based on your t
   };
 
   return (
-    <div className="ai-assistant">
-      <h3>AI Assistant</h3>
-      <textarea
-        className="form-control mb-3"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Ask the AI for advice about your tasks and notes..."
-      />
-      <button
-        className="btn btn-outline-secondary mb-3"
-        onClick={handleAnalyze}
-        disabled={isTyping}
-      >
-        {isTyping ? "Thinking..." : "Ask GPT"}
-      </button>
-      {error && <div className="alert alert-danger">{error}</div>}
-      <div>
-        <h4>Response</h4>
+    <div className="ai-assistant card">
+      <div className="card-body">
+        <h3 className="card-title">AI Assistant</h3>
         <textarea
-          ref={responseRef}
-          className="form-control"
-          value={response}
-          readOnly
-          style={{
-            resize: "none",
-            overflow: "hidden",
-            minHeight: "100px",
-          }}
+          className="form-control mb-3"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask about your tasks, notes, or bookmarked content..."
+          rows="3"
         />
+        <button
+          className="btn btn-primary mb-3"
+          onClick={handleAnalyze}
+          disabled={isTyping}
+        >
+          {isTyping ? "Analyzing..." : "Ask AI Assistant"}
+        </button>
+        {error && <div className="alert alert-danger">{error}</div>}
+        <div>
+          <h4>Response</h4>
+          <textarea
+            ref={responseRef}
+            className="form-control"
+            value={response}
+            readOnly
+            style={{
+              resize: "none",
+              overflow: "hidden",
+              minHeight: "150px",
+            }}
+          />
+        </div>
       </div>
     </div>
   );

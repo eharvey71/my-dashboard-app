@@ -160,6 +160,62 @@ export const deleteVector = async (userId, id, type) => {
   }
 };
 
+export const deleteVectors = async (userId, url, batchSize = 1000) => {
+  try {
+    await ensureInitialized();
+
+    if (!index) {
+      throw new Error("Pinecone index is not initialized");
+    }
+
+    const filterCondition = {
+      userId: userId,
+      content: { $contains: url }
+    };
+
+    let totalDeleted = 0;
+    let cursor = null;
+
+    while (true) {
+      // Fetch vector IDs matching the filter
+
+      const queryResponse = await index.query({
+        vector: new Array(await index.describeIndexStats().dimension).fill(0), // dummy vector
+        filter: { url: { $eq: url } },
+        topK: batchSize,
+        includeMetadata: false,
+        includeValues: false,
+        cursor: cursor,
+    });
+
+      // Extract vector IDs
+      const vectorIds = queryResponse.matches.map(match => match.id);
+
+      if (vectorIds.length === 0) {
+        break; // No more vectors to delete
+      }
+
+      // Delete the fetched vector IDs
+      await index.deleteMany(vectorIds);
+
+      totalDeleted += vectorIds.length;
+      console.log(`Deleted batch of ${vectorIds.length} vectors. Total deleted: ${totalDeleted}`);
+
+      // Update cursor for next iteration
+      cursor = queryResponse.cursor;
+
+      if (!cursor) {
+        break; // No more results to fetch
+      }
+    }
+
+    console.log(`Deletion operation completed. Total vectors deleted: ${totalDeleted}`);
+  } catch (error) {
+    console.error("Error deleting vectors:", error);
+    throw error;
+  }
+};
+
 export const queryPinecone = async (userId, query = "") => {
   try {
     await ensureInitialized();
