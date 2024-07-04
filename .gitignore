@@ -1,3 +1,4 @@
 *.local
 .env
 .runtimeconfig.json
+node_modules
