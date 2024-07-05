@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link } from 'react-router-dom';
-import { getTasks, addTask } from "../services/firebaseConfig";
+import { getTasks, addTask, deleteTask } from "../services/firebaseConfig";
 import Task from "./Task";
 import "./TaskList.css";
 
@@ -10,13 +10,8 @@ const TaskList = ({ user, limit = 5 }) => {
   const [newTask, setNewTask] = useState("");
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchTasks();
-    }
-  }, [user]);
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
+    if (!user) return;
     try {
       const fetchedTasks = await getTasks(user.uid);
       setTasks(fetchedTasks);
@@ -26,13 +21,17 @@ const TaskList = ({ user, limit = 5 }) => {
       setLoading(false);
       setError("Failed to fetch tasks");
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const handleAddTask = async () => {
     if (newTask.trim() === "") return;
     try {
-      await addTask(newTask, user.uid);
-      await fetchTasks();
+      const addedTask = await addTask(newTask, user.uid);
+      setTasks(prevTasks => [addedTask, ...prevTasks]);
       setNewTask('');
     } catch (error) {
       console.error("Error adding task:", error);
@@ -44,9 +43,15 @@ const TaskList = ({ user, limit = 5 }) => {
     await fetchTasks();
   };
 
-  const handleTaskDelete = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-  };
+  const handleTaskDelete = useCallback(async (taskId) => {
+    try {
+      await deleteTask(taskId);
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      setError("Failed to delete task");
+    }
+  }, []);
 
   if (loading) {
     return <div>Loading...</div>;

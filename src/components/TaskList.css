@@ -36,26 +36,40 @@
 
 .task-content {
   flex-grow: 1;
-  min-width: 0; /* Allows content to shrink below its minimum content size */
+  min-width: 0;
   margin-right: 10px;
   word-break: break-word;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: all 0.3s ease;
 }
 
 .task-content span {
   cursor: pointer;
-  display: block; /* Ensures the span takes full width */
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.task-content.hovered span {
+  white-space: normal;
+  overflow: visible;
+  word-wrap: break-word;
+}
+
 .task-actions {
   flex-shrink: 0;
-  width: 30px; /* Fixed width for the trashcan icon container */
   display: flex;
-  justify-content: center;
+  align-items: center;
+}
+
+.delete-confirmation {
+  font-size: 0.8rem;
+}
+
+.delete-confirmation .btn {
+  padding: 0.1rem 0.3rem;
 }
 
 .task-timer {
@@ -79,7 +93,6 @@
   text-decoration: line-through;
 }
 
-/* Ensure the input field doesn't overflow when editing */
 .task-content input.form-control {
   width: 100%;
   max-width: 100%;

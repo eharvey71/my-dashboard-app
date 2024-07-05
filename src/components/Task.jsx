@@ -1,12 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { updateTask, deleteTask } from '../services/firebaseConfig';
-import PomodoroTimer from './PomodoroTimer';
-import { Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import { updateTask } from "../services/firebaseConfig";
+import PomodoroTimer from "./PomodoroTimer";
+import { Trash2, Check, X } from "lucide-react";
 
 const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
-  const [editTaskTitle, setEditTaskTitle] = useState(task.title || task.content);
+  const [editTaskTitle, setEditTaskTitle] = useState(
+    task.title || task.content
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -38,17 +41,21 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
     }
   };
 
-  const handleDeleteTask = async () => {
-    try {
-      await deleteTask(task.id);
-      onTaskDelete(task.id);
-    } catch (error) {
-      console.error("Error deleting task:", error);
-    }
+  const handleDeleteClick = () => {
+    setIsConfirmingDelete(true);
+  };
+
+  const handleConfirmDelete = () => {
+    onTaskDelete(task.id);
+    setIsConfirmingDelete(false);
+  };
+
+  const handleCancelDelete = () => {
+    setIsConfirmingDelete(false);
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSaveTask();
     }
   };
@@ -57,7 +64,10 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
     <li
       className={`list-group-item ${task.completed ? "completed" : ""}`}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsConfirmingDelete(false);
+      }}
     >
       <div className="task-row d-flex align-items-center">
         <div className="task-checkbox me-2">
@@ -67,7 +77,9 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
             onChange={handleToggleComplete}
           />
         </div>
-        <div className="task-content flex-grow-1">
+        <div
+          className={`task-content flex-grow-1 ${isHovered ? "hovered" : ""}`}
+        >
           {isEditing ? (
             <input
               ref={inputRef}
@@ -83,13 +95,33 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
           )}
         </div>
         <div className="task-actions">
-          <button
-            className="btn btn-sm btn-link text-danger"
-            onClick={handleDeleteTask}
-            title="Delete task"
-          >
-            <Trash2 size={18} />
-          </button>
+          {isConfirmingDelete ? (
+            <div className="delete-confirmation d-flex align-items-center">
+              <span className="me-2">Confirm?</span>
+              <button
+                className="btn btn-sm btn-success me-1"
+                onClick={handleConfirmDelete}
+                title="Confirm delete"
+              >
+                <Check size={14} />
+              </button>
+              <button
+                className="btn btn-sm btn-danger"
+                onClick={handleCancelDelete}
+                title="Cancel delete"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              className="btn btn-sm btn-link text-danger"
+              onClick={handleDeleteClick}
+              title="Delete task"
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
         </div>
         {!task.completed && (
           <div className="task-timer ms-2">
