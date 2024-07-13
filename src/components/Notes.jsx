@@ -2,7 +2,62 @@ import React, { useState, useEffect } from "react";
 import { Link } from 'react-router-dom';
 import { getNotes, addNote, deleteNote } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
+import { Trash2 } from 'lucide-react';
 import "./Notes.css";
+
+const Note = ({ note, onDeleteNote }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteClick = () => {
+    setIsDeleting(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    await onDeleteNote(note.id);
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleting(false);
+  };
+
+  return (
+    <li className="list-group-item notes-list-group-item">
+      <div className="notes-content">
+        {note.content.trim()} {/* Trim the content to remove any leading/trailing whitespace */}
+        {!note.indexedInPinecone && <span className="text-warning"> (Not indexed in Pinecone)</span>}
+      </div>
+      <div className="float-end">
+        <small className="text-muted notes-timestamp">
+          {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
+        </small>
+        {isDeleting ? (
+          <>
+            <button
+              className="btn btn-sm btn-danger ms-2"
+              onClick={handleConfirmDelete}
+            >
+              Confirm
+            </button>
+            <button
+              className="btn btn-sm btn-secondary ms-2"
+              onClick={handleCancelDelete}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            className="btn btn-sm btn-link text-danger ms-2"
+            onClick={handleDeleteClick}
+            title="Delete note"
+          >
+            <Trash2 size={18} />
+          </button>
+        )}
+      </div>
+    </li>
+  );
+};
 
 const Notes = ({ user, limit }) => {
   const [notes, setNotes] = useState([]);
@@ -20,7 +75,11 @@ const Notes = ({ user, limit }) => {
   const fetchNotes = async () => {
     try {
       const fetchedNotes = await getNotes(user.uid);
-      setNotes(fetchedNotes);
+      const notesWithValidDates = fetchedNotes.map(note => ({
+        ...note,
+        createdAt: note.createdAt instanceof Date ? note.createdAt : new Date(note.createdAt.seconds * 1000)
+      }));
+      setNotes(notesWithValidDates);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching notes:", error);
@@ -35,21 +94,27 @@ const Notes = ({ user, limit }) => {
     try {
       const addedNote = await addNote(newNote, user.uid);
 
-      setNotes((prevNotes) => [addedNote, ...prevNotes]);
+       // Ensure the createdAt field is a Date object
+      const noteWithValidDate = {
+        ...addedNote,
+        createdAt: addedNote.createdAt instanceof Date ? addedNote.createdAt : new Date(addedNote.createdAt.seconds * 1000)
+      };
+
+      setNotes((prevNotes) => [noteWithValidDate, ...prevNotes]);
       setNewNote('');
 
-      if (!addedNote.indexedInPinecone) {
+      if (!noteWithValidDate.indexedInPinecone) {
         setError('Note added, but not indexed in Pinecone. Retrying...');
-
+  
         try {
-          await indexContent(user.uid, addedNote.content, 'note', addedNote.id);
+          await indexContent(user.uid, noteWithValidDate.content, 'note', noteWithValidDate.id);
           setNotes(prevNotes => prevNotes.map(note =>
-            note.id === addedNote.id ? { ...note, indexedInPinecone: true } : note
+            note.id === noteWithValidDate.id ? { ...note, indexedInPinecone: true } : note
           ));
           setError(null);
         } catch (pineconeError) {
           console.error("Error re-indexing note in Pinecone:", pineconeError);
-          setError("Failed to index note in Pinecone. Some features may be limited.");
+          //setError("Failed to index note in Pinecone. Some features may be limited.");
         }
       }
     } catch (error) {
@@ -67,14 +132,6 @@ const Notes = ({ user, limit }) => {
       console.error("Error deleting note:", error);
       setError("Failed to delete note");
     }
-  };
-
-  const formatTimestamp = (timestamp) => {
-    const date =
-      timestamp instanceof Date
-        ? timestamp
-        : new Date(timestamp.seconds * 1000);
-    return date.toLocaleString();
   };
 
   if (loading) {
@@ -109,21 +166,7 @@ const Notes = ({ user, limit }) => {
         </button>
         <ul className="list-group">
           {displayedNotes.map((note) => (
-            <li key={note.id} className="list-group-item">
-              <span>{note.content}</span>
-              {!note.indexedInPinecone && <span className="text-warning"> (Not indexed in Pinecone)</span>}
-              <div className="float-end">
-                <small className="text-muted">
-                  {formatTimestamp(note.createdAt)}
-                </small>
-                <button
-                  className="btn btn-sm btn-outline-danger ms-2"
-                  onClick={() => handleDeleteNote(note.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
+            <Note key={note.id} note={note} onDeleteNote={handleDeleteNote} />
           ))}
         </ul>
         {hasMoreNotes && (

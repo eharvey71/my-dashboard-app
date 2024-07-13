@@ -1,28 +1,76 @@
 .bookmark-list {
-    margin-top: 20px;
-  }
-  
-  .bookmark-list ul {
-    list-style-type: none;
-    padding: 0;
-  }
-  
-  .bookmark-list li {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
-  }
-  
-  .bookmark-image {
-    width: 50px; /* Fixed width */
-    height: 50px; /* Fixed height */
-    object-fit: cover; /* Ensure the image covers the area without distortion */
-    margin-right: 10px;
-    border-radius: 4px; /* Optional: for a nicer look */
-  }
-  
-  .bookmark-list button {
-    margin-left: auto;
-  }
-  
+  margin-top: 20px;
+}
+
+.bookmark-list ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.bookmark-list li {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.bookmark-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  margin-right: 10px;
+  border-radius: 4px;
+}
+
+.bookmark-content {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.bookmark-title {
+  cursor: pointer;
+  margin-right: 10px;
+  word-break: break-word;
+}
+
+.bookmark-actions {
+  display: flex;
+  align-items: center;
+}
+
+.bookmark-actions button,
+.bookmark-actions a {
+  margin-left: 5px;
+}
+
+.form-control {
+  max-width: calc(100% - 100px);
+}
+
+/* New styles for delete confirmation */
+.delete-confirmation-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.delete-confirmation {
+  font-size: 0.9rem;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 5px 10px;
+}
+
+.delete-confirmation .btn {
+  padding: 0.1rem 0.3rem;
+}

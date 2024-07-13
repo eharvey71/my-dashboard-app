@@ -93,9 +93,9 @@ const TaskList = ({ user, limit = 5 }) => {
               />
             ))}
           {hasMoreTasks && (
-            <li className="list-group-item text-center">
-              <Link to="/tasks">View More</Link>
-            </li>
+            <div className="text-center mt-3">
+              <Link to="/tasks" className="btn btn-link">View More</Link>
+            </div>
           )}
         </ul>
         {error && <p className="text-danger">{error}</p>}

@@ -6,6 +6,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import FullPageNotes from './components/FullPageNotes';
 import FullPageTasks from './components/FullPageTasks';
+import FullPageBookmarks from './components/FullPageBookmarks';
 import { auth, onAuthStateChanged, db } from './services/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -50,6 +51,10 @@ const App = () => {
           <Route 
             path="/tasks" 
             element={user ? <FullPageTasks user={user} /> : <Navigate to="/login" />} 
+          />
+           <Route 
+            path="/bookmarks" 
+            element={user ? <FullPageBookmarks user={user} /> : <Navigate to="/login" />} 
           />
         </Routes>
       </div>

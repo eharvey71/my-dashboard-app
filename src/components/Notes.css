@@ -2,7 +2,7 @@
 
 .notes-container {
   margin-top: 20px;
-  width: 100%; /* Match the task list width */
+  width: 100%;
 }
 
 .notes-input-group {
@@ -12,7 +12,7 @@
 }
 
 .notes-form-control {
-  margin-bottom: 10px; /* Add spacing between textarea and counter */
+  margin-bottom: 10px;
 }
 
 .notes-char-counter {
@@ -21,8 +21,8 @@
 }
 
 .notes-add-button {
-  align-self: flex-start; /* Align button to the left */
-  margin-top: 5px; /* Add some spacing above the button */
+  align-self: flex-start;
+  margin-top: 5px;
 }
 
 .notes-list-group {
@@ -33,16 +33,51 @@
 .notes-list-group-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   border: 1px solid #dee2e6;
   padding: 10px;
   margin-bottom: 10px;
   border-radius: 5px;
-  width: 100%; /* Match the task list width */
+  width: 100%;
 }
 
 .notes-content {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+}
+
+.notes-actions {
+  display: flex;
+  align-items: center;
+}
+
+.notes-timestamp {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-right: 10px;
+}
+
+.btn-link {
+  padding: 0;
+  color: #dc3545;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.text-warning {
+  color: #ffc107;
+  font-size: 0.8rem;
+}
+
+.float-end {
+  display: flex;
+  align-items: center;
+}
+
+.float-end .btn {
+  margin-left: 5px;
 }

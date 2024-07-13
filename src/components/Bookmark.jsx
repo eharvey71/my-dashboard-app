@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { addDoc, collection, updateDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebaseConfig";
+import { updateBookmark } from "../services/firebaseConfig";
 import "./Bookmark.css";
 
 const Bookmark = ({ user, setBookmarks }) => {
@@ -60,7 +61,10 @@ const Bookmark = ({ user, setBookmarks }) => {
           title: metadata.title || url,
           image: metadata.image || "/api/placeholder/400/300",
         };
-        await updateDoc(doc(db, "bookmarks", docRef.id), updatedData);
+
+        await updateBookmark(docRef.id, updatedData);
+
+        //await updateDoc(doc(db, "bookmarks", docRef.id), updatedData);
 
         // Update state with metadata
         setBookmarks((prev) =>

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { getTasks, addTask, updateTask, deleteTask } from "../services/firebaseConfig";
 import PomodoroTimer from "./PomodoroTimer";
-import { Trash2 } from 'lucide-react';
+import { Trash2, Check, X } from 'lucide-react';
 import "./FullPageTasks.css";
 
 const FullPageTask = ({ task, onTaskUpdate, onTaskDelete }) => {
   const [editTaskTitle, setEditTaskTitle] = useState(task.title || task.content);
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const handleToggleComplete = async () => {
     try {
@@ -32,13 +33,17 @@ const FullPageTask = ({ task, onTaskUpdate, onTaskDelete }) => {
     }
   };
 
-  const handleDeleteTask = async () => {
-    try {
-      await deleteTask(task.id);
-      onTaskDelete(task.id);
-    } catch (error) {
-      console.error("Error deleting task:", error);
-    }
+  const handleDeleteClick = () => {
+    setIsConfirmingDelete(true);
+  };
+
+  const handleConfirmDelete = () => {
+    onTaskDelete(task.id);
+    setIsConfirmingDelete(false);
+  };
+
+  const handleCancelDelete = () => {
+    setIsConfirmingDelete(false);
   };
 
   const handleKeyPress = (e) => {
@@ -51,7 +56,10 @@ const FullPageTask = ({ task, onTaskUpdate, onTaskDelete }) => {
     <div 
       className={`full-page-task ${task.completed ? "completed" : ""}`}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsConfirmingDelete(false);
+      }}
     >
       <div className="task-content">
         <input
@@ -74,7 +82,7 @@ const FullPageTask = ({ task, onTaskUpdate, onTaskDelete }) => {
         )}
         <button
           className="btn btn-sm btn-link text-danger delete-btn"
-          onClick={handleDeleteTask}
+          onClick={handleDeleteClick}
           title="Delete task"
         >
           <Trash2 size={18} />
@@ -89,6 +97,27 @@ const FullPageTask = ({ task, onTaskUpdate, onTaskDelete }) => {
           />
         </div>
       )}
+      {isConfirmingDelete && (
+        <div className="delete-confirmation-overlay">
+          <div className="delete-confirmation d-flex align-items-center justify-content-center">
+            <span className="me-2">Confirm delete?</span>
+            <button
+              className="btn btn-sm btn-success me-1"
+              onClick={handleConfirmDelete}
+              title="Confirm delete"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={handleCancelDelete}
+              title="Cancel delete"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -99,13 +128,8 @@ const FullPageTasks = ({ user }) => {
   const [newTask, setNewTask] = useState("");
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchTasks();
-    }
-  }, [user]);
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
+    if (!user) return;
     try {
       const fetchedTasks = await getTasks(user.uid);
       setTasks(fetchedTasks);
@@ -115,13 +139,17 @@ const FullPageTasks = ({ user }) => {
       setLoading(false);
       setError("Failed to fetch tasks");
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const handleAddTask = async () => {
     if (newTask.trim() === "") return;
     try {
-      await addTask(newTask, user.uid);
-      await fetchTasks();
+      const addedTask = await addTask(newTask, user.uid);
+      setTasks(prevTasks => [addedTask, ...prevTasks]);
       setNewTask('');
     } catch (error) {
       console.error("Error adding task:", error);
@@ -133,9 +161,15 @@ const FullPageTasks = ({ user }) => {
     await fetchTasks();
   };
 
-  const handleTaskDelete = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-  };
+  const handleTaskDelete = useCallback(async (taskId) => {
+    try {
+      await deleteTask(taskId);
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      setError("Failed to delete task");
+    }
+  }, []);
 
   if (loading) {
     return <div>Loading tasks...</div>;

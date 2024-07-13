@@ -14,6 +14,7 @@
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease;
+    position: relative;
   }
   
   .full-page-task.completed {
@@ -91,4 +92,29 @@
   .full-page-task .timer button {
     margin-top: 5px;
     margin-bottom: 5px;
+  }
+
+  .delete-confirmation-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  
+  .delete-confirmation {
+    font-size: 0.9rem;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    padding: 5px 10px;
+  }
+  
+  .delete-confirmation .btn {
+    padding: 0.1rem 0.3rem;
   }

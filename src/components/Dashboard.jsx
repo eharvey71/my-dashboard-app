@@ -21,7 +21,7 @@ const Dashboard = ({ user }) => {
           <Bookmark user={user} setBookmarks={setBookmarks} />
         </div>
         <div className="col-md-6 mb-4">
-          <BookmarkList user={user} bookmarks={bookmarks} setBookmarks={setBookmarks} />
+          <BookmarkList user={user} bookmarks={bookmarks} setBookmarks={setBookmarks} limit={5} />
         </div>
         <div className="col-md-12 mb-4">
           <AIAssistant user={user} />

@@ -27,6 +27,7 @@ import {
   updateVector,
   deleteVectors,
 } from "./pineconeService";
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
@@ -43,6 +44,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const functions = getFunctions(app);
 
 // Set persistence
 setPersistence(auth, browserLocalPersistence);
@@ -68,28 +70,7 @@ const addItem = async (content, userId, type) => {
 
     console.log(`${type} added to Firebase with ID: ${docRef.id}`);
 
-    // Try to index the item in Pinecone
-    try {
-      await indexContent(userId, content, type, docRef.id);
-      await updateDoc(docRef, { indexedInPinecone: true });
-      console.log(`${type} indexed in Pinecone with ID: ${docRef.id}`);
-      // Return the full item object
-      return {
-        id: docRef.id,
-        title: content,
-        content: content,
-        createdAt: new Date(),
-        userId,
-        indexedInPinecone: true,
-        ...(type === "task"
-          ? { completed: false, timerSeconds: 1500, timerActive: false }
-          : {}),
-      };
-    } catch (pineconeError) {
-      console.error(`Error indexing ${type} in Pinecone:`, pineconeError);
-    }
-
-    // If Pinecone indexing failed, return the item with indexedInPinecone set to false
+    // The Cloud Function will handle the Pinecone indexing
     return {
       id: docRef.id,
       title: content,
@@ -147,10 +128,10 @@ const deleteItem = async (id, type) => {
     }
     const itemData = itemSnapshot.data();
     await deleteDoc(itemDoc);
-    await deleteVector(itemData.userId, id, type);
-    console.log(
-      `${type} ${id} deleted from Firebase and Pinecone for user ${itemData.userId}`
-    );
+    //await deleteVector(itemData.userId, id, type);
+    //console.log(
+    //  `${type} ${id} deleted from Firebase and Pinecone for user ${itemData.userId}`
+    //);
   } catch (error) {
     console.error(`Error deleting ${type}:`, error);
     throw error;
@@ -189,6 +170,7 @@ const addBookmark = async (url, title, image, userId) => {
     title,
     image,
     userId,
+    indexedInPinecone: false,
   };
 
   console.log("Attempting to add bookmark with data:", bookmarkData);
@@ -210,22 +192,22 @@ const deleteBookmark = async (id) => {
       const bookmarkData = bookmarkDoc.data();
       const url = bookmarkData.url;
 
-      console.log(`Attempting to delete bookmark with ID: ${id} and URL: ${url}`);
+      //console.log(`Attempting to delete bookmark with ID: ${id} and URL: ${url}`);
 
       // Delete the bookmark from Firebase
       await deleteDoc(bookmarkRef);
       console.log(`Bookmark deleted from Firebase with ID: ${id}`);
 
       // Delete vectors from Pinecone
-      try {
-        await deleteVectors(bookmarkData.userId, url);
-        console.log(`Associated vectors deleted for URL: ${url}`);
-      } catch (pineconeError) {
-        console.error("Error deleting vectors from Pinecone:", pineconeError);
+      //try {
+      //  await deleteVectors(bookmarkData.userId, url);
+      //  console.log(`Associated vectors deleted for URL: ${url}`);
+      //} catch (pineconeError) {
+      //  console.error("Error deleting vectors from Pinecone:", pineconeError);
         // Optionally, you can choose to throw this error or handle it differently
-      }
+      //}
       
-      console.log(`Bookmark deletion process completed for URL: ${url}`);
+      // console.log(`Bookmark deletion process completed for URL: ${url}`);
     } else {
       console.log(`Bookmark with ID ${id} not found`);
     }
@@ -233,6 +215,11 @@ const deleteBookmark = async (id) => {
     console.error("Error in deleteBookmark function:", error);
     throw error;
   }
+};
+
+const updateBookmark = async (id, updates) => {
+  const bookmarkRef = doc(db, 'bookmarks', id);
+  await updateDoc(bookmarkRef, updates);
 };
 
 const signup = async (email, password, displayName) => {
@@ -277,6 +264,7 @@ export {
   getBookmarks,
   addBookmark,
   deleteBookmark,
+  updateBookmark,
   signup,
   login,
   logout,

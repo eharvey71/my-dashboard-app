@@ -4,9 +4,7 @@ import PomodoroTimer from "./PomodoroTimer";
 import { Trash2, Check, X } from "lucide-react";
 
 const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
-  const [editTaskTitle, setEditTaskTitle] = useState(
-    task.title || task.content
-  );
+  const [editTaskTitle, setEditTaskTitle] = useState(task.title || task.content);
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -69,7 +67,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
         setIsConfirmingDelete(false);
       }}
     >
-      <div className="task-row d-flex align-items-center">
+      <div className="task-row d-flex align-items-center position-relative">
         <div className="task-checkbox me-2">
           <input
             type="checkbox"
@@ -77,9 +75,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
             onChange={handleToggleComplete}
           />
         </div>
-        <div
-          className={`task-content flex-grow-1 ${isHovered ? "hovered" : ""}`}
-        >
+        <div className={`task-content flex-grow-1 ${isHovered ? "hovered" : ""}`}>
           {isEditing ? (
             <input
               ref={inputRef}
@@ -95,9 +91,27 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
           )}
         </div>
         <div className="task-actions">
-          {isConfirmingDelete ? (
-            <div className="delete-confirmation d-flex align-items-center">
-              <span className="me-2">Confirm?</span>
+          <button
+            className="btn btn-sm btn-link text-danger"
+            onClick={handleDeleteClick}
+            title="Delete task"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+        {!task.completed && (
+          <div className="task-timer ms-2">
+            <PomodoroTimer
+              taskId={task.id}
+              initialSeconds={task.timerSeconds || 1500}
+              isHovered={isHovered}
+            />
+          </div>
+        )}
+        {isConfirmingDelete && (
+          <div className="delete-confirmation-overlay">
+            <div className="delete-confirmation d-flex align-items-center justify-content-center">
+              <span className="me-2">Confirm delete?</span>
               <button
                 className="btn btn-sm btn-success me-1"
                 onClick={handleConfirmDelete}
@@ -113,23 +127,6 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
                 <X size={14} />
               </button>
             </div>
-          ) : (
-            <button
-              className="btn btn-sm btn-link text-danger"
-              onClick={handleDeleteClick}
-              title="Delete task"
-            >
-              <Trash2 size={18} />
-            </button>
-          )}
-        </div>
-        {!task.completed && (
-          <div className="task-timer ms-2">
-            <PomodoroTimer
-              taskId={task.id}
-              initialSeconds={task.timerSeconds || 1500}
-              isHovered={isHovered}
-            />
           </div>
         )}
       </div>
