@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { updateTask } from "../services/firebaseConfig";
 import PomodoroTimer from "./PomodoroTimer";
-import { Trash2, Check, X } from "lucide-react";
+import { Trash2, Check, X, ChevronDown } from "lucide-react";
 
 const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
   const [editTaskTitle, setEditTaskTitle] = useState(task.title || task.content);
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -58,6 +59,16 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
     }
   };
 
+  const handlePriorityChange = async (priority) => {
+    try {
+      await updateTask(task.id, { priority: priority });
+      onTaskUpdate();
+      setShowPriorityDropdown(false);
+    } catch (error) {
+      console.error("Error updating task priority:", error);
+    }
+  };
+
   return (
     <li
       className={`list-group-item ${task.completed ? "completed" : ""}`}
@@ -65,6 +76,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
       onMouseLeave={() => {
         setIsHovered(false);
         setIsConfirmingDelete(false);
+        setShowPriorityDropdown(false);
       }}
     >
       <div className="task-row d-flex align-items-center position-relative">
@@ -74,6 +86,36 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
             checked={task.completed}
             onChange={handleToggleComplete}
           />
+        </div>
+        <div className="task-priority me-2" style={{ position: 'relative' }}>
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
+          >
+            {task.priority !== undefined ? task.priority : <ChevronDown size={14} />}
+          </button>
+          {showPriorityDropdown && (
+            <div className="priority-dropdown" style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              zIndex: 1000,
+              backgroundColor: 'white',
+              border: '1px solid #ced4da',
+              borderRadius: '0.25rem',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+            }}>
+              {[1, 2, 3, 4, 5].map((priority) => (
+                <button
+                  key={priority}
+                  className="btn btn-sm btn-link"
+                  onClick={() => handlePriorityChange(priority)}
+                >
+                  {priority}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className={`task-content flex-grow-1 ${isHovered ? "hovered" : ""}`}>
           {isEditing ? (

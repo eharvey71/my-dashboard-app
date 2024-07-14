@@ -57,7 +57,24 @@ const TaskList = ({ user, limit = 5 }) => {
     return <div>Loading...</div>;
   }
 
-  const displayedTasks = tasks.slice(0, limit);
+/*   const sortedTasks = [...tasks].sort((a, b) => {
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
+    return (a.priority || 5) - (b.priority || 5);
+  }); */
+
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
+    if (a.priority === undefined && b.priority === undefined) return 0;
+    if (a.priority === undefined) return 1;
+    if (b.priority === undefined) return -1;
+    return a.priority - b.priority;
+  });
+
+  const displayedTasks = sortedTasks.slice(0, limit);
   const hasMoreTasks = tasks.length > limit;
 
   return (
@@ -82,16 +99,14 @@ const TaskList = ({ user, limit = 5 }) => {
           </button>
         </div>
         <ul className="list-group task-list">
-          {displayedTasks
-            .sort((a, b) => a.completed - b.completed)
-            .map((task) => (
-              <Task
-                key={task.id}
-                task={task}
-                onTaskUpdate={handleTaskUpdate}
-                onTaskDelete={handleTaskDelete}
-              />
-            ))}
+          {displayedTasks.map((task) => (
+            <Task
+              key={task.id}
+              task={task}
+              onTaskUpdate={handleTaskUpdate}
+              onTaskDelete={handleTaskDelete}
+            />
+          ))}
           {hasMoreTasks && (
             <div className="text-center mt-3">
               <Link to="/tasks" className="btn btn-link">View More</Link>

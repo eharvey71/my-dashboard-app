@@ -1,57 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import { getNotes, addNote, deleteNote } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
-import { Trash2 } from 'lucide-react';
+import { Trash2, Check, X } from 'lucide-react';
 import './FullPageNotes.css';
 
 const Note = ({ note, onDeleteNote }) => {
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const handleDeleteClick = () => {
-    setIsDeleting(true);
+    setIsConfirmingDelete(true);
   };
 
   const handleConfirmDelete = async () => {
     await onDeleteNote(note.id);
+    setIsConfirmingDelete(false);
   };
 
   const handleCancelDelete = () => {
-    setIsDeleting(false);
+    setIsConfirmingDelete(false);
   };
 
   return (
-    <div className="note-card">
-      <p>{note.content.trim()}</p> {/* Trim the content to remove any leading/trailing whitespace */}
+    <div className="note-card position-relative">
+      <p>{note.content.trim()}</p>
       {!note.indexedInPinecone && <span className="text-warning"> (Not indexed in Pinecone)</span>}
       <div className="note-footer">
         <small className="text-muted">
           {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
         </small>
-        {isDeleting ? (
-          <>
-            <button
-              className="btn btn-sm btn-danger ms-2"
-              onClick={handleConfirmDelete}
-            >
-              Confirm
-            </button>
-            <button
-              className="btn btn-sm btn-secondary ms-2"
-              onClick={handleCancelDelete}
-            >
-              Cancel
-            </button>
-          </>
-        ) : (
-          <button
-            className="btn btn-sm btn-link text-danger"
-            onClick={handleDeleteClick}
-            title="Delete note"
-          >
-            <Trash2 size={18} />
-          </button>
-        )}
+        <button
+          className="btn btn-sm btn-link text-danger"
+          onClick={handleDeleteClick}
+          title="Delete note"
+        >
+          <Trash2 size={18} />
+        </button>
       </div>
+      {isConfirmingDelete && (
+        <div className="delete-confirmation-overlay">
+          <div className="delete-confirmation d-flex align-items-center justify-content-center">
+            <span className="me-2">Confirm delete?</span>
+            <button
+              className="btn btn-sm btn-success me-1"
+              onClick={handleConfirmDelete}
+              title="Confirm delete"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={handleCancelDelete}
+              title="Cancel delete"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

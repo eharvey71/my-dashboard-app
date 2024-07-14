@@ -146,8 +146,12 @@ const getItems = async (userId, type) => {
 };
 
 // Specific functions for tasks and notes
-const addTask = (content, userId) => addItem(content, userId, "task");
-const updateTask = (id, updates) => updateItem(id, updates, "task");
+const addTask = async (content, userId) => {
+  return addItem(content, userId, "task");
+};
+const updateTask = async (id, updates) => {
+  await updateItem(id, updates, "task");
+};
 const deleteTask = (id) => deleteItem(id, "task");
 const getTasks = (userId) => getItems(userId, "task");
 
