@@ -162,11 +162,21 @@ exports.indexTaskOrNote = functions.firestore
     if (collectionName !== 'tasks' && collectionName !== 'notes') return;
 
     const data = snap.data();
-    const { content, userId } = data;
+    const { content, userId, priority } = data;
 
     try {
       // Initialize Pinecone index
       const index = pc.Index(pineconeIndexName);
+
+      let metadata = {
+        userId,
+        type: collectionName.slice(0, -1),
+        content,
+      };
+
+      if (collectionName === 'tasks' && priority) {
+        metadata.priority = priority;
+      }
 
       // Create embedding
       const embedding = await createEmbedding(content);
@@ -175,11 +185,7 @@ exports.indexTaskOrNote = functions.firestore
       await index.upsert([{
         id: `${userId}-${collectionName.slice(0, -1)}-${docId}`,
         values: embedding,
-        metadata: {
-          userId,
-          type: collectionName.slice(0, -1),
-          content,
-        },
+        metadata: metadata,
       }]);
 
       // Update document to indicate successful indexing
@@ -224,5 +230,78 @@ exports.retryFailedIndexing = functions.pubsub.schedule('every 6 hours').onRun(a
         console.error(`Error re-indexing ${collectionName.slice(0, -1)} ${doc.id}:`, error);
       }
     }
+  }
+});
+
+exports.queryPinecone = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
+  }
+
+  const userId = context.auth.uid;
+  const query = data.query;
+
+  try {
+    const index = pc.Index(pineconeIndexName);
+    
+    let queryVector;
+    try {
+      queryVector = await createEmbedding(query);
+    } catch (error) {
+      console.error("Error generating embedding for query:", error);
+      queryVector = null;
+    }
+
+    const queryRequest = {
+      topK: 20,
+      filter: { userId: userId },
+      includeMetadata: true,
+    };
+
+    if (queryVector) {
+      queryRequest.vector = queryVector;
+    }
+
+    const queryResponse = await index.query(queryRequest);
+
+    const relevantContent = queryResponse.matches
+      .map(
+        (match) => {
+          const type = match.metadata.type.toUpperCase();
+          const priority = match.metadata.priority ? ` (Priority: ${match.metadata.priority})` : '';
+          return `[${type}${priority}]: ${match.metadata.content}`;
+        }
+      )
+      .join("\n\n");
+
+    return { relevantContent };
+  } catch (error) {
+    console.error("Error querying Pinecone:", error);
+    throw new functions.https.HttpsError('internal', 'Error querying Pinecone', error);
+  }
+});
+
+exports.analyzeContent = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
+  }
+
+  const prompt = data.prompt;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: 2000,
+      temperature: 0.7,
+    });
+
+    return { content: response.choices[0].message.content.trim() };
+  } catch (error) {
+    console.error('Error analyzing content:', error);
+    throw new functions.https.HttpsError('internal', 'Error analyzing content', error);
   }
 });

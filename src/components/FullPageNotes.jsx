@@ -23,7 +23,7 @@ const Note = ({ note, onDeleteNote }) => {
   return (
     <div className="note-card position-relative">
       <p>{note.content.trim()}</p>
-      {!note.indexedInPinecone && <span className="text-warning"> (Not indexed in Pinecone)</span>}
+      {!note.indexedInPinecone && <span className="text-warning"> (Indexing for AI might be delayed)</span>}
       <div className="note-footer">
         <small className="text-muted">
           {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}

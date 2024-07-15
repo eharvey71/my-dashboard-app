@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { analyzeContent } from "../services/aiService";
-import { queryPinecone } from "../services/pineconeService";
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const AIAssistant = ({ user }) => {
   const [input, setInput] = useState("");
@@ -8,11 +7,20 @@ const AIAssistant = ({ user }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
   const responseRef = useRef(null);
+  const responseContainerRef = useRef(null);
+
+  const functions = getFunctions();
+  const queryPinecone = httpsCallable(functions, 'queryPinecone');
+  const analyzeContent = httpsCallable(functions, 'analyzeContent');
 
   useEffect(() => {
     if (responseRef.current) {
       responseRef.current.style.height = "auto";
       responseRef.current.style.height = `${responseRef.current.scrollHeight}px`;
+    }
+    
+    if (responseContainerRef.current) {
+      responseContainerRef.current.scrollTop = responseContainerRef.current.scrollHeight;
     }
   }, [response]);
 
@@ -20,7 +28,9 @@ const AIAssistant = ({ user }) => {
     setIsTyping(true);
     setError(null);
     try {
-      const userContent = await queryPinecone(user.uid, input);
+      const userContentResult = await queryPinecone({ query: input });
+      const userContent = userContentResult.data.relevantContent;
+
       const prompt = `
 You are an AI assistant with access to the user's tasks, notes, and bookmarked content. 
 Below is the relevant information from the user's data:
@@ -35,12 +45,14 @@ In your response, please:
 2. Identify and explain any correlations between tasks, notes, and bookmarked content.
 3. Provide insights or suggestions based on the combined information.
 4. If relevant, suggest any actions the user might take based on the analyzed information.
+5. For tasks, consider their priorities (if available) when providing recommendations or insights.
 
-A: Certainly! I've analyzed your tasks, notes, and bookmarked content. Here's my response:
+A: Certainly! I've analyzed your tasks (including their priorities), notes, and bookmarked content. Here's my response:
 `;
-      const aiResponse = await analyzeContent(prompt);
 
-      // Simulate typing effect
+      const aiResponseResult = await analyzeContent({ prompt });
+      const aiResponse = aiResponseResult.data.content;
+
       let displayedResponse = '';
       for (let i = 0; i < aiResponse.length; i++) {
         displayedResponse += aiResponse[i];
@@ -54,6 +66,7 @@ A: Certainly! I've analyzed your tasks, notes, and bookmarked content. Here's my
       );
     } finally {
       setIsTyping(false);
+      setInput("");
     }
   };
 
@@ -76,7 +89,7 @@ A: Certainly! I've analyzed your tasks, notes, and bookmarked content. Here's my
           {isTyping ? "Analyzing..." : "Ask AI Assistant"}
         </button>
         {error && <div className="alert alert-danger">{error}</div>}
-        <div>
+        <div ref={responseContainerRef} style={{ maxHeight: "400px", overflowY: "auto" }}>
           <h4>Response</h4>
           <textarea
             ref={responseRef}

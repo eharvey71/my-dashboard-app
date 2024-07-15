@@ -25,7 +25,7 @@ const Note = ({ note, onDeleteNote }) => {
     <li className="list-group-item notes-list-group-item position-relative">
       <div className="notes-content">
         {note.content.trim()}
-        {!note.indexedInPinecone && <span className="text-warning"> (Not indexed in Pinecone)</span>}
+        {!note.indexedInPinecone && <span className="text-warning"> (Indexing for AI might be delayed)</span>}
       </div>
       <div className="float-end">
         <small className="text-muted notes-timestamp">

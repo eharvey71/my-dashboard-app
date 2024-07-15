@@ -256,6 +256,9 @@ const logout = async () => {
   await signOut(auth);
 };
 
+const queryPinecone = httpsCallable(functions, 'queryPinecone');
+const analyzeContent = httpsCallable(functions, 'analyzeContent');
+
 export {
   db,
   getTasks,
@@ -274,4 +277,6 @@ export {
   logout,
   auth,
   onAuthStateChanged,
+  queryPinecone,
+  analyzeContent,
 };
