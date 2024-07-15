@@ -66,6 +66,29 @@ const FullPageTasks = ({ user }) => {
     return a.priority - b.priority;
   });
 
+  const handleRecurrenceChange = async (taskId, recurrencePattern) => {
+    try {
+      await updateTask(taskId, { 
+        isRecurring: !!recurrencePattern,
+        recurrencePattern: recurrencePattern
+      });
+      await fetchTasks();
+    } catch (error) {
+      console.error("Error updating task recurrence:", error);
+      setError("Failed to update task recurrence");
+    }
+  };
+
+  const handleNextDueDateChange = async (taskId, nextDueDate) => {
+    try {
+      await updateTask(taskId, { nextDueDate: nextDueDate });
+      await fetchTasks();
+    } catch (error) {
+      console.error("Error updating task next due date:", error);
+      setError("Failed to update task next due date");
+    }
+  };
+
   return (
     <div className="container mt-4">
       <h1>All Tasks</h1>

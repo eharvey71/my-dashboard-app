@@ -1,32 +1,7 @@
 import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  doc,
-  query,
-  where,
-  setDoc,
-  updateDoc,
-  getDoc,
-} from "firebase/firestore";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  setPersistence,
-  browserLocalPersistence,
-  onAuthStateChanged,
-} from "firebase/auth";
-import {
-  deleteVector,
-  indexContent,
-  updateVector,
-  deleteVectors,
-} from "./pineconeService";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged } from "firebase/auth";
+import { updateVector } from "./pineconeService";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const firebaseConfig = {
@@ -54,7 +29,7 @@ setPersistence(auth, browserLocalPersistence);
   await setDoc(userDoc, { email });
 }; */
 
-const addItem = async (content, userId, type) => {
+const addItem = async (content, userId, type, additionalData = {}) => {
   const collectionRef = collection(db, `${type}s`);
   try {
     const docRef = await addDoc(collectionRef, {
@@ -64,8 +39,15 @@ const addItem = async (content, userId, type) => {
       userId,
       indexedInPinecone: false,
       ...(type === "task"
-        ? { completed: false, timerSeconds: 1500, timerActive: false }
+        ? { completed: false, 
+            timerSeconds: 1500,
+            timerActive: false,
+            isRecurring: additionalData.isRecurring || false,
+            recurrencePattern: additionalData.recurrencePattern || null,
+            nextDueDate: additionalData.nextDueDate ? new Date(additionalData.nextDueDate).toISOString() : null,
+          }
         : {}),
+      ...additionalData,
     });
 
     console.log(`${type} added to Firebase with ID: ${docRef.id}`);
@@ -79,7 +61,14 @@ const addItem = async (content, userId, type) => {
       userId,
       indexedInPinecone: false,
       ...(type === "task"
-        ? { completed: false, timerSeconds: 1500, timerActive: false }
+        ? { 
+            completed: false,
+            timerSeconds: 1500,
+            timerActive: false,
+            isRecurring: additionalData.isRecurring || false,
+            recurrencePattern: additionalData.recurrencePattern || null,
+            nextDueDate: additionalData.nextDueDate || null,
+          }
         : {}),
     };
   } catch (error) {
@@ -99,6 +88,18 @@ const updateItem = async (id, updates, type) => {
 
     if (updates.title) {
       updates.content = updates.title;
+    }
+
+    if (type === "task") {
+      if ('isRecurring' in updates) {
+        updates.recurrencePattern = updates.isRecurring ? (updates.recurrencePattern || currentItem.recurrencePattern) : null;
+        updates.nextDueDate = updates.isRecurring ? 
+          (updates.nextDueDate ? new Date(updates.nextDueDate).toISOString() : currentItem.nextDueDate) : 
+          null;
+      }
+      if ('nextDueDate' in updates && updates.nextDueDate) {
+        updates.nextDueDate = new Date(updates.nextDueDate).toISOString();
+      }
     }
 
     await updateDoc(itemDoc, updates);
@@ -146,8 +147,8 @@ const getItems = async (userId, type) => {
 };
 
 // Specific functions for tasks and notes
-const addTask = async (content, userId) => {
-  return addItem(content, userId, "task");
+const addTask = async (content, userId, additionalData = {}) => {
+  return addItem(content, userId, "task", additionalData);
 };
 const updateTask = async (id, updates) => {
   await updateItem(id, updates, "task");
@@ -196,22 +197,10 @@ const deleteBookmark = async (id) => {
       const bookmarkData = bookmarkDoc.data();
       const url = bookmarkData.url;
 
-      //console.log(`Attempting to delete bookmark with ID: ${id} and URL: ${url}`);
-
       // Delete the bookmark from Firebase
       await deleteDoc(bookmarkRef);
       console.log(`Bookmark deleted from Firebase with ID: ${id}`);
 
-      // Delete vectors from Pinecone
-      //try {
-      //  await deleteVectors(bookmarkData.userId, url);
-      //  console.log(`Associated vectors deleted for URL: ${url}`);
-      //} catch (pineconeError) {
-      //  console.error("Error deleting vectors from Pinecone:", pineconeError);
-        // Optionally, you can choose to throw this error or handle it differently
-      //}
-      
-      // console.log(`Bookmark deletion process completed for URL: ${url}`);
     } else {
       console.log(`Bookmark with ID ${id} not found`);
     }
@@ -259,24 +248,5 @@ const logout = async () => {
 const queryPinecone = httpsCallable(functions, 'queryPinecone');
 const analyzeContent = httpsCallable(functions, 'analyzeContent');
 
-export {
-  db,
-  getTasks,
-  addTask,
-  updateTask,
-  deleteTask,
-  getNotes,
-  addNote,
-  deleteNote,
-  getBookmarks,
-  addBookmark,
-  deleteBookmark,
-  updateBookmark,
-  signup,
-  login,
-  logout,
-  auth,
-  onAuthStateChanged,
-  queryPinecone,
-  analyzeContent,
-};
+export { db, getTasks, addTask, updateTask, deleteTask, getNotes, addNote, deleteNote, getBookmarks, addBookmark, deleteBookmark,
+  updateBookmark, signup, login, logout, auth, onAuthStateChanged, queryPinecone, analyzeContent };

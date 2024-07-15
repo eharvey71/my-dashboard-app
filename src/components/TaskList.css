@@ -53,6 +53,11 @@
   text-overflow: ellipsis;
 }
 
+.task-content small {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
 .task-content.hovered span {
   white-space: normal;
   overflow: visible;
@@ -60,9 +65,12 @@
 }
 
 .task-actions {
-  flex-shrink: 0;
   display: flex;
   align-items: center;
+}
+
+.task-actions > * {
+  margin-left: 5px;
 }
 
 .delete-confirmation-overlay {
@@ -136,4 +144,82 @@
 .btn-link:hover {
   color: #0056b3;
   text-decoration: underline;
+}
+
+.task-recurrence {
+  position: relative;
+  margin-right: 10px;
+}
+
+.recurrence-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1001;
+  background-color: white;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  min-width: 80px;
+}
+
+.recurrence-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.recurrence-dropdown button:hover {
+  background-color: #f8f9fa;
+}
+
+.btn-outline-secondary .lucide-repeat {
+  vertical-align: middle;
+}
+
+.task-overdue {
+  background-color: #ffe6e6; /* Light red background */
+  border-color: #ffcccc; /* Slightly darker red border */
+}
+
+.task-overdue .task-content {
+  color: #cc0000; /* Dark red text for emphasis */
+}
+
+/* Preserve btn-outline-secondary styles but allow overrides */
+.btn-outline-secondary {
+  color: #6c757d;
+  border-color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+/* Ensure priority and recurring colors show on hover */
+.btn.priority-btn-1:hover,
+.btn.priority-btn-2:hover,
+.btn.priority-btn-3:hover,
+.btn.priority-btn-4:hover,
+.btn.priority-btn-5:hover,
+.btn.recurring-active:hover {
+  color: #333;
+}
+
+/* Adjust priority dropdown */
+.priority-dropdown .btn,
+.recurrence-dropdown .btn {
+  border: none;
+  background-color: transparent;
+}
+
+.priority-dropdown .btn:hover,
+.recurrence-dropdown .btn:hover {
+  background-color: #f8f9fa;
 }

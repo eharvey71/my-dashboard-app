@@ -57,13 +57,6 @@ const TaskList = ({ user, limit = 5 }) => {
     return <div>Loading...</div>;
   }
 
-/*   const sortedTasks = [...tasks].sort((a, b) => {
-    if (a.completed !== b.completed) {
-      return a.completed ? 1 : -1;
-    }
-    return (a.priority || 5) - (b.priority || 5);
-  }); */
-
   const sortedTasks = [...tasks].sort((a, b) => {
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1;
@@ -117,6 +110,27 @@ const TaskList = ({ user, limit = 5 }) => {
       </div>
     </div>
   );
+};
+
+const handleRecurrenceChange = async (taskId, recurrencePattern) => {
+  try {
+    await updateTask(taskId, { 
+      isRecurring: !!recurrencePattern,
+      recurrencePattern: recurrencePattern
+    });
+    await handleTaskUpdate();
+  } catch (error) {
+    console.error("Error updating task recurrence:", error);
+  }
+};
+
+const handleNextDueDateChange = async (taskId, nextDueDate) => {
+  try {
+    await updateTask(taskId, { nextDueDate: nextDueDate });
+    await handleTaskUpdate();
+  } catch (error) {
+    console.error("Error updating task next due date:", error);
+  }
 };
 
 export default TaskList;
