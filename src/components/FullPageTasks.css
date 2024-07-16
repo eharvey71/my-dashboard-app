@@ -41,6 +41,7 @@
 .task-row {
   display: flex;
   align-items: center;
+  margin-bottom: 10px;
 }
 
 .task-checkbox {
@@ -115,6 +116,7 @@
 .task-timer {
   flex-shrink: 0;
   margin-left: 10px;
+  width: 100%
 }
 
 .task-edit {
@@ -204,4 +206,17 @@
 
 .btn-outline-secondary .lucide-repeat {
   vertical-align: middle;
+}
+
+@media (max-width: 576px) {
+  .task-content {
+    flex-basis: 100%; /* Make the task content take full width on small screens */
+    margin-bottom: 5px; /* Add some space before the timer on small screens */
+  }
+  
+  .task-actions {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+  }
 }

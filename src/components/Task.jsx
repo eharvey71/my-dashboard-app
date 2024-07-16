@@ -268,15 +268,6 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             <Trash2 size={18} />
           </button>
         </div>
-        {isFullPage && !task.completed && (
-          <div className="task-timer ms-2">
-            <PomodoroTimer
-              taskId={task.id}
-              initialSeconds={task.timerSeconds || 1500}
-              isHovered={isHovered}
-            />
-          </div>
-        )}
         {isConfirmingDelete && (
           <div className="delete-confirmation-overlay">
             <div className="delete-confirmation d-flex align-items-center justify-content-center">
@@ -299,6 +290,15 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
           </div>
         )}
       </div>
+      {isFullPage && !task.completed && (
+        <div className="task-timer ms-2">
+          <PomodoroTimer
+            taskId={task.id}
+            initialSeconds={task.timerSeconds || 1500}
+            isHovered={isHovered}
+          />
+        </div>
+      )}
     </li>
   );
 };

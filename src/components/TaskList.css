@@ -99,8 +99,10 @@
 }
 
 .task-timer {
-  flex-shrink: 0;
-  margin-left: 10px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 .task-edit {
