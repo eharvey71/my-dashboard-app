@@ -98,6 +98,7 @@ const TaskList = ({ user, limit = 5 }) => {
               task={task}
               onTaskUpdate={handleTaskUpdate}
               onTaskDelete={handleTaskDelete}
+              isFullPage={false}
             />
           ))}
           {hasMoreTasks && (

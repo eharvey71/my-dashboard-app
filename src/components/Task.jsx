@@ -3,7 +3,7 @@ import { updateTask, addTask } from "../services/firebaseConfig";
 import PomodoroTimer from "./PomodoroTimer";
 import { Trash2, Check, X, ChevronDown, Repeat } from "lucide-react";
 
-const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
+const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
   const [editTaskTitle, setEditTaskTitle] = useState(task.title || task.content);
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -145,10 +145,21 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
   };
 
   const getRecurringStyle = (pattern) => {
+    const isRecurring = task.recurrencePattern && task.recurrencePattern !== 'none';
+    
+    // Style for the main button
+    if (!pattern) {
+      return isRecurring ? { backgroundColor: 'rgba(230, 230, 250, 0.8)' } : {};
+    }
+    
+    // Style for dropdown items
     if (hoveredItem === pattern) {
       return dropdownHoverStyle;
     }
-    return task.recurrencePattern === pattern ? { backgroundColor: 'rgba(230, 230, 250, 0.8)' } : {};
+    
+    return task.recurrencePattern === pattern ? 
+      { backgroundColor: 'rgba(230, 230, 250, 0.8)' } : 
+      {};
   };
 
   const dropdownHoverStyle = {
@@ -257,7 +268,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete }) => {
             <Trash2 size={18} />
           </button>
         </div>
-        {!task.completed && (
+        {isFullPage && !task.completed && (
           <div className="task-timer ms-2">
             <PomodoroTimer
               taskId={task.id}

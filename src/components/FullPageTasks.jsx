@@ -66,7 +66,7 @@ const FullPageTasks = ({ user }) => {
     return a.priority - b.priority;
   });
 
-  const handleRecurrenceChange = async (taskId, recurrencePattern) => {
+  /* const handleRecurrenceChange = async (taskId, recurrencePattern) => {
     try {
       await updateTask(taskId, { 
         isRecurring: !!recurrencePattern,
@@ -88,6 +88,7 @@ const FullPageTasks = ({ user }) => {
       setError("Failed to update task next due date");
     }
   };
+ */
 
   return (
     <div className="container mt-4">
@@ -119,6 +120,7 @@ const FullPageTasks = ({ user }) => {
                 task={task}
                 onTaskUpdate={handleTaskUpdate}
                 onTaskDelete={handleTaskDelete}
+                isFullPage={true}
               />
             ))}
           </ul>
