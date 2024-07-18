@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { getTasks, addTask, deleteTask } from "../services/firebaseConfig";
 import Task from "./Task";
-import "./FullPageTasks.css";
+import styles from "./FullPageTasks.module.css";
 
 const FullPageTasks = ({ user }) => {
   const [tasks, setTasks] = useState([]);
@@ -66,36 +66,12 @@ const FullPageTasks = ({ user }) => {
     return a.priority - b.priority;
   });
 
-  /* const handleRecurrenceChange = async (taskId, recurrencePattern) => {
-    try {
-      await updateTask(taskId, { 
-        isRecurring: !!recurrencePattern,
-        recurrencePattern: recurrencePattern
-      });
-      await fetchTasks();
-    } catch (error) {
-      console.error("Error updating task recurrence:", error);
-      setError("Failed to update task recurrence");
-    }
-  };
-
-  const handleNextDueDateChange = async (taskId, nextDueDate) => {
-    try {
-      await updateTask(taskId, { nextDueDate: nextDueDate });
-      await fetchTasks();
-    } catch (error) {
-      console.error("Error updating task next due date:", error);
-      setError("Failed to update task next due date");
-    }
-  };
- */
-
   return (
     <div className="container mt-4">
       <h1>All Tasks</h1>
-      <div className="card task-list-card">
+      <div className={`card ${styles.taskListCard}`}>
         <div className="card-body">
-          <div className="input-group mb-3">
+          <div className={`input-group ${styles.inputGroup}`}>
             <input
               type="text"
               className="form-control"
@@ -108,12 +84,12 @@ const FullPageTasks = ({ user }) => {
                 }
               }}
             />
-            <button className="btn btn-outline-secondary" onClick={handleAddTask}>
+            <button className={`btn ${styles.btnOutlineSecondary}`} onClick={handleAddTask}>
               Add Task
             </button>
           </div>
           {error && <p className="text-danger">{error}</p>}
-          <ul className="list-group task-list full-page-task-grid">
+          <ul className={`list-group ${styles.taskList} ${styles.fullPageTaskGrid}`}>
             {sortedTasks.map((task) => (
               <Task
                 key={task.id}
@@ -121,6 +97,7 @@ const FullPageTasks = ({ user }) => {
                 onTaskUpdate={handleTaskUpdate}
                 onTaskDelete={handleTaskDelete}
                 isFullPage={true}
+                styles={styles}
               />
             ))}
           </ul>

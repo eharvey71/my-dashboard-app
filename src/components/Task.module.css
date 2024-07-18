@@ -1,0 +1,97 @@
+.taskRow {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.taskCheckbox {
+  margin-right: 0.5rem;
+}
+
+.taskPriority {
+  margin-right: 0.5rem;
+  position: relative;
+}
+
+.taskRecurrence {
+  margin-right: 0.5rem;
+  position: relative;
+}
+
+.taskContent {
+  flex-grow: 1;
+}
+
+.taskContent.hovered span {
+  white-space: normal;
+  overflow: visible;
+  word-wrap: break-word;
+}
+
+.taskActions {
+  display: flex;
+}
+
+.deleteConfirmationOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.deleteConfirmation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.taskTimer {
+  margin-left: 0.5rem;
+}
+
+.priorityDropdown, .recurrenceDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1001;
+  background-color: white;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.priorityDropdown {
+  min-width: 40px;
+}
+
+.recurrenceDropdown {
+  min-width: 80px;
+}
+
+.dropdownButton {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.dropdownButton:hover {
+  background-color: #f8f9fa;
+}
+
+.completedTask {
+  text-decoration: line-through;
+}
+
+.overdueTask {
+  color: #cc0000;
+}

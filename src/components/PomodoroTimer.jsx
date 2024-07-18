@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { updateTask } from '../services/firebaseConfig';
-import './PomodoroTimer.css';
+import styles from './PomodoroTimer.module.css';
 
 const PomodoroTimer = ({ taskId, initialSeconds, isHovered }) => {
   const [seconds, setSeconds] = useState(initialSeconds || 1500);
@@ -39,13 +39,13 @@ const PomodoroTimer = ({ taskId, initialSeconds, isHovered }) => {
 
   return (
     <div>
-      <div className="timer">
+      <div className={styles.timer}>
         <span>{Math.floor(seconds / 60)}:{seconds % 60 < 10 ? '0' : ''}{seconds % 60}</span>
       </div>
-      <button className="btn btn-primary btn-sm ms-2" onClick={toggle}>
+      <button className={`btn btn-primary btn-sm ${styles.button}`} onClick={toggle}>
         {isActive ? 'Pause' : 'Start'}
       </button>
-      <button className="btn btn-secondary btn-sm ms-2" onClick={reset}>
+      <button className={`btn btn-secondary btn-sm ${styles.button}`} onClick={reset}>
         Reset
       </button>
     </div>

@@ -15,8 +15,9 @@ h2 {
   color: #007bff;
 }
 
-.container {
-  padding-top: 20px;
+.main-container {
+  padding-top: 10px;
+  padding-bottom: 20px;
 }
 
 /* Additional global styles */

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { updateTask, addTask } from "../services/firebaseConfig";
 import PomodoroTimer from "./PomodoroTimer";
 import { Trash2, Check, X, ChevronDown, Repeat } from "lucide-react";
+import styles from "./Task.module.css";
 
 const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
   const [editTaskTitle, setEditTaskTitle] = useState(task.title || task.content);
@@ -131,15 +132,16 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
     return false;
   };
 
-  const taskClasses = `list-group-item ${task.completed ? "completed" : ""} ${isOverdue() ? "task-overdue" : ""}`;
+  const taskClasses = `list-group-item ${task.completed ? styles.completed : ""} ${isOverdue() ? styles.taskOverdue : ""}`;
+
 
   const getPriorityStyle = (priority) => {
     const colors = {
-      1: 'rgba(255, 204, 203, 0.5)', // Light Red
-      2: 'rgba(255, 218, 185, 0.5)', // Light Orange
-      3: 'rgba(255, 250, 205, 0.5)', // Light Yellow
-      4: 'rgba(144, 238, 144, 0.5)', // Light Green
-      5: 'rgba(173, 216, 230, 0.5)', // Light Blue
+      1: 'rgba(255, 204, 203, 0.5)',
+      2: 'rgba(255, 218, 185, 0.5)',
+      3: 'rgba(255, 250, 205, 0.5)',
+      4: 'rgba(144, 238, 144, 0.5)',
+      5: 'rgba(173, 216, 230, 0.5)',
     };
     return { backgroundColor: colors[priority] || 'transparent' };
   };
@@ -147,24 +149,17 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
   const getRecurringStyle = (pattern) => {
     const isRecurring = task.recurrencePattern && task.recurrencePattern !== 'none';
     
-    // Style for the main button
     if (!pattern) {
       return isRecurring ? { backgroundColor: 'rgba(230, 230, 250, 0.8)' } : {};
     }
     
-    // Style for dropdown items
     if (hoveredItem === pattern) {
-      return dropdownHoverStyle;
+      return { backgroundColor: '#e9ecef', color: '#495057' };
     }
     
     return task.recurrencePattern === pattern ? 
       { backgroundColor: 'rgba(230, 230, 250, 0.8)' } : 
       {};
-  };
-
-  const dropdownHoverStyle = {
-    backgroundColor: '#e9ecef', // Light grey background
-    color: '#495057' // Dark grey text
   };
 
   return (
@@ -178,15 +173,15 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
         setShowRecurrenceDropdown(false);
       }}
     >
-      <div className="task-row d-flex align-items-center position-relative">
-        <div className="task-checkbox me-2">
+      <div className={styles.taskRow}>
+        <div className={styles.taskCheckbox}>
           <input
             type="checkbox"
             checked={task.completed}
             onChange={handleToggleComplete}
           />
         </div>
-        <div className="task-priority me-2" style={{ position: 'relative' }}>
+        <div className={styles.taskPriority}>
           <button
             className="btn btn-sm btn-outline-secondary"
             style={getPriorityStyle(task.priority)}
@@ -195,12 +190,12 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             {task.priority !== undefined ? task.priority : <ChevronDown size={14} />}
           </button>
           {showPriorityDropdown && (
-            <div className="priority-dropdown">
+            <div className={styles.priorityDropdown}>
               {[1, 2, 3, 4, 5].map((priority) => (
                 <button
                   key={priority}
-                  className="btn btn-sm btn-outline-secondary"
-                  style={hoveredItem === priority ? dropdownHoverStyle : getPriorityStyle(priority)}
+                  className={`btn btn-sm btn-outline-secondary ${styles.dropdownButton}`}
+                  style={getPriorityStyle(priority)}
                   onClick={() => handlePriorityChange(priority)}
                   onMouseEnter={() => setHoveredItem(priority)}
                   onMouseLeave={() => setHoveredItem(null)}
@@ -211,7 +206,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             </div>
           )}
         </div>
-        <div className="task-recurrence me-2" style={{ position: 'relative' }}>
+        <div className={styles.taskRecurrence}>
           <button
             className="btn btn-sm btn-outline-secondary"
             style={getRecurringStyle()}
@@ -220,11 +215,11 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             <Repeat size={14} />
           </button>
           {showRecurrenceDropdown && (
-            <div className="recurrence-dropdown">
+            <div className={styles.recurrenceDropdown}>
               {['none', 'daily', 'weekly', 'monthly'].map((pattern) => (
                 <button
                   key={pattern}
-                  className="btn btn-sm btn-outline-secondary"
+                  className={`btn btn-sm btn-outline-secondary ${styles.dropdownButton}`}
                   style={getRecurringStyle(pattern)}
                   onClick={() => handleRecurrenceChange(pattern === 'none' ? null : pattern)}
                   onMouseEnter={() => setHoveredItem(pattern)}
@@ -236,7 +231,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             </div>
           )}
         </div>
-        <div className={`task-content flex-grow-1 ${isHovered ? "hovered" : ""}`}>
+        <div className={`${styles.taskContent} ${isHovered ? styles.hovered : ""}`}>
           {isEditing ? (
             <input
               ref={inputRef}
@@ -248,7 +243,13 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
               onKeyPress={handleKeyPress}
             />
           ) : (
-            <span onClick={handleUpdateTask}>
+            <span 
+              onClick={handleUpdateTask}
+              className={`
+                ${task.completed ? styles.completedTask : ''}
+                ${isOverdue() ? styles.overdueTask : ''}
+              `}
+            >
               {task.title || task.content}
               {task.isRecurring && (
                 <small className="text-muted ms-2">
@@ -259,7 +260,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             </span>
           )}
         </div>
-        <div className="task-actions">
+        <div className={styles.taskActions}>
           <button
             className="btn btn-sm btn-link text-danger"
             onClick={handleDeleteClick}
@@ -269,8 +270,8 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
           </button>
         </div>
         {isConfirmingDelete && (
-          <div className="delete-confirmation-overlay">
-            <div className="delete-confirmation d-flex align-items-center justify-content-center">
+          <div className={styles.deleteConfirmationOverlay}>
+            <div className={styles.deleteConfirmation}>
               <span className="me-2">Confirm delete?</span>
               <button
                 className="btn btn-sm btn-success me-1"
@@ -291,7 +292,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
         )}
       </div>
       {isFullPage && !task.completed && (
-        <div className="task-timer ms-2">
+        <div className={styles.taskTimer}>
           <PomodoroTimer
             taskId={task.id}
             initialSeconds={task.timerSeconds || 1500}

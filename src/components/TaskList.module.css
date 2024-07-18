@@ -1,0 +1,98 @@
+.taskListCard {
+  margin-bottom: 20px;
+}
+
+.taskList {
+  margin-bottom: 0;
+}
+
+.listGroupItem {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  transition: background-color 0.2s;
+  padding: 10px 15px;
+  position: relative;
+}
+
+.listGroupItem.completed {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+.listGroupItem.completed .taskContent span {
+  text-decoration: line-through;
+}
+
+.listGroupItem:hover {
+  background-color: #f1f1f1;
+}
+
+.inputGroup {
+  margin-bottom: 20px;
+}
+
+.btnOutlineSecondary {
+  background-color: white;
+  color: #6c757d;
+  border-color: #6c757d;
+}
+
+.btnOutlineSecondary:hover {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+.textCenter {
+  text-align: center;
+}
+
+.mt3 {
+  margin-top: 1rem;
+}
+
+.btnLink {
+  color: #007bff;
+  text-decoration: none;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.btnLink:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.taskOverdue {
+  background-color: #ffe6e6;
+  border-color: #ffcccc;
+}
+
+.taskOverdue .taskContent {
+  color: #cc0000;
+}
+
+/* Ensure priority and recurring colors show on hover */
+.priorityBtn1:hover,
+.priorityBtn2:hover,
+.priorityBtn3:hover,
+.priorityBtn4:hover,
+.priorityBtn5:hover,
+.recurringActive:hover {
+  color: #333;
+}
+
+/* Adjust priority dropdown */
+.priorityDropdown .btn,
+.recurrenceDropdown .btn {
+  border: none;
+  background-color: transparent;
+}
+
+.priorityDropdown .btn:hover,
+.recurrenceDropdown .btn:hover {
+  background-color: #f8f9fa;
+}

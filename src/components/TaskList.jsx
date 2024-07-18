@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from 'react-router-dom';
-import { getTasks, addTask, deleteTask } from "../services/firebaseConfig";
+import { getTasks, addTask, deleteTask, updateTask } from "../services/firebaseConfig";
 import Task from "./Task";
-import "./TaskList.css";
+import styles from "./TaskList.module.css";
 
 const TaskList = ({ user, limit = 5 }) => {
   const [tasks, setTasks] = useState([]);
@@ -71,10 +71,10 @@ const TaskList = ({ user, limit = 5 }) => {
   const hasMoreTasks = tasks.length > limit;
 
   return (
-    <div className="card task-list-card">
+    <div className={`card ${styles.taskListCard}`}>
       <div className="card-body">
         <h2 className="card-title">Task List</h2>
-        <div className="input-group mb-3">
+        <div className={`input-group ${styles.inputGroup}`}>
           <input
             type="text"
             className="form-control"
@@ -87,11 +87,11 @@ const TaskList = ({ user, limit = 5 }) => {
               }
             }}
           />
-          <button className="btn btn-outline-secondary" onClick={handleAddTask}>
+          <button className={`btn ${styles.btnOutlineSecondary}`} onClick={handleAddTask}>
             Add Task
           </button>
         </div>
-        <ul className="list-group task-list">
+        <ul className={`list-group ${styles.taskList}`}>
           {displayedTasks.map((task) => (
             <Task
               key={task.id}
@@ -102,8 +102,8 @@ const TaskList = ({ user, limit = 5 }) => {
             />
           ))}
           {hasMoreTasks && (
-            <div className="text-center mt-3">
-              <Link to="/tasks" className="btn btn-link">View More</Link>
+            <div className={`${styles.textCenter} ${styles.mt3}`}>
+              <Link to="/tasks" className={styles.btnLink}>View More</Link>
             </div>
           )}
         </ul>
@@ -111,27 +111,6 @@ const TaskList = ({ user, limit = 5 }) => {
       </div>
     </div>
   );
-};
-
-const handleRecurrenceChange = async (taskId, recurrencePattern) => {
-  try {
-    await updateTask(taskId, { 
-      isRecurring: !!recurrencePattern,
-      recurrencePattern: recurrencePattern
-    });
-    await handleTaskUpdate();
-  } catch (error) {
-    console.error("Error updating task recurrence:", error);
-  }
-};
-
-const handleNextDueDateChange = async (taskId, nextDueDate) => {
-  try {
-    await updateTask(taskId, { nextDueDate: nextDueDate });
-    await handleTaskUpdate();
-  } catch (error) {
-    console.error("Error updating task next due date:", error);
-  }
 };
 
 export default TaskList;

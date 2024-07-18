@@ -1,36 +1,34 @@
-/* Notes.css */
-
-.notes-container {
+.container {
   margin-top: 20px;
   width: 100%;
 }
 
-.notes-input-group {
+.inputGroup {
   display: flex;
   flex-direction: column;
   margin-bottom: 20px;
 }
 
-.notes-form-control {
+.formControl {
   margin-bottom: 10px;
 }
 
-.notes-char-counter {
+.charCounter {
   margin-bottom: 10px;
   color: gray;
 }
 
-.notes-add-button {
+.addButton {
   align-self: flex-start;
   margin-top: 5px;
 }
 
-.notes-list-group {
+.listGroup {
   list-style-type: none;
   padding: 0;
 }
 
-.notes-list-group-item {
+.listGroupItem {
   position: relative;
   display: flex;
   justify-content: space-between;
@@ -42,48 +40,48 @@
   width: 100%;
 }
 
-.notes-content {
+.content {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
 }
 
-.notes-actions {
+.actions {
   display: flex;
   align-items: center;
 }
 
-.notes-timestamp {
+.timestamp {
   font-size: 0.8rem;
   color: #6c757d;
   margin-right: 10px;
 }
 
-.btn-link {
+.deleteButton {
   padding: 0;
   color: #dc3545;
 }
 
-.btn-sm {
+.buttonSmall {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
 }
 
-.text-warning {
+.warningText {
   color: #ffc107;
   font-size: 0.8rem;
 }
 
-.float-end {
+.floatEnd {
   display: flex;
   align-items: center;
 }
 
-.float-end .btn {
+.floatEnd button {
   margin-left: 5px;
 }
 
-.delete-confirmation-overlay {
+.deleteConfirmationOverlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -96,7 +94,7 @@
   z-index: 10;
 }
 
-.delete-confirmation {
+.deleteConfirmation {
   font-size: 0.9rem;
   background-color: #f8d7da;
   border: 1px solid #f5c6cb;
@@ -104,6 +102,6 @@
   padding: 5px 10px;
 }
 
-.delete-confirmation .btn {
+.deleteConfirmation button {
   padding: 0.1rem 0.3rem;
 }

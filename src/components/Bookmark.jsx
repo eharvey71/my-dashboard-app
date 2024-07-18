@@ -3,7 +3,7 @@ import axios from "axios";
 import { addDoc, collection, updateDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebaseConfig";
 import { updateBookmark } from "../services/firebaseConfig";
-import "./Bookmark.css";
+import styles from "./Bookmark.module.css";
 
 const Bookmark = ({ user, setBookmarks }) => {
   const [url, setUrl] = useState("");
@@ -84,10 +84,10 @@ const Bookmark = ({ user, setBookmarks }) => {
   };
 
   return (
-    <div className="card mb-4">
+    <div className={`card mb-4 ${styles.bookmarkContainer}`}>
       <div className="card-body">
         <h2 className="card-title">Add Bookmark</h2>
-        <div className="input-group mb-3">
+        <div className={`input-group mb-3 ${styles.inputGroup}`}>
           <input
             type="text"
             className="form-control"

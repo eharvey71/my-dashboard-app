@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getNotes, addNote, deleteNote } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
 import { Trash2, Check, X } from 'lucide-react';
-import "./Notes.css";
+import styles from "./Notes.module.css";
 
 const Note = ({ note, onDeleteNote }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -22,17 +22,17 @@ const Note = ({ note, onDeleteNote }) => {
   };
 
   return (
-    <li className="list-group-item notes-list-group-item position-relative">
-      <div className="notes-content">
+    <li className={`${styles.listGroupItem} list-group-item position-relative`}>
+      <div className={styles.content}>
         {note.content.trim()}
-        {!note.indexedInPinecone && <span className="text-warning"> (Indexing for AI might be delayed)</span>}
+        {!note.indexedInPinecone && <span className={styles.warningText}> (Indexing for AI might be delayed)</span>}
       </div>
-      <div className="float-end">
-        <small className="text-muted notes-timestamp">
+      <div className={styles.floatEnd}>
+        <small className={`${styles.timestamp} text-muted`}>
           {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
         </small>
         <button
-          className="btn btn-sm btn-link text-danger ms-2"
+          className={`${styles.deleteButton} ${styles.buttonSmall} btn btn-link text-danger ms-2`}
           onClick={handleDeleteClick}
           title="Delete note"
         >
@@ -40,18 +40,18 @@ const Note = ({ note, onDeleteNote }) => {
         </button>
       </div>
       {isConfirmingDelete && (
-        <div className="delete-confirmation-overlay">
-          <div className="delete-confirmation d-flex align-items-center justify-content-center">
+        <div className={styles.deleteConfirmationOverlay}>
+          <div className={`${styles.deleteConfirmation} d-flex align-items-center justify-content-center`}>
             <span className="me-2">Confirm delete?</span>
             <button
-              className="btn btn-sm btn-success me-1"
+              className={`${styles.buttonSmall} btn btn-success me-1`}
               onClick={handleConfirmDelete}
               title="Confirm delete"
             >
               <Check size={14} />
             </button>
             <button
-              className="btn btn-sm btn-danger"
+              className={`${styles.buttonSmall} btn btn-danger`}
               onClick={handleCancelDelete}
               title="Cancel delete"
             >
@@ -99,7 +99,6 @@ const Notes = ({ user, limit }) => {
     try {
       const addedNote = await addNote(newNote, user.uid);
 
-       // Ensure the createdAt field is a Date object
       const noteWithValidDate = {
         ...addedNote,
         createdAt: addedNote.createdAt instanceof Date ? addedNote.createdAt : new Date(addedNote.createdAt.seconds * 1000)
@@ -119,7 +118,6 @@ const Notes = ({ user, limit }) => {
           setError(null);
         } catch (pineconeError) {
           console.error("Error re-indexing note in Pinecone:", pineconeError);
-          //setError("Failed to index note in Pinecone. Some features may be limited.");
         }
       }
     } catch (error) {
@@ -150,26 +148,26 @@ const Notes = ({ user, limit }) => {
     <div className="card">
       <div className="card-body">
         <h2 className="card-title">Quick Notes</h2>
-        <div className="mb-3">
+        <div className={styles.inputGroup}>
           <textarea
-            className="form-control"
+            className={`${styles.formControl} form-control`}
             placeholder="New Note"
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
             maxLength={maxChars}
             rows="3"
           />
-          <div className="character-count">
+          <div className={styles.charCounter}>
             {maxChars - newNote.length} characters remaining
           </div>
         </div>
         <button
-          className="btn btn-outline-secondary mb-3"
+          className={`${styles.addButton} btn btn-outline-secondary mb-3`}
           onClick={handleAddNote}
         >
           Add Note
         </button>
-        <ul className="list-group">
+        <ul className={`${styles.listGroup} list-group`}>
           {displayedNotes.map((note) => (
             <Note key={note.id} note={note} onDeleteNote={handleDeleteNote} />
           ))}

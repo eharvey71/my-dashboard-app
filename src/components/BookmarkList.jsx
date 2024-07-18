@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getBookmarks, deleteBookmark, updateBookmark } from '../services/firebaseConfig';
 import { Trash2, ArrowUpRight, Check, X } from 'lucide-react';
-import './BookmarkList.css';
+import styles from './BookmarkList.module.css';
 
 const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
   const [editingId, setEditingId] = useState(null);
@@ -53,40 +53,40 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
     <div className="card">
       <div className="card-body">
         <h2 className="card-title">My Bookmarks</h2>
-        <ul className="list-group">
+        <ul className={styles.listGroup}>
           {displayedBookmarks.map((bookmark) => (
             <li 
               key={bookmark.id} 
-              className="list-group-item d-flex justify-content-between align-items-center position-relative"
+              className={`${styles.listItem} position-relative`}
               onMouseEnter={() => setIsHovered(bookmark.id)}
               onMouseLeave={() => {
                 setIsHovered(null);
                 setDeletingId(null);
               }}
             >
-              <img src={bookmark.image} alt={bookmark.title} className="bookmark-image" />
-              <div className="bookmark-content">
+              <img src={bookmark.image} alt={bookmark.title} className={styles.bookmarkImage} />
+              <div className={styles.bookmarkContent}>
                 {editingId === bookmark.id ? (
                   <input
                     type="text"
-                    className="form-control"
+                    className={`form-control ${styles.formControl}`}
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     onBlur={() => handleSave(bookmark.id)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSave(bookmark.id)}
                   />
                 ) : (
-                  <span onClick={() => handleEdit(bookmark)} className="bookmark-title">
+                  <span onClick={() => handleEdit(bookmark)} className={styles.bookmarkTitle}>
                     {bookmark.title}
                   </span>
                 )}
               </div>
-              <div className="bookmark-actions">
-                <a href={bookmark.url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-link">
+              <div className={styles.bookmarkActions}>
+                <a href={bookmark.url} target="_blank" rel="noopener noreferrer" className={`btn btn-sm btn-link ${styles.actionButton}`}>
                   <ArrowUpRight size={18} />
                 </a>
                 <button 
-                  className="btn btn-sm btn-link text-danger" 
+                  className={`btn btn-sm btn-link text-danger ${styles.actionButton}`}
                   onClick={() => handleDelete(bookmark.id)}
                   title="Delete bookmark"
                 >
@@ -94,18 +94,18 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
                 </button>
               </div>
               {deletingId === bookmark.id && (
-                <div className="delete-confirmation-overlay">
-                  <div className="delete-confirmation d-flex align-items-center justify-content-center">
+                <div className={styles.deleteConfirmationOverlay}>
+                  <div className={`${styles.deleteConfirmation} d-flex align-items-center justify-content-center`}>
                     <span className="me-2">Confirm delete?</span>
                     <button
-                      className="btn btn-sm btn-success me-1"
+                      className={`btn btn-sm btn-success me-1 ${styles.deleteConfirmationButton}`}
                       onClick={() => handleDelete(bookmark.id)}
                       title="Confirm delete"
                     >
                       <Check size={14} />
                     </button>
                     <button
-                      className="btn btn-sm btn-danger"
+                      className={`btn btn-sm btn-danger ${styles.deleteConfirmationButton}`}
                       onClick={cancelDelete}
                       title="Cancel delete"
                     >
@@ -117,7 +117,7 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
             </li>
           ))}
           {hasMoreBookmarks && (
-            <li className="list-group-item text-center">
+            <li className={`${styles.listItem} text-center`}>
               <Link to="/bookmarks">View More</Link>
             </li>
           )}

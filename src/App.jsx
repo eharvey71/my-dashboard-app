@@ -39,7 +39,7 @@ const App = () => {
   return (
     <Router>
       <NavBar user={user} displayName={displayName} />
-      <div className="container mt-5">
+      <div className="main-container">
         <Routes>
           <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
           <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />

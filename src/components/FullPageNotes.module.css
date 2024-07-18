@@ -1,11 +1,12 @@
-.notes-grid {
+.notesGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
-  margin-top: 20px;
+  margin-top: 10px;
+  margin-bottom: 20px;
 }
 
-.note-card {
+.noteCard {
   position: relative;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -16,39 +17,30 @@
   flex-direction: column;
 }
 
-.note-card p {
+.noteCard p {
   flex-grow: 1;
   margin-bottom: 10px;
 }
 
-.note-footer {
+.noteFooter {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-top: auto;
 }
 
-.character-count {
+.characterCount {
   font-size: 0.8rem;
   color: #6c757d;
   margin-top: 5px;
 }
 
-.text-warning {
+.textWarning {
   color: #ffc107;
   font-size: 0.8rem;
 }
 
-.btn-link {
-  padding: 0;
-}
-
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-}
-
-.delete-confirmation-overlay {
+.deleteConfirmationOverlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -61,7 +53,7 @@
   z-index: 10;
 }
 
-.delete-confirmation {
+.deleteConfirmation {
   font-size: 0.9rem;
   background-color: #f8d7da;
   border: 1px solid #f5c6cb;
@@ -69,6 +61,11 @@
   padding: 5px 10px;
 }
 
-.delete-confirmation .btn {
-  padding: 0.1rem 0.3rem;
+/* Utility classes */
+.textMuted {
+  color: #6c757d;
+}
+
+.textDanger {
+  color: #dc3545;
 }

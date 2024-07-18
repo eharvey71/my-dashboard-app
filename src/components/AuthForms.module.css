@@ -1,0 +1,26 @@
+/* AuthForms.module.css */
+
+.authContainer {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.formGroup {
+  margin-bottom: 1rem;
+}
+
+.formControl {
+  width: 100%;
+}
+
+.btn {
+  width: 100%;
+}
+
+.textDanger {
+  color: #dc3545;
+}

@@ -1,20 +1,20 @@
-.bookmark-list {
+.bookmarkList {
   margin-top: 20px;
 }
 
-.bookmark-list ul {
+.listGroup {
   list-style-type: none;
   padding: 0;
 }
 
-.bookmark-list li {
+.listItem {
   display: flex;
   align-items: center;
   padding: 10px;
   border-bottom: 1px solid #ddd;
 }
 
-.bookmark-image {
+.bookmarkImage {
   width: 50px;
   height: 50px;
   object-fit: cover;
@@ -22,35 +22,33 @@
   border-radius: 4px;
 }
 
-.bookmark-content {
+.bookmarkContent {
   flex-grow: 1;
   display: flex;
   align-items: center;
   margin-right: 12px;
 }
 
-.bookmark-title {
+.bookmarkTitle {
   cursor: pointer;
   margin-right: 10px;
   word-break: break-word;
 }
 
-.bookmark-actions {
+.bookmarkActions {
   display: flex;
   align-items: center;
 }
 
-.bookmark-actions button,
-.bookmark-actions a {
+.actionButton {
   margin-left: 5px;
 }
 
-.form-control {
+.formControl {
   max-width: calc(100% - 100px);
 }
 
-/* New styles for delete confirmation */
-.delete-confirmation-overlay {
+.deleteConfirmationOverlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -63,7 +61,7 @@
   z-index: 10;
 }
 
-.delete-confirmation {
+.deleteConfirmation {
   font-size: 0.9rem;
   background-color: #f8d7da;
   border: 1px solid #f5c6cb;
@@ -71,6 +69,6 @@
   padding: 5px 10px;
 }
 
-.delete-confirmation .btn {
+.deleteConfirmationButton {
   padding: 0.1rem 0.3rem;
 }

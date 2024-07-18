@@ -1,19 +1,19 @@
-.task-list-card {
+.taskListCard {
   margin-bottom: 20px;
 }
 
-.task-list {
+.taskList {
   margin-bottom: 0;
 }
 
-.full-page-task-grid {
+.fullPageTaskGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
   padding: 0;
 }
 
-.full-page-task-grid .list-group-item {
+.listGroupItem {
   border: 1px solid #ddd;
   border-radius: 4px;
   margin-bottom: 10px;
@@ -24,33 +24,32 @@
   flex-direction: column;
 }
 
-.full-page-task-grid .list-group-item.completed {
+.listGroupItem.completed {
   background-color: #f8f9fa;
   color: #6c757d;
 }
 
-.full-page-task-grid .list-group-item:hover {
+.listGroupItem:hover {
   background-color: #f1f1f1;
 }
 
-/* Ensure the task content doesn't overflow in the grid layout */
-.full-page-task-grid .task-content {
-  max-width: calc(100% - 120px); /* Adjust this value as needed */
+.taskContent {
+  max-width: calc(100% - 120px);
 }
 
-.task-row {
+.taskRow {
   display: flex;
   align-items: center;
   margin-bottom: 10px;
 }
 
-.task-checkbox {
+.taskCheckbox {
   flex-shrink: 0;
   width: 20px;
   margin-right: 10px;
 }
 
-.task-content {
+.taskContent {
   flex-grow: 1;
   min-width: 0;
   margin-right: 10px;
@@ -60,12 +59,12 @@
   transition: all 0.3s ease;
 }
 
-.task-content small {
+.taskContent small {
   font-size: 0.85em;
   opacity: 0.7;
 }
 
-.task-content span {
+.taskContent span {
   cursor: pointer;
   display: block;
   white-space: nowrap;
@@ -73,22 +72,22 @@
   text-overflow: ellipsis;
 }
 
-.task-content.hovered span {
+.taskContent.hovered span {
   white-space: normal;
   overflow: visible;
   word-wrap: break-word;
 }
 
-.task-actions {
+.taskActions {
   display: flex;
   align-items: center;
 }
 
-.task-actions > * {
+.taskActions > * {
   margin-left: 5px;
 }
 
-.delete-confirmation-overlay {
+.deleteConfirmationOverlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -101,7 +100,7 @@
   z-index: 10;
 }
 
-.delete-confirmation {
+.deleteConfirmation {
   font-size: 0.9rem;
   background-color: #f8d7da;
   border: 1px solid #f5c6cb;
@@ -109,43 +108,39 @@
   padding: 5px 10px;
 }
 
-.delete-confirmation .btn {
-  padding: 0.1rem 0.3rem;
-}
-
-.task-timer {
+.taskTimer {
   flex-shrink: 0;
   margin-left: 10px;
   width: 100%
 }
 
-.task-edit {
+.taskEdit {
   width: 100%;
 }
 
-.input-group {
+.inputGroup {
   margin-bottom: 20px;
 }
 
-.btn-outline-secondary {
+.btnOutlineSecondary {
   background-color: white;
 }
 
-.completed .task-content span {
+.completed .taskContent span {
   text-decoration: line-through;
 }
 
-.task-content input.form-control {
+.taskContent input.formControl {
   width: 100%;
   max-width: 100%;
 }
 
-.task-priority {
+.taskPriority {
   position: relative;
   margin-right: 10px;
 }
 
-.priority-dropdown {
+.priorityDropdown {
   position: absolute;
   top: 100%;
   left: 0;
@@ -157,7 +152,7 @@
   min-width: 40px;
 }
 
-.priority-dropdown button {
+.priorityDropdown button {
   display: block;
   width: 100%;
   text-align: center;
@@ -167,18 +162,16 @@
   cursor: pointer;
 }
 
-.priority-dropdown button:hover {
+.priorityDropdown button:hover {
   background-color: #f8f9fa;
 }
 
-/* Add these new rules to FullPageTasks.css */
-
-.task-recurrence {
+.taskRecurrence {
   position: relative;
   margin-right: 10px;
 }
 
-.recurrence-dropdown {
+.recurrenceDropdown {
   position: absolute;
   top: 100%;
   left: 0;
@@ -190,7 +183,7 @@
   min-width: 80px;
 }
 
-.recurrence-dropdown button {
+.recurrenceDropdown button {
   display: block;
   width: 100%;
   text-align: left;
@@ -200,21 +193,21 @@
   cursor: pointer;
 }
 
-.recurrence-dropdown button:hover {
+.recurrenceDropdown button:hover {
   background-color: #f8f9fa;
 }
 
-.btn-outline-secondary .lucide-repeat {
+.btnOutlineSecondary .lucideRepeat {
   vertical-align: middle;
 }
 
 @media (max-width: 576px) {
-  .task-content {
-    flex-basis: 100%; /* Make the task content take full width on small screens */
-    margin-bottom: 5px; /* Add some space before the timer on small screens */
+  .taskContent {
+    flex-basis: 100%;
+    margin-bottom: 5px;
   }
   
-  .task-actions {
+  .taskActions {
     position: absolute;
     top: 10px;
     right: 15px;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getNotes, addNote, deleteNote } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
 import { Trash2, Check, X } from 'lucide-react';
-import './FullPageNotes.css';
+import styles from './FullPageNotes.module.css';
 
 const Note = ({ note, onDeleteNote }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -21,11 +21,11 @@ const Note = ({ note, onDeleteNote }) => {
   };
 
   return (
-    <div className="note-card position-relative">
+    <div className={styles.noteCard}>
       <p>{note.content.trim()}</p>
-      {!note.indexedInPinecone && <span className="text-warning"> (Indexing for AI might be delayed)</span>}
-      <div className="note-footer">
-        <small className="text-muted">
+      {!note.indexedInPinecone && <span className={styles.textWarning}> (Indexing for AI might be delayed)</span>}
+      <div className={styles.noteFooter}>
+        <small className={styles.textMuted}>
           {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
         </small>
         <button
@@ -37,8 +37,8 @@ const Note = ({ note, onDeleteNote }) => {
         </button>
       </div>
       {isConfirmingDelete && (
-        <div className="delete-confirmation-overlay">
-          <div className="delete-confirmation d-flex align-items-center justify-content-center">
+        <div className={styles.deleteConfirmationOverlay}>
+          <div className={`${styles.deleteConfirmation} d-flex align-items-center justify-content-center`}>
             <span className="me-2">Confirm delete?</span>
             <button
               className="btn btn-sm btn-success me-1"
@@ -96,7 +96,6 @@ const FullPageNotes = ({ user }) => {
     try {
       const addedNote = await addNote(newNote, user.uid);
   
-      // Ensure the createdAt field is a Date object
       const noteWithValidDate = {
         ...addedNote,
         createdAt: addedNote.createdAt instanceof Date ? addedNote.createdAt : new Date(addedNote.createdAt.seconds * 1000)
@@ -141,7 +140,7 @@ const FullPageNotes = ({ user }) => {
   }
 
   return (
-    <div className="container mt-4">
+    <div className="container">
       <h1>All Notes</h1>
       <div className="mb-3">
         <textarea
@@ -152,7 +151,7 @@ const FullPageNotes = ({ user }) => {
           maxLength={maxChars}
           rows="3"
         />
-        <div className="character-count">
+        <div className={styles.characterCount}>
           {maxChars - newNote.length} characters remaining
         </div>
       </div>
@@ -162,8 +161,8 @@ const FullPageNotes = ({ user }) => {
       >
         Add Note
       </button>
-      {error && <p className="text-danger">{error}</p>}
-      <div className="notes-grid">
+      {error && <p className={styles.textDanger}>{error}</p>}
+      <div className={styles.notesGrid}>
         {notes.map((note) => (
           <Note key={note.id} note={note} onDeleteNote={handleDeleteNote} />
         ))}

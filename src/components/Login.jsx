@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { login } from '../services/firebaseConfig';
 import { useNavigate } from 'react-router-dom';
-import './AuthForms.css';
+import styles from './AuthForms.module.css';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -20,33 +20,33 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-container">
+    <div className={styles.authContainer}>
       <h2>Login</h2>
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label htmlFor="email">Email:</label>
           <input
             type="email"
             id="email"
-            className="form-control"
+            className={styles.formControl}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label htmlFor="password">Password:</label>
           <input
             type="password"
             id="password"
-            className="form-control"
+            className={styles.formControl}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
         </div>
-        {error && <p className="text-danger">{error}</p>}
-        <button type="submit" className="btn btn-primary">Login</button>
+        {error && <p className={styles.textDanger}>{error}</p>}
+        <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Login</button>
       </form>
     </div>
   );
