@@ -245,8 +245,35 @@ const logout = async () => {
   await signOut(auth);
 };
 
+const updateAnalytics = async (userId, analyticsData) => {
+  try {
+    const analyticsRef = doc(db, 'analytics', userId);
+    await setDoc(analyticsRef, analyticsData, { merge: true });
+    console.log("Analytics updated successfully for user:", userId);
+  } catch (error) {
+    console.error("Error updating analytics:", error);
+    throw error;
+  }
+};
+
+const getAnalytics = async (userId) => {
+  try {
+    const analyticsRef = doc(db, 'analytics', userId);
+    const docSnap = await getDoc(analyticsRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    } else {
+      console.log("No analytics found for user:", userId);
+      return {};
+    }
+  } catch (error) {
+    console.error("Error getting analytics:", error);
+    throw error;
+  }
+};
+
 const queryPinecone = httpsCallable(functions, 'queryPinecone');
 const analyzeContent = httpsCallable(functions, 'analyzeContent');
 
 export { db, getTasks, addTask, updateTask, deleteTask, getNotes, addNote, deleteNote, getBookmarks, addBookmark, deleteBookmark,
-  updateBookmark, signup, login, logout, auth, onAuthStateChanged, queryPinecone, analyzeContent };
+  updateBookmark, signup, login, logout, auth, onAuthStateChanged, queryPinecone, analyzeContent, updateAnalytics, getAnalytics };

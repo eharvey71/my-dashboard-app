@@ -1,0 +1,52 @@
+.customApiModule {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .inputGroup {
+    display: flex;
+    margin-bottom: 15px;
+  }
+  
+  .apiInput {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    margin-right: 10px;
+  }
+  
+  .fetchButton {
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .fetchButton:hover {
+    background-color: #0056b3;
+  }
+  
+  .apiTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+  
+  .apiTable th, .apiTable td {
+    border: 1px solid #dee2e6;
+    padding: 8px;
+    text-align: left;
+  }
+  
+  .apiTable th {
+    background-color: #e9ecef;
+  }
+  
+  .errorMessage {
+    color: #dc3545;
+  }

@@ -31,6 +31,9 @@ const NavBar = ({ user, displayName }) => {
                   <Link className="nav-link" to="/">Dashboard</Link>
                 </li>
                 <li className="nav-item">
+                  <Link className="nav-link" to="/focus-timer">Focus Timer</Link>
+                </li>
+                <li className="nav-item">
                   <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
                 </li>
               </>

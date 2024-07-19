@@ -4,6 +4,7 @@ import Notes from './Notes';
 import Bookmark from './Bookmark';
 import BookmarkList from './BookmarkList';
 import AIAssistant from './AIAssistant';
+import CustomAPIModule from './CustomAPIModule';
 
 const Dashboard = ({ user }) => {
   const [bookmarks, setBookmarks] = useState([]);
@@ -25,6 +26,9 @@ const Dashboard = ({ user }) => {
         </div>
         <div className="col-md-12 mb-4">
           <AIAssistant user={user} />
+        </div>
+        <div className="col-md-12 mb-4">
+          <CustomAPIModule />
         </div>
       </div>
     </div>
