@@ -86,10 +86,6 @@ const updateItem = async (id, updates, type) => {
     }
     const currentItem = itemSnapshot.data();
 
-    if (updates.title) {
-      updates.content = updates.title;
-    }
-
     if (type === "task") {
       if ('isRecurring' in updates) {
         updates.recurrencePattern = updates.isRecurring ? (updates.recurrencePattern || currentItem.recurrencePattern) : null;
@@ -272,8 +268,36 @@ const getAnalytics = async (userId) => {
   }
 };
 
+// Document functions
+const addDocument = async (title, content, userId) => {
+  const timestamp = new Date();
+  return addItem(title, userId, "document", { 
+    content, 
+    createdAt: timestamp,
+    updatedAt: timestamp
+  });
+};
+
+const updateDocument = async (id, updates) => {
+  const updatesWithTimestamp = {
+    ...updates,
+    updatedAt: new Date()
+  };
+  await updateItem(id, updatesWithTimestamp, "document");
+};
+
+const deleteDocument = (id) => deleteItem(id, "document");
+
+const getDocuments = async (userId) => {
+  const documentsCollection = collection(db, "documents");
+  const q = query(documentsCollection, where("userId", "==", userId));
+  const documentSnapshot = await getDocs(q);
+  return documentSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};
+
 const queryPinecone = httpsCallable(functions, 'queryPinecone');
 const analyzeContent = httpsCallable(functions, 'analyzeContent');
 
 export { db, getTasks, addTask, updateTask, deleteTask, getNotes, addNote, deleteNote, getBookmarks, addBookmark, deleteBookmark,
-  updateBookmark, signup, login, logout, auth, onAuthStateChanged, queryPinecone, analyzeContent, updateAnalytics, getAnalytics };
+  updateBookmark, signup, login, logout, auth, onAuthStateChanged, queryPinecone, analyzeContent, updateAnalytics, getAnalytics,
+  addDocument, updateDocument, deleteDocument, getDocuments };

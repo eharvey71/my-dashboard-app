@@ -1,0 +1,103 @@
+/* Retro Dashboard Styles */
+
+:root {
+    --retro-bg: #f0e6d2;
+    --retro-primary: #d4a373;
+    --retro-secondary: #b08968;
+    --retro-accent: #7f5539;
+    --retro-text: #3a3238;
+    --retro-card-bg: #faedcd;
+    --retro-border: #ccd5ae;
+  }
+  
+  body {
+    background-color: var(--retro-bg);
+    color: var(--retro-text);
+    font-family: 'Courier New', Courier, monospace;
+  }
+  
+  .card {
+    background-color: var(--retro-card-bg);
+    border: 2px solid var(--retro-border);
+    border-radius: 10px;
+    box-shadow: 4px 4px 0 var(--retro-accent);
+  }
+  
+  .card-title {
+    color: var(--retro-accent);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  .btn-primary {
+    background-color: var(--retro-primary);
+    border-color: var(--retro-secondary);
+    color: var(--retro-text);
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--retro-secondary);
+    border-color: var(--retro-accent);
+  }
+  
+  .btn-outline-secondary {
+    color: var(--retro-accent);
+    border-color: var(--retro-accent);
+  }
+  
+  .btn-outline-secondary:hover {
+    background-color: var(--retro-accent);
+    color: var(--retro-bg);
+  }
+  
+  .form-control {
+    background-color: var(--retro-bg);
+    border-color: var(--retro-border);
+    color: var(--retro-text);
+  }
+  
+  .navbar {
+    background-color: var(--retro-primary) !important;
+  }
+  
+  .navbar-brand, .nav-link {
+    color: var(--retro-text) !important;
+  }
+  
+  .list-group-item {
+    background-color: var(--retro-card-bg);
+    border-color: var(--retro-border);
+  }
+  
+  /* Add some retro patterns */
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: repeating-linear-gradient(
+      45deg,
+      var(--retro-primary),
+      var(--retro-primary) 10px,
+      var(--retro-secondary) 10px,
+      var(--retro-secondary) 20px
+    );
+  }
+  
+  /* Retro-style scrollbar */
+  ::-webkit-scrollbar {
+    width: 12px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--retro-bg);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--retro-secondary);
+    border: 3px solid var(--retro-bg);
+    border-radius: 20px;
+  }

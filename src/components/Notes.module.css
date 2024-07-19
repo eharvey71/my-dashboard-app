@@ -57,9 +57,17 @@
   margin-right: 10px;
 }
 
-.deleteButton {
+.deleteButton, .expandButton {
   padding: 0;
+  color: #6c757d;
+}
+
+.deleteButton:hover {
   color: #dc3545;
+}
+
+.expandButton:hover {
+  color: #007bff;
 }
 
 .buttonSmall {

@@ -29,6 +29,20 @@
   margin-top: auto;
 }
 
+.noteActions {
+  display: flex;
+  align-items: center;
+}
+
+.expandButton {
+  color: #007bff;
+  margin-right: 5px;
+}
+
+.expandButton:hover {
+  color: #0056b3;
+}
+
 .characterCount {
   font-size: 0.8rem;
   color: #6c757d;

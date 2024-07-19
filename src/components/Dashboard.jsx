@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import TaskList from './TaskList';
 import Notes from './Notes';
-import Bookmark from './Bookmark';
 import BookmarkList from './BookmarkList';
 import AIAssistant from './AIAssistant';
 import CustomAPIModule from './CustomAPIModule';
+import DocumentListPreview from './DocumentListPreview';
 
 const Dashboard = ({ user }) => {
   const [bookmarks, setBookmarks] = useState([]);
@@ -12,23 +12,36 @@ const Dashboard = ({ user }) => {
   return (
     <div className="container">
       <div className="row">
-        <div className="col-md-6 mb-4">
-          <TaskList user={user} />
+        {/* Left Column */}
+        <div className="col-md-6">
+          <div className="mb-4">
+            <TaskList user={user} />
+          </div>
+          <div className="mb-4">
+            <Notes user={user} limit={5} />
+          </div>
         </div>
-        <div className="col-md-6 mb-4">
-          <Notes user={user} limit={5} />
-        </div>
-        <div className="col-md-6 mb-4">
-          <Bookmark user={user} setBookmarks={setBookmarks} />
-        </div>
-        <div className="col-md-6 mb-4">
-          <BookmarkList user={user} bookmarks={bookmarks} setBookmarks={setBookmarks} limit={5} />
-        </div>
-        <div className="col-md-12 mb-4">
-          <AIAssistant user={user} />
-        </div>
-        <div className="col-md-12 mb-4">
-          <CustomAPIModule />
+
+        {/* Right Column */}
+        <div className="col-md-6">
+          <div className="mb-4">
+            <DocumentListPreview user={user} limit={5} />
+          </div>
+          <div className="mb-4">
+            <BookmarkList 
+              user={user} 
+              bookmarks={bookmarks} 
+              setBookmarks={setBookmarks} 
+              limit={5} 
+              showAddBookmark={true} 
+            />
+          </div>
+          <div className="mb-4">
+            <AIAssistant user={user} />
+          </div>
+          <div className="mb-4">
+            <CustomAPIModule />
+          </div>
         </div>
       </div>
     </div>

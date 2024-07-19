@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { signup } from '../services/firebaseConfig';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import styles from './AuthForms.module.css';
 
 const Signup = () => {
@@ -30,56 +30,67 @@ const Signup = () => {
   };
 
   return (
-    <div className={styles.authContainer}>
-      <h2>Signup</h2>
-      <form onSubmit={handleSubmit}>
-        <div className={styles.formGroup}>
-          <label htmlFor="displayName">Display Name:</label>
-          <input
-            type="text"
-            id="displayName"
-            className={styles.formControl}
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            required
-          />
+    <div className={`${styles.authContainer} container mt-5`}>
+      <div className="row justify-content-center">
+        <div className="col-md-6">
+          <div className="card">
+            <div className="card-body">
+              <h2 className="card-title text-center mb-4">Sign Up</h2>
+              <form onSubmit={handleSubmit}>
+                <div className="mb-3">
+                  <label htmlFor="displayName" className="form-label">Display Name:</label>
+                  <input
+                    type="text"
+                    id="displayName"
+                    className="form-control"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="email" className="form-label">Email:</label>
+                  <input
+                    type="email"
+                    id="email"
+                    className="form-control"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="password" className="form-label">Password:</label>
+                  <input
+                    type="password"
+                    id="password"
+                    className="form-control"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="confirmPassword" className="form-label">Confirm Password:</label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    className="form-control"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                {error && <p className="text-danger">{error}</p>}
+                <button type="submit" className="btn btn-primary w-100">Sign Up</button>
+              </form>
+              <p className="mt-3 text-center">
+                Already have an account? <Link to="/login">Login</Link>
+              </p>
+            </div>
+          </div>
         </div>
-        <div className={styles.formGroup}>
-          <label htmlFor="email">Email:</label>
-          <input
-            type="email"
-            id="email"
-            className={styles.formControl}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label htmlFor="password">Password:</label>
-          <input
-            type="password"
-            id="password"
-            className={styles.formControl}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label htmlFor="confirmPassword">Confirm Password:</label>
-          <input
-            type="password"
-            id="confirmPassword"
-            className={styles.formControl}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
-        </div>
-        {error && <p className={styles.textDanger}>{error}</p>}
-        <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Signup</button>
-      </form>
+      </div>
     </div>
   );
 };

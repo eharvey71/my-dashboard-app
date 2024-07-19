@@ -7,6 +7,8 @@ import Dashboard from './components/Dashboard';
 import FullPageNotes from './components/FullPageNotes';
 import FullPageTasks from './components/FullPageTasks';
 import FullPageBookmarks from './components/FullPageBookmarks';
+import DocumentEditor from './components/DocumentEditor';
+import DocumentList from './components/DocumentList';
 import FocusTimer from './components/FocusTimer';
 import { auth, onAuthStateChanged, db } from './services/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
@@ -58,7 +60,19 @@ const App = () => {
             element={user ? <FullPageBookmarks user={user} /> : <Navigate to="/login" />} 
           />
           <Route 
-            path="/focus-timer" 
+            path="/documents" 
+            element={user ? <DocumentList user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/documents/new" 
+            element={user ? <DocumentEditor user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/documents/:id" 
+            element={user ? <DocumentEditor user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/focus" 
             element={user ? <FocusTimer user={user} /> : <Navigate to="/login" />} 
           />
         </Routes>

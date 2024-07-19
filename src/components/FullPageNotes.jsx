@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getNotes, addNote, deleteNote } from "../services/firebaseConfig";
+import { useNavigate } from 'react-router-dom';
+import { getNotes, addNote, deleteNote, addDocument } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
-import { Trash2, Check, X } from 'lucide-react';
+import { Trash2, Check, X, ArrowUpRight } from 'lucide-react';
 import styles from './FullPageNotes.module.css';
 
-const Note = ({ note, onDeleteNote }) => {
+const Note = ({ note, onDeleteNote, onExpandNote }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const handleDeleteClick = () => {
@@ -28,13 +29,22 @@ const Note = ({ note, onDeleteNote }) => {
         <small className={styles.textMuted}>
           {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
         </small>
-        <button
-          className="btn btn-sm btn-link text-danger"
-          onClick={handleDeleteClick}
-          title="Delete note"
-        >
-          <Trash2 size={18} />
-        </button>
+        <div className={styles.noteActions}>
+          <button
+            className={`${styles.expandButton} btn btn-sm btn-link`}
+            onClick={() => onExpandNote(note)}
+            title="Expand to document"
+          >
+            <ArrowUpRight size={18} />
+          </button>
+          <button
+            className="btn btn-sm btn-link text-danger"
+            onClick={handleDeleteClick}
+            title="Delete note"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
       </div>
       {isConfirmingDelete && (
         <div className={styles.deleteConfirmationOverlay}>
@@ -67,6 +77,7 @@ const FullPageNotes = ({ user }) => {
   const [newNote, setNewNote] = useState("");
   const [error, setError] = useState(null);
   const maxChars = 200;
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -135,6 +146,17 @@ const FullPageNotes = ({ user }) => {
     }
   };
 
+  const handleExpandNote = async (note) => {
+    try {
+      const title = note.content.substring(0, 50) + (note.content.length > 50 ? "..." : "");
+      const newDoc = await addDocument(title, note.content, user.uid);
+      navigate(`/documents/${newDoc.id}`, { state: { initialContent: note.content, initialTitle: title } });
+    } catch (error) {
+      console.error("Error expanding note to document:", error);
+      setError("Failed to expand note to document");
+    }
+  };
+
   if (loading) {
     return <div>Loading notes...</div>;
   }
@@ -164,7 +186,12 @@ const FullPageNotes = ({ user }) => {
       {error && <p className={styles.textDanger}>{error}</p>}
       <div className={styles.notesGrid}>
         {notes.map((note) => (
-          <Note key={note.id} note={note} onDeleteNote={handleDeleteNote} />
+          <Note 
+            key={note.id} 
+            note={note} 
+            onDeleteNote={handleDeleteNote} 
+            onExpandNote={handleExpandNote}
+          />
         ))}
       </div>
     </div>

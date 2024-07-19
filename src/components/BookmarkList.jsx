@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getBookmarks, deleteBookmark, updateBookmark } from '../services/firebaseConfig';
+import { getBookmarks, deleteBookmark, updateBookmark, addBookmark } from '../services/firebaseConfig';
 import { Trash2, ArrowUpRight, Check, X } from 'lucide-react';
 import styles from './BookmarkList.module.css';
 
-const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
+const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5, showAddBookmark = false }) => {
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [isHovered, setIsHovered] = useState(null);
+  const [newBookmarkUrl, setNewBookmarkUrl] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -46,6 +47,18 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
     setDeletingId(null);
   };
 
+  const handleAddBookmark = async () => {
+    if (newBookmarkUrl.trim() === '') return;
+
+    try {
+      const newBookmark = await addBookmark(newBookmarkUrl, newBookmarkUrl, '/api/placeholder/400/300', user.uid);
+      setBookmarks([newBookmark, ...bookmarks]);
+      setNewBookmarkUrl('');
+    } catch (error) {
+      console.error('Error adding bookmark:', error);
+    }
+  };
+
   const displayedBookmarks = bookmarks.slice(0, limit);
   const hasMoreBookmarks = bookmarks.length > limit;
 
@@ -53,6 +66,23 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
     <div className="card">
       <div className="card-body">
         <h2 className="card-title">My Bookmarks</h2>
+        {showAddBookmark && (
+          <div className={`input-group mb-3 ${styles.inputGroup}`}>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter URL"
+              value={newBookmarkUrl}
+              onChange={(e) => setNewBookmarkUrl(e.target.value)}
+            />
+            <button
+              className="btn btn-outline-secondary"
+              onClick={handleAddBookmark}
+            >
+              Add Bookmark
+            </button>
+          </div>
+        )}
         <ul className={styles.listGroup}>
           {displayedBookmarks.map((bookmark) => (
             <li 

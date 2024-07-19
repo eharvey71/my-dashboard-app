@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Link } from 'react-router-dom';
-import { getNotes, addNote, deleteNote } from "../services/firebaseConfig";
+import { Link, useNavigate } from 'react-router-dom';
+import { getNotes, addNote, deleteNote, addDocument } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
-import { Trash2, Check, X } from 'lucide-react';
+import { Trash2, Check, X, ArrowUpRight } from 'lucide-react';
 import styles from "./Notes.module.css";
 
-const Note = ({ note, onDeleteNote }) => {
+const Note = ({ note, onDeleteNote, onExpandNote }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const handleDeleteClick = () => {
@@ -31,6 +31,13 @@ const Note = ({ note, onDeleteNote }) => {
         <small className={`${styles.timestamp} text-muted`}>
           {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
         </small>
+        <button
+          className={`${styles.expandButton} ${styles.buttonSmall} btn btn-link ms-2`}
+          onClick={() => onExpandNote(note)}
+          title="Expand to document"
+        >
+          <ArrowUpRight size={18} />
+        </button>
         <button
           className={`${styles.deleteButton} ${styles.buttonSmall} btn btn-link text-danger ms-2`}
           onClick={handleDeleteClick}
@@ -70,6 +77,7 @@ const Notes = ({ user, limit }) => {
   const [newNote, setNewNote] = useState("");
   const [error, setError] = useState(null);
   const maxChars = 200;
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -137,6 +145,17 @@ const Notes = ({ user, limit }) => {
     }
   };
 
+  const handleExpandNote = async (note) => {
+    try {
+      const title = note.content.substring(0, 50) + (note.content.length > 50 ? "..." : "");
+      const newDoc = await addDocument(title, note.content, user.uid);
+      navigate(`/documents/${newDoc.id}`, { state: { initialContent: note.content, initialTitle: title } });
+    } catch (error) {
+      console.error("Error expanding note to document:", error);
+      setError("Failed to expand note to document");
+    }
+  };
+
   if (loading) {
     return <div>Loading notes...</div>;
   }
@@ -169,7 +188,7 @@ const Notes = ({ user, limit }) => {
         </button>
         <ul className={`${styles.listGroup} list-group`}>
           {displayedNotes.map((note) => (
-            <Note key={note.id} note={note} onDeleteNote={handleDeleteNote} />
+            <Note key={note.id} note={note} onDeleteNote={handleDeleteNote} onExpandNote={handleExpandNote} />
           ))}
         </ul>
         {hasMoreNotes && (
