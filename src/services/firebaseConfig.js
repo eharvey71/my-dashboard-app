@@ -144,13 +144,36 @@ const getItems = async (userId, type) => {
 
 // Specific functions for tasks and notes
 const addTask = async (content, userId, additionalData = {}) => {
-  return addItem(content, userId, "task", additionalData);
+  const availableColors = [
+    "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8",
+    "#F7DC6F", "#BB8FCE", "#82E0AA", "#F1948A", "#85C1E9"
+  ];
+  
+  const existingTasks = await getTasks(userId);
+  const usedColors = existingTasks.map(task => task.color).filter(Boolean);
+  const availableColorPool = availableColors.filter(color => !usedColors.includes(color));
+
+  let color = "#CCCCCC"; // Default color if all colors are used
+  if (availableColorPool.length > 0) {
+    const randomIndex = Math.floor(Math.random() * availableColorPool.length);
+    color = availableColorPool[randomIndex];
+  }
+
+  return addItem(content, userId, "task", { ...additionalData, color });
 };
+
 const updateTask = async (id, updates) => {
   await updateItem(id, updates, "task");
 };
+
 const deleteTask = (id) => deleteItem(id, "task");
-const getTasks = (userId) => getItems(userId, "task");
+
+const getTasks = async (userId) => {
+  const tasksCollection = collection(db, "tasks");
+  const q = query(tasksCollection, where("userId", "==", userId));
+  const taskSnapshot = await getDocs(q);
+  return taskSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};
 
 const addNote = (content, userId) => addItem(content, userId, "note");
 //const updateNote = (id, updates) => updateItem(id, updates, "note");
@@ -177,10 +200,12 @@ const addBookmark = async (url, title, image, userId) => {
   console.log("Attempting to add bookmark with data:", bookmarkData);
 
   try {
-    await addDoc(bookmarksCollection, bookmarkData);
+    const docRef = await addDoc(bookmarksCollection, bookmarkData);
     console.log("Bookmark successfully added:", bookmarkData);
+    return { id: docRef.id, ...bookmarkData };
   } catch (error) {
     console.error("Error adding bookmark:", error);
+    throw error;
   }
 };
 

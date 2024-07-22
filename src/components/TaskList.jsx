@@ -14,6 +14,7 @@ const TaskList = ({ user, limit = 5 }) => {
     if (!user) return;
     try {
       const fetchedTasks = await getTasks(user.uid);
+      console.log("Fetched tasks with colors:", fetchedTasks);
       setTasks(fetchedTasks);
       setLoading(false);
     } catch (error) {
@@ -31,6 +32,7 @@ const TaskList = ({ user, limit = 5 }) => {
     if (newTask.trim() === "") return;
     try {
       const addedTask = await addTask(newTask, user.uid);
+      console.log("Added task with color:", addedTask);
       setTasks(prevTasks => [addedTask, ...prevTasks]);
       setNewTask('');
     } catch (error) {

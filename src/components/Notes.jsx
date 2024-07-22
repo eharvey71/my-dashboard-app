@@ -23,28 +23,30 @@ const Note = ({ note, onDeleteNote, onExpandNote }) => {
 
   return (
     <li className={`${styles.listGroupItem} list-group-item position-relative`}>
-      <div className={styles.content}>
-        {note.content.trim()}
-        {!note.indexedInPinecone && <span className={styles.warningText}> (Indexing for AI might be delayed)</span>}
-      </div>
-      <div className={styles.floatEnd}>
-        <small className={`${styles.timestamp} text-muted`}>
-          {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
-        </small>
-        <button
-          className={`${styles.expandButton} ${styles.buttonSmall} btn btn-link ms-2`}
-          onClick={() => onExpandNote(note)}
-          title="Expand to document"
-        >
-          <ArrowUpRight size={18} />
-        </button>
-        <button
-          className={`${styles.deleteButton} ${styles.buttonSmall} btn btn-link text-danger ms-2`}
-          onClick={handleDeleteClick}
-          title="Delete note"
-        >
-          <Trash2 size={18} />
-        </button>
+      <div className={styles.noteContent}>
+        <div className={styles.noteText}>
+          {note.content.trim()}
+          {!note.indexedInPinecone && <span className={styles.warningText}> (Indexing for AI might be delayed)</span>}
+        </div>
+        <div className={styles.noteActions}>
+          <small className={styles.timestamp}>
+            {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
+          </small>
+          <button
+            className={`${styles.expandButton} ${styles.buttonSmall} btn btn-link`}
+            onClick={() => onExpandNote(note)}
+            title="Expand to document"
+          >
+            <ArrowUpRight size={18} />
+          </button>
+          <button
+            className={`${styles.deleteButton} ${styles.buttonSmall} btn btn-link text-danger`}
+            onClick={handleDeleteClick}
+            title="Delete note"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
       </div>
       {isConfirmingDelete && (
         <div className={styles.deleteConfirmationOverlay}>

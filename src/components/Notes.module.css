@@ -40,17 +40,6 @@
   width: 100%;
 }
 
-.content {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-}
-
 .timestamp {
   font-size: 0.8rem;
   color: #6c757d;
@@ -80,15 +69,6 @@
   font-size: 0.8rem;
 }
 
-.floatEnd {
-  display: flex;
-  align-items: center;
-}
-
-.floatEnd button {
-  margin-left: 5px;
-}
-
 .deleteConfirmationOverlay {
   position: absolute;
   top: 0;
@@ -112,4 +92,26 @@
 
 .deleteConfirmation button {
   padding: 0.1rem 0.3rem;
+}
+
+.noteContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.noteText {
+  flex-grow: 1;
+  margin-right: 10px;
+}
+
+.noteActions {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.timestamp {
+  margin-right: 10px;
 }

@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getBookmarks, deleteBookmark, updateBookmark, addBookmark } from '../services/firebaseConfig';
+import { fetchLinkMetadata } from "../services/externalServices";
 import { Trash2, ArrowUpRight, Check, X } from 'lucide-react';
 import styles from './BookmarkList.module.css';
 
-const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5, showAddBookmark = false }) => {
+const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [isHovered, setIsHovered] = useState(null);
   const [newBookmarkUrl, setNewBookmarkUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -48,15 +51,22 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5, showAddBookmar
   };
 
   const handleAddBookmark = async () => {
-    if (newBookmarkUrl.trim() === '') return;
+    if (!newBookmarkUrl.trim()) return;
+    
+    setLoading(true);
+    setError(null);
 
     try {
-      const newBookmark = await addBookmark(newBookmarkUrl, newBookmarkUrl, '/api/placeholder/400/300', user.uid);
-      setBookmarks([newBookmark, ...bookmarks]);
+      const metadata = await fetchLinkMetadata(newBookmarkUrl);
+      const newBookmark = await addBookmark(newBookmarkUrl, metadata.title, metadata.image, user.uid);
+      setBookmarks((prev) => [newBookmark, ...prev]);
       setNewBookmarkUrl('');
-    } catch (error) {
-      console.error('Error adding bookmark:', error);
+    } catch (err) {
+      console.error("Error adding bookmark:", err);
+      setError("Failed to add bookmark");
     }
+
+    setLoading(false);
   };
 
   const displayedBookmarks = bookmarks.slice(0, limit);
@@ -66,23 +76,23 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5, showAddBookmar
     <div className="card">
       <div className="card-body">
         <h2 className="card-title">My Bookmarks</h2>
-        {showAddBookmark && (
-          <div className={`input-group mb-3 ${styles.inputGroup}`}>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter URL"
-              value={newBookmarkUrl}
-              onChange={(e) => setNewBookmarkUrl(e.target.value)}
-            />
-            <button
-              className="btn btn-outline-secondary"
-              onClick={handleAddBookmark}
-            >
-              Add Bookmark
-            </button>
-          </div>
-        )}
+        <div className={`input-group mb-3 ${styles.inputGroup}`}>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Enter URL"
+            value={newBookmarkUrl}
+            onChange={(e) => setNewBookmarkUrl(e.target.value)}
+          />
+          <button
+            className="btn btn-outline-secondary"
+            onClick={handleAddBookmark}
+            disabled={loading}
+          >
+            {loading ? "Adding..." : "Add Bookmark"}
+          </button>
+        </div>
+        {error && <p className="text-danger">{error}</p>}
         <ul className={styles.listGroup}>
           {displayedBookmarks.map((bookmark) => (
             <li 

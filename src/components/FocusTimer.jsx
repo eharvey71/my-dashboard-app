@@ -1,7 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { getTasks, updateAnalytics, getAnalytics } from '../services/firebaseConfig';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import styles from './FocusTimer.module.css';
+import React, { useState, useEffect } from "react";
+import {
+  getTasks,
+  updateAnalytics,
+  getAnalytics,
+} from "../services/firebaseConfig";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
+import styles from "./FocusTimer.module.css";
 
 const FocusTimer = ({ user }) => {
   const [tasks, setTasks] = useState([]);
@@ -15,7 +27,7 @@ const FocusTimer = ({ user }) => {
   useEffect(() => {
     const fetchTasks = async () => {
       const fetchedTasks = await getTasks(user.uid);
-      setTasks(fetchedTasks);
+      setTasks(fetchedTasks.filter((task) => !task.completed));
     };
     const fetchAnalytics = async () => {
       const fetchedAnalytics = await getAnalytics(user.uid);
@@ -30,11 +42,11 @@ const FocusTimer = ({ user }) => {
     let interval = null;
     if (isActive && time > 0) {
       interval = setInterval(() => {
-        setTime(time => time - 1);
+        setTime((time) => time - 1);
         if (selectedTask) {
-          setLocalAnalytics(prev => ({
+          setLocalAnalytics((prev) => ({
             ...prev,
-            [selectedTask.id]: (prev[selectedTask.id] || 0) + 1
+            [selectedTask.id]: (prev[selectedTask.id] || 0) + 1,
           }));
         }
       }, 1000);
@@ -54,9 +66,10 @@ const FocusTimer = ({ user }) => {
   };
 
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hrs > 0 ? hrs + "h " : ""}${mins > 0 ? mins + "m " : ""}${secs}s`;
   };
 
   const handleTaskClick = async (task) => {
@@ -96,45 +109,86 @@ const FocusTimer = ({ user }) => {
   };
 
   const sortedAnalytics = Object.entries(analytics)
-    .map(([taskId, seconds]) => ({
-      taskId,
-      taskTitle: tasks.find(t => t.id === taskId)?.title || 'Unknown Task',
-      time: seconds
-    }))
+    .map(([taskId, seconds]) => {
+      const task = tasks.find((t) => t.id === taskId);
+      return {
+        taskId,
+        taskTitle: task?.title || "Unknown Task",
+        time: seconds,
+        color: task?.color || "#CCCCCC",
+      };
+    })
     .sort((a, b) => b.time - a.time);
+
+  //console.log("Sorted analytics with colors:", sortedAnalytics);
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className={styles.customTooltip}>
+          <p className={styles.label}>{`${payload[0].payload.taskTitle}`}</p>
+          <p className={styles.intro}>{`Time: ${formatTime(
+            payload[0].value
+          )}`}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderPriorityIndicator = (priority) => {
+    const indicators = {
+      1: "!!!",
+      2: "!!",
+      3: "!",
+      4: "",
+      5: "",
+    };
+    return indicators[priority] || "";
+  };
 
   return (
     <div className={styles.container}>
       <div className={styles.taskGrid}>
-        {tasks.map(task => (
+        {tasks.map((task) => (
           <div
             key={task.id}
-            className={`${styles.taskItem} ${selectedTask && selectedTask.id === task.id ? styles.selected : ''}`}
+            className={`${styles.taskItem} ${
+              selectedTask && selectedTask.id === task.id ? styles.selected : ""
+            }`}
             onClick={() => handleTaskClick(task)}
+            style={{ backgroundColor: task.color || "#CCCCCC" }}
           >
+            <span className={styles.priorityIndicator}>
+              {renderPriorityIndicator(task.priority)}
+            </span>
             {task.title}
           </div>
         ))}
       </div>
       <div className={styles.timerSection}>
-        <div className={`${styles.timerDisplay} ${isTimerComplete ? styles.timerComplete : ''}`}>
+        <div className={styles.timerControls}>
+          <button onClick={toggleTimer}>{isActive ? "Pause" : "Start"}</button>
+          <button onClick={resetTimer}>Reset</button>
+        </div>
+        <div
+          className={`${styles.timerDisplay} ${
+            isTimerComplete ? styles.timerComplete : ""
+          }`}
+        >
           {formatTime(time)}
         </div>
+        {selectedTask && (
+          <div className={styles.selectedTask}>
+            Selected Task: <span>{selectedTask.title}</span>
+          </div>
+        )}
         <div className={styles.timerOptions}>
           <button onClick={() => handleTimerOptionClick(25)}>25 min</button>
           <button onClick={() => handleTimerOptionClick(15)}>15 min</button>
           <button onClick={() => handleTimerOptionClick(10)}>10 min</button>
           <button onClick={() => handleTimerOptionClick(5)}>5 min</button>
         </div>
-        <div className={styles.timerControls}>
-          <button onClick={toggleTimer}>{isActive ? 'Pause' : 'Start'}</button>
-          <button onClick={resetTimer}>Reset</button>
-        </div>
-        {selectedTask && (
-          <div className={styles.selectedTask}>
-            Selected Task: {selectedTask.title}
-          </div>
-        )}
       </div>
       <div className={styles.analyticsSection}>
         <h2>Analytics Dashboard</h2>
@@ -146,9 +200,15 @@ const FocusTimer = ({ user }) => {
             </tr>
           </thead>
           <tbody>
-            {sortedAnalytics.map(({ taskId, taskTitle, time }) => (
+            {sortedAnalytics.map(({ taskId, taskTitle, time, color }) => (
               <tr key={taskId}>
-                <td>{taskTitle}</td>
+                <td>
+                  <span
+                    className={styles.colorIndicator}
+                    style={{ backgroundColor: color }}
+                  ></span>
+                  {taskTitle}
+                </td>
                 <td>{formatTime(time)}</td>
               </tr>
             ))}
@@ -157,10 +217,14 @@ const FocusTimer = ({ user }) => {
         <div className={styles.chartContainer}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={sortedAnalytics}>
-              <XAxis dataKey="taskTitle" />
+              <XAxis dataKey="taskId" axisLine={false} tick={false} />
               <YAxis />
-              <Tooltip />
-              <Bar dataKey="time" fill="#8884d8" />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="time">
+                {sortedAnalytics.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>

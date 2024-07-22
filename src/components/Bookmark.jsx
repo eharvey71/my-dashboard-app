@@ -1,8 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
-import { addDoc, collection, updateDoc, doc } from "firebase/firestore";
-import { db } from "../services/firebaseConfig";
-import { updateBookmark } from "../services/firebaseConfig";
+import { addBookmark } from "../services/firebaseConfig";
+import { fetchLinkMetadata } from "../services/externalServices";
 import styles from "./Bookmark.module.css";
 
 const Bookmark = ({ user, setBookmarks }) => {
@@ -10,71 +8,17 @@ const Bookmark = ({ user, setBookmarks }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchMetadata = async (url) => {
-    try {
-      const response = await axios.post(
-        "https://api.linkpreview.net",
-        {
-          q: url,
-        },
-        {
-          headers: {
-            "X-Linkpreview-Api-Key": "aedc1f8b83d606e8fe30c8c9a8669598",
-          },
-        }
-      );
-      return response.data;
-    } catch (err) {
-      console.error("Error fetching metadata:", err);
-      return null;
-    }
-  };
-
   const handleAddBookmark = async () => {
+    if (!url.trim()) return;
+    
     setLoading(true);
     setError(null);
 
     try {
-      // Add bookmark with initial data
-      const bookmarksCollection = collection(db, "bookmarks");
-      const initialBookmarkData = {
-        url,
-        title: url,
-        image: "/api/placeholder/400/300",
-        userId: user.uid,
-        indexed: false,
-      };
-
-      const docRef = await addDoc(bookmarksCollection, initialBookmarkData);
-      const newBookmark = { id: docRef.id, ...initialBookmarkData };
-
-      // Update state immediately
-      setBookmarks((prev) => [...prev, newBookmark]);
+      const metadata = await fetchLinkMetadata(url);
+      const newBookmark = await addBookmark(url, metadata.title, metadata.image, user.uid);
+      setBookmarks((prev) => [newBookmark, ...prev]);
       setUrl("");
-
-      // Attempt to fetch metadata
-      const metadata = await fetchMetadata(url);
-
-      if (metadata) {
-        // Update the bookmark with metadata if available
-        const updatedData = {
-          title: metadata.title || url,
-          image: metadata.image || "/api/placeholder/400/300",
-        };
-
-        await updateBookmark(docRef.id, updatedData);
-
-        //await updateDoc(doc(db, "bookmarks", docRef.id), updatedData);
-
-        // Update state with metadata
-        setBookmarks((prev) =>
-          prev.map((bookmark) =>
-            bookmark.id === docRef.id
-              ? { ...bookmark, ...updatedData }
-              : bookmark
-          )
-        );
-      }
     } catch (err) {
       console.error("Error adding bookmark:", err);
       setError("Failed to add bookmark");

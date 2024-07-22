@@ -291,7 +291,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
           </div>
         )}
       </div>
-      {isFullPage && !task.completed && (
+      {/* {isFullPage && !task.completed && (
         <div className={styles.taskTimer}>
           <PomodoroTimer
             taskId={task.id}
@@ -299,7 +299,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             isHovered={isHovered}
           />
         </div>
-      )}
+      )} */}
     </li>
   );
 };

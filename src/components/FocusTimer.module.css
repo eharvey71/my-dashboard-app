@@ -1,165 +1,214 @@
 .container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.taskGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.taskItem {
+  background-color: #f0f0f0;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  color: #333;
+  position: relative;
+}
+
+.taskItem:hover {
+  opacity: 0.8;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.taskItem.selected {
+  border-color: #007bff;
+  font-weight: bold;
+}
+
+.priorityIndicator {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  font-weight: bold;
+  font-size: 0.8em;
+}
+
+.colorIndicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.timerSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.timerDisplay {
+  font-size: 64px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #28a745;
+  transition: color 0.3s ease;
+}
+
+.timerDisplay.timerComplete {
+  color: #dc3545;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0% {
+    opacity: 1;
   }
-  
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.timerOptions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.timerOptions button,
+.timerControls button {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+}
+
+.timerOptions button:hover,
+.timerControls button:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.timerControls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.selectedTask {
+  font-size: 1.2em;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.selectedTask span {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.analyticsSection {
+  width: 100%;
+  max-width: 800px;
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.analyticsSection h2 {
+  margin-bottom: 20px;
+  color: #343a40;
+}
+
+.analyticsTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.analyticsTable th,
+.analyticsTable td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.analyticsTable th {
+  background-color: #e9ecef;
+  font-weight: bold;
+  color: #495057;
+}
+
+.analyticsTable tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.analyticsTable tr:hover {
+  background-color: #e2e6ea;
+}
+
+.chartContainer {
+  margin-top: 20px;
+  border: 1px solid #dee2e6;
+  border-radius: 5px;
+  padding: 10px;
+  background-color: white;
+}
+
+.recharts-bar-rectangle {
+  fill: inherit !important;
+}
+
+.customTooltip {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.customTooltip .label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.customTooltip .intro {
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
   .taskGrid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-    width: 100%;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(3, 1fr);
   }
-  
-  .taskItem {
-    background-color: #f0f0f0;
-    padding: 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
+}
+
+@media (max-width: 480px) {
+  .taskGrid {
+    grid-template-columns: repeat(2, 1fr);
   }
-  
-  .taskItem:hover {
-    background-color: #e0e0e0;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  }
-  
-  .taskItem.selected {
-    background-color: #d0d0d0;
-    font-weight: bold;
-    border-color: #007bff;
-  }
-  
-  .timerSection {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 20px;
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-  
-  .timerDisplay {
-    font-size: 64px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    color: #28a745;
-    transition: color 0.3s ease;
-  }
-  
-  .timerDisplay.timerComplete {
-    color: #dc3545;
-    animation: blink 1s infinite;
-  }
-  
-  @keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
-  }
-  
-  .timerOptions {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  
-  .timerOptions button,
-  .timerControls button {
-    padding: 8px 16px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 16px;
-  }
-  
-  .timerOptions button:hover,
-  .timerControls button:hover {
-    background-color: #0056b3;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  }
-  
-  .timerControls {
-    display: flex;
-    gap: 10px;
-  }
-  
-  .selectedTask {
-    margin-top: 10px;
-    font-weight: bold;
-    color: #007bff;
-  }
-  
-  .analyticsSection {
-    width: 100%;
-    max-width: 800px;
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-  
-  .analyticsSection h2 {
-    margin-bottom: 20px;
-    color: #343a40;
-  }
-  
-  .analyticsTable {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-  }
-  
-  .analyticsTable th,
-  .analyticsTable td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid #dee2e6;
-  }
-  
-  .analyticsTable th {
-    background-color: #e9ecef;
-    font-weight: bold;
-    color: #495057;
-  }
-  
-  .analyticsTable tr:nth-child(even) {
-    background-color: #f2f2f2;
-  }
-  
-  .analyticsTable tr:hover {
-    background-color: #e2e6ea;
-  }
-  
-  .chartContainer {
-    margin-top: 20px;
-    border: 1px solid #dee2e6;
-    border-radius: 5px;
-    padding: 10px;
-    background-color: white;
-  }
-  
-  @media (max-width: 768px) {
-    .taskGrid {
-      grid-template-columns: repeat(3, 1fr);
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .taskGrid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
+}
