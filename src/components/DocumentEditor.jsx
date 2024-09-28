@@ -8,6 +8,7 @@ const DocumentEditor = ({ user }) => {
   const [title, setTitle] = useState('');
   const [documentId, setDocumentId] = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
+  const [initialContent, setInitialContent] = useState('');
   const editorRef = useRef(null);
   const navigate = useNavigate();
   const { id } = useParams();
@@ -19,20 +20,24 @@ const DocumentEditor = ({ user }) => {
         await fetchDocument(id);
       } else if (location.state && location.state.initialContent) {
         const initialTitle = location.state.initialTitle || '';
-        const initialContent = location.state.initialContent;
+        const content = location.state.initialContent;
         setTitle(initialTitle);
+        setInitialContent(content);
         // Create a new document immediately
-        const newDoc = await addDocument(initialTitle, initialContent, user.uid);
+        const newDoc = await addDocument(initialTitle, content, user.uid);
         setDocumentId(newDoc.id);
         navigate(`/documents/${newDoc.id}`, { replace: true });
-        if (editorRef.current) {
-          editorRef.current.setContent(initialContent);
-        }
       }
     };
 
     initializeDocument();
   }, [id, location.state, user.uid, navigate]);
+
+  useEffect(() => {
+    if (editorRef.current && initialContent) {
+      editorRef.current.setContent(initialContent);
+    }
+  }, [initialContent]);
 
   const fetchDocument = async (docId) => {
     try {
@@ -41,9 +46,7 @@ const DocumentEditor = ({ user }) => {
       if (doc) {
         setTitle(doc.title);
         setDocumentId(docId);
-        if (editorRef.current) {
-          editorRef.current.setContent(doc.content);
-        }
+        setInitialContent(doc.content);
       }
     } catch (error) {
       console.error('Error fetching document:', error);
@@ -112,6 +115,9 @@ const DocumentEditor = ({ user }) => {
         apiKey="g4hs9khfgw1uugaf6xwxnbr465wiilodw9q7ztifembowdp5"
         onInit={(evt, editor) => {
           editorRef.current = editor;
+          if (initialContent) {
+            editor.setContent(initialContent);
+          }
         }}
         init={{
           height: 500,
