@@ -7,7 +7,7 @@ const NavBar = ({ user, displayName }) => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(projectId);
+  const [selectedProject, setSelectedProject] = useState(projectId || '');
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -40,7 +40,9 @@ const NavBar = ({ user, displayName }) => {
   const handleProjectChange = (e) => {
     const newProjectId = e.target.value;
     setSelectedProject(newProjectId);
-    navigate(`/project/${newProjectId}`);
+    if (newProjectId) {
+      navigate(`/project/${newProjectId}`);
+    }
   };
 
   const appTitle = user && displayName ? `${displayName}'s Cognify` : 'My Cognify';
@@ -62,20 +64,28 @@ const NavBar = ({ user, displayName }) => {
                     value={selectedProject} 
                     onChange={handleProjectChange}
                   >
-                    {projects.map(project => (
-                      <option key={project.id} value={project.id}>{project.name}</option>
-                    ))}
+                    {projects.length === 0 ? (
+                      <option value="">Select Project</option>
+                    ) : (
+                      projects.map(project => (
+                        <option key={project.id} value={project.id}>{project.name}</option>
+                      ))
+                    )}
                   </select>
                 </li>
-                <li className="nav-item">
-                  <Link className="nav-link" to={`/project/${selectedProject}`}>Dashboard</Link>
-                </li>
-                <li className="nav-item">
-                  <Link className="nav-link" to={`/project/${selectedProject}/documents`}>Documents</Link>
-                </li>
-                <li className="nav-item">
-                  <Link className="nav-link" to={`/project/${selectedProject}/focus`}>Focus</Link>
-                </li>
+                {selectedProject && (
+                  <>
+                    <li className="nav-item">
+                      <Link className="nav-link" to={`/project/${selectedProject}`}>Dashboard</Link>
+                    </li>
+                    <li className="nav-item">
+                      <Link className="nav-link" to={`/project/${selectedProject}/documents`}>Documents</Link>
+                    </li>
+                    <li className="nav-item">
+                      <Link className="nav-link" to={`/project/${selectedProject}/focus`}>Focus</Link>
+                    </li>
+                  </>
+                )}
                 <li className="nav-item">
                   <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
                 </li>

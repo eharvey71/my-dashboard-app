@@ -268,6 +268,31 @@ const getAnalytics = async (userId, projectId) => {
   }
 };
 
+const setLastAccessedProject = async (userId, projectId) => {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, { lastAccessedProject: projectId });
+    console.log("Last accessed project updated for user:", userId);
+  } catch (error) {
+    console.error("Error updating last accessed project:", error);
+    throw error;
+  }
+};
+
+const getLastAccessedProject = async (userId) => {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      return userSnap.data().lastAccessedProject;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error getting last accessed project:", error);
+    throw error;
+  }
+};
+
 // Cloud functions
 const queryPinecone = httpsCallable(functions, 'queryPinecone');
 const analyzeContent = httpsCallable(functions, 'analyzeContent');
@@ -294,5 +319,7 @@ export {
   addDocument, 
   updateDocument, 
   deleteDocument, 
-  getDocuments 
+  getDocuments,
+  setLastAccessedProject,
+  getLastAccessedProject
 };

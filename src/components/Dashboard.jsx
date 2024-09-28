@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { setLastAccessedProject } from '../services/firebaseConfig';
 import TaskList from './TaskList';
 import Notes from './Notes';
 import BookmarkList from './BookmarkList';
@@ -9,6 +10,13 @@ import DocumentListPreview from './DocumentListPreview';
 
 const Dashboard = ({ user }) => {
   const { projectId } = useParams();
+
+  useEffect(() => {
+    if (user && projectId) {
+      setLastAccessedProject(user.uid, projectId);
+    }
+  }, [user, projectId]);
+
   const [bookmarks, setBookmarks] = useState([]);
 
   if (!projectId) {

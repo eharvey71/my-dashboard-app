@@ -12,14 +12,18 @@ import DocumentEditor from './components/DocumentEditor';
 import DocumentList from './components/DocumentList';
 import FocusTimer from './components/FocusTimer';
 import ProjectList from './components/ProjectList';
+import CreateProject from './components/CreateProject';
 import { db } from './services/firebaseConfig';
 import { auth, onAuthStateChanged } from './services/firebaseAuth';
 import { doc, getDoc } from 'firebase/firestore';
+import { getUserProjects, getLastAccessedProject } from './services/firebaseConfig';
 
 const App = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState('');
+  const [hasProjects, setHasProjects] = useState(false);
+  const [lastAccessedProject, setLastAccessedProject] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -29,14 +33,21 @@ const App = () => {
           setDisplayName(userDoc.data().displayName || '');
         }
         if (!user.emailVerified) {
-          //await auth.signOut();
           setUser(null);
         } else {
           setUser(user);
+          const projects = await getUserProjects(user.uid);
+          setHasProjects(projects.length > 0);
+          if (projects.length > 0) {
+            const lastAccessed = await getLastAccessedProject(user.uid);
+            setLastAccessedProject(lastAccessed);
+          }
         }
       } else {
         setUser(null);
         setDisplayName('');
+        setHasProjects(false);
+        setLastAccessedProject(null);
       }
       setLoading(false);
     });
@@ -53,14 +64,34 @@ const App = () => {
       <NavBar user={user} displayName={displayName} />
       <div className="main-container">
         <Routes>
-          <Route path="/" element={user ? <ProjectList user={user} /> : <Navigate to="/login" />} />
+          <Route 
+            path="/" 
+            element={
+              user ? (
+                hasProjects ? (
+                  lastAccessedProject ? (
+                  <Navigate to={`/project/${lastAccessedProject}`} />
+                  ) : (
+                  <ProjectList 
+                    user={user} 
+                    onProjectsUpdate={(projects) => setHasProjects(projects.length > 0)} 
+                  />
+                  )
+                  ) : (
+                  <Navigate to="/create-project" />
+                )
+              ) : (
+                <Navigate to="/login" />
+              )
+            } 
+          />
           <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
           <Route path="/email-verification" element={<EmailVerification />} />
+          <Route path="/create-project" element={user ? <CreateProject user={user} setHasProjects={setHasProjects} /> : <Navigate to="/login" />} />
           <Route 
             path="/project/:projectId" 
-            element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
-          />
+            element={user ? <Dashboard user={user} /> : <Navigate to="/login" />}           />
           <Route 
             path="/project/:projectId/notes" 
             element={user ? <FullPageNotes user={user} /> : <Navigate to="/login" />} 
