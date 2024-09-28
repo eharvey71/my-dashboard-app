@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { logout } from '../services/firebaseAuth';
-import { getUserProjects } from '../services/firebaseConfig';
+import { getUserProjects, createProject } from '../services/firebaseConfig';
 
 const NavBar = ({ user, displayName }) => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(projectId || '');
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -45,12 +47,28 @@ const NavBar = ({ user, displayName }) => {
     }
   };
 
+  const handleCreateProject = async (e) => {
+    e.preventDefault();
+    if (newProjectName.trim()) {
+      try {
+        const newProject = await createProject(user.uid, newProjectName.trim());
+        setProjects([...projects, newProject]);
+        setSelectedProject(newProject.id);
+        setNewProjectName('');
+        setShowCreateProject(false);
+        navigate(`/project/${newProject.id}`);
+      } catch (error) {
+        console.error('Error creating project:', error);
+      }
+    }
+  };
+
   const appTitle = user && displayName ? `${displayName}'s Cognify` : 'My Cognify';
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
       <div className="container-fluid">
-        <Link className="navbar-brand" to="/">{appTitle}</Link>
+        <Link className="navbar-brand" to="/" onClick={() => setShowCreateProject(!showCreateProject)}>{appTitle}</Link>
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
           <span className="navbar-toggler-icon"></span>
         </button>
@@ -103,6 +121,22 @@ const NavBar = ({ user, displayName }) => {
           </ul>
         </div>
       </div>
+      {showCreateProject && (
+        <div className="container mt-3">
+          <form onSubmit={handleCreateProject}>
+            <div className="input-group">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="New Project Name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+              />
+              <button className="btn btn-primary" type="submit">Create Project</button>
+            </div>
+          </form>
+        </div>
+      )}
     </nav>
   );
 };
