@@ -70,7 +70,7 @@ const App = () => {
                 lastAccessedProject ? (
                   <Navigate to={`/project/${lastAccessedProject}`} />
                 ) : (
-                  <ProjectList user={user} onProjectsUpdate={(projects) => setHasProjects(projects.length > 0)} />
+                  <Navigate to="/projects" />
                 )
               ) : (
                 <Navigate to="/create-project" />
@@ -79,10 +79,31 @@ const App = () => {
               <Navigate to="/login" />
             )
           } />
+          <Route path="/projects" element={
+            user ? (
+              <ProjectList 
+                user={user} 
+                onProjectsUpdate={(projects) => {
+                  setHasProjects(projects.length > 0);
+                  if (projects.length > 0 && !lastAccessedProject) {
+                    setLastAccessedProject(projects[0].id);
+                  }
+                }} 
+              />
+            ) : (
+              <Navigate to="/login" />
+            )
+          } />
           <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
           <Route path="/email-verification" element={<EmailVerification />} />
-          <Route path="/create-project" element={user ? <CreateProject user={user} setHasProjects={setHasProjects} /> : <Navigate to="/login" />} />
+          <Route path="/create-project" element={
+            user ? (
+              hasProjects ? <Navigate to="/projects" /> : <CreateProject user={user} setHasProjects={setHasProjects} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          } />
           <Route 
             path="/project/:projectId" 
             element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
