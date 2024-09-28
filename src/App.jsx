@@ -39,8 +39,8 @@ const App = () => {
           const projects = await getUserProjects(user.uid);
           setHasProjects(projects.length > 0);
           if (projects.length > 0) {
-            const lastAccessed = await getLastAccessedProject(user.uid);
-            setLastAccessedProject(lastAccessed);
+            const lastProject = await getLastAccessedProject(user.uid);
+            setLastAccessedProject(lastProject);
           }
         }
       } else {
@@ -64,34 +64,29 @@ const App = () => {
       <NavBar user={user} displayName={displayName} />
       <div className="main-container">
         <Routes>
-          <Route 
-            path="/" 
-            element={
-              user ? (
-                hasProjects ? (
-                  lastAccessedProject ? (
+          <Route path="/" element={
+            user ? (
+              hasProjects ? (
+                lastAccessedProject ? (
                   <Navigate to={`/project/${lastAccessedProject}`} />
-                  ) : (
-                  <ProjectList 
-                    user={user} 
-                    onProjectsUpdate={(projects) => setHasProjects(projects.length > 0)} 
-                  />
-                  )
-                  ) : (
-                  <Navigate to="/create-project" />
+                ) : (
+                  <ProjectList user={user} onProjectsUpdate={(projects) => setHasProjects(projects.length > 0)} />
                 )
               ) : (
-                <Navigate to="/login" />
+                <Navigate to="/create-project" />
               )
-            } 
-          />
+            ) : (
+              <Navigate to="/login" />
+            )
+          } />
           <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
           <Route path="/email-verification" element={<EmailVerification />} />
           <Route path="/create-project" element={user ? <CreateProject user={user} setHasProjects={setHasProjects} /> : <Navigate to="/login" />} />
           <Route 
             path="/project/:projectId" 
-            element={user ? <Dashboard user={user} /> : <Navigate to="/login" />}           />
+            element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
+          />
           <Route 
             path="/project/:projectId/notes" 
             element={user ? <FullPageNotes user={user} /> : <Navigate to="/login" />} 
