@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { logout } from '../services/firebaseConfig';
+import { logout } from '../services/firebaseAuth';
 
 const NavBar = ({ user, displayName }) => {
   const navigate = useNavigate();

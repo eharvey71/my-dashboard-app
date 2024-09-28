@@ -1,8 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, setDoc, updateDoc, getDoc } from "firebase/firestore";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged } from "firebase/auth";
 import { updateVector } from "./pineconeService";
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import formatUrl from '../utils/urlFormatter';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
@@ -18,16 +18,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
 const functions = getFunctions(app);
-
-// Set persistence
-setPersistence(auth, browserLocalPersistence);
-
-/* const createUserProfile = async (userId, email) => {
-  const userDoc = doc(db, "users", userId);
-  await setDoc(userDoc, { email });
-}; */
 
 const addItem = async (content, userId, type, additionalData = {}) => {
   const collectionRef = collection(db, `${type}s`);
@@ -189,8 +180,9 @@ const getBookmarks = async (userId) => {
 
 const addBookmark = async (url, title, image, userId) => {
   const bookmarksCollection = collection(db, "bookmarks");
+  const formattedUrl = formatUrl(url, window.location.hostname);
   const bookmarkData = {
-    url,
+    url: formattedUrl,
     title,
     image,
     userId,
@@ -201,7 +193,7 @@ const addBookmark = async (url, title, image, userId) => {
 
   try {
     const docRef = await addDoc(bookmarksCollection, bookmarkData);
-    console.log("Bookmark successfully added:", bookmarkData);
+    console.log("Bookmark added to database:", bookmarkData);
     return { id: docRef.id, ...bookmarkData };
   } catch (error) {
     console.error("Error adding bookmark:", error);
@@ -234,36 +226,6 @@ const deleteBookmark = async (id) => {
 const updateBookmark = async (id, updates) => {
   const bookmarkRef = doc(db, 'bookmarks', id);
   await updateDoc(bookmarkRef, updates);
-};
-
-const signup = async (email, password, displayName) => {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    const user = userCredential.user;
-
-    // Store user info in Firestore
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      displayName: displayName,
-    });
-
-    console.log("User signed up successfully");
-  } catch (error) {
-    console.error("Error signing up:", error);
-    throw error;
-  }
-};
-
-const login = async (email, password) => {
-  await signInWithEmailAndPassword(auth, email, password);
-};
-
-const logout = async () => {
-  await signOut(auth);
 };
 
 const updateAnalytics = async (userId, analyticsData) => {
@@ -324,5 +286,5 @@ const queryPinecone = httpsCallable(functions, 'queryPinecone');
 const analyzeContent = httpsCallable(functions, 'analyzeContent');
 
 export { db, getTasks, addTask, updateTask, deleteTask, getNotes, addNote, deleteNote, getBookmarks, addBookmark, deleteBookmark,
-  updateBookmark, signup, login, logout, auth, onAuthStateChanged, queryPinecone, analyzeContent, updateAnalytics, getAnalytics,
+  updateBookmark, queryPinecone, analyzeContent, updateAnalytics, getAnalytics,
   addDocument, updateDocument, deleteDocument, getDocuments };

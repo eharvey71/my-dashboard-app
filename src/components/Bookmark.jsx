@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { addBookmark } from "../services/firebaseConfig";
 import { fetchLinkMetadata } from "../services/externalServices";
 import styles from "./Bookmark.module.css";
+import formatUrl from '../utils/urlFormatter';
 
 const Bookmark = ({ user, setBookmarks }) => {
   const [url, setUrl] = useState("");
@@ -13,17 +14,18 @@ const Bookmark = ({ user, setBookmarks }) => {
     
     setLoading(true);
     setError(null);
-
+  
     try {
-      const metadata = await fetchLinkMetadata(url);
-      const newBookmark = await addBookmark(url, metadata.title, metadata.image, user.uid);
+      const formattedUrl = formatUrl(url, window.location.hostname);
+      const metadata = await fetchLinkMetadata(formattedUrl);
+      const newBookmark = await addBookmark(formattedUrl, metadata.title, metadata.image, user.uid);
       setBookmarks((prev) => [newBookmark, ...prev]);
       setUrl("");
     } catch (err) {
       console.error("Error adding bookmark:", err);
       setError("Failed to add bookmark");
     }
-
+  
     setLoading(false);
   };
 

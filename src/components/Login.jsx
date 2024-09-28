@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { login } from '../services/firebaseConfig';
+import { login, auth } from '../services/firebaseAuth';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from './AuthForms.module.css';
 
@@ -7,16 +7,25 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      await login(email, password);
+    setError(null);
+    setLoading(true);
+
+    const result = await login(email, password);
+    if (result.success) {
       navigate('/');
-    } catch (error) {
-      setError(error.message);
+    } else {
+      if (result.error === "Please verify your email before logging in.") {
+        navigate('/email-verification', { state: { email } });
+      } else {
+        setError(result.error);
+      }
     }
+    setLoading(false);
   };
 
   return (
@@ -50,7 +59,9 @@ const Login = () => {
                   />
                 </div>
                 {error && <p className="text-danger">{error}</p>}
-                <button type="submit" className="btn btn-primary w-100">Login</button>
+                <button type="submit" className="btn btn-primary w-100" disabled={loading}>
+                  {loading ? 'Logging in...' : 'Login'}
+                </button>
               </form>
               <p className="mt-3 text-center">
                 Don't have an account? <Link to="/signup">Sign up</Link>

@@ -4,6 +4,7 @@ import { getBookmarks, deleteBookmark, updateBookmark, addBookmark } from '../se
 import { fetchLinkMetadata } from "../services/externalServices";
 import { Trash2, ArrowUpRight, Check, X } from 'lucide-react';
 import styles from './BookmarkList.module.css';
+import formatUrl from '../utils/urlFormatter';
 
 const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
   const [editingId, setEditingId] = useState(null);
@@ -55,17 +56,18 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
     
     setLoading(true);
     setError(null);
-
+  
     try {
-      const metadata = await fetchLinkMetadata(newBookmarkUrl);
-      const newBookmark = await addBookmark(newBookmarkUrl, metadata.title, metadata.image, user.uid);
+      const formattedUrl = formatUrl(newBookmarkUrl, window.location.hostname);
+      const metadata = await fetchLinkMetadata(formattedUrl);
+      const newBookmark = await addBookmark(formattedUrl, metadata.title, metadata.image, user.uid);
       setBookmarks((prev) => [newBookmark, ...prev]);
       setNewBookmarkUrl('');
     } catch (err) {
       console.error("Error adding bookmark:", err);
       setError("Failed to add bookmark");
     }
-
+  
     setLoading(false);
   };
 
