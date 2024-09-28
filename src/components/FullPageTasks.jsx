@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { getTasks, addTask, deleteTask } from "../services/firebaseConfig";
 import Task from "./Task";
 import styles from "./FullPageTasks.module.css";
 
 const FullPageTasks = ({ user }) => {
+  const { projectId } = useParams();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState("");
   const [error, setError] = useState(null);
 
   const fetchTasks = useCallback(async () => {
-    if (!user) return;
+    if (!user || !projectId) return;
     try {
-      const fetchedTasks = await getTasks(user.uid);
+      const fetchedTasks = await getTasks(user.uid, projectId);
       setTasks(fetchedTasks);
       setLoading(false);
     } catch (error) {
@@ -20,7 +22,7 @@ const FullPageTasks = ({ user }) => {
       setLoading(false);
       setError("Failed to fetch tasks");
     }
-  }, [user]);
+  }, [user, projectId]);
 
   useEffect(() => {
     fetchTasks();
@@ -29,7 +31,7 @@ const FullPageTasks = ({ user }) => {
   const handleAddTask = async () => {
     if (newTask.trim() === "") return;
     try {
-      const addedTask = await addTask(newTask, user.uid);
+      const addedTask = await addTask(newTask, user.uid, projectId);
       setTasks(prevTasks => [addedTask, ...prevTasks]);
       setNewTask('');
     } catch (error) {

@@ -6,7 +6,7 @@ import { Trash2, ArrowUpRight, Check, X } from 'lucide-react';
 import styles from './BookmarkList.module.css';
 import formatUrl from '../utils/urlFormatter';
 
-const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
+const BookmarkList = ({ user, projectId, bookmarks, setBookmarks, limit = 5 }) => {
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [deletingId, setDeletingId] = useState(null);
@@ -16,15 +16,15 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (user) {
+    if (user && projectId) {
       const fetchBookmarks = async () => {
-        const fetchedBookmarks = await getBookmarks(user.uid);
+        const fetchedBookmarks = await getBookmarks(user.uid, projectId);
         setBookmarks(fetchedBookmarks);
       };
 
       fetchBookmarks();
     }
-  }, [user, setBookmarks]);
+  }, [user, projectId, setBookmarks]);
 
   const handleEdit = (bookmark) => {
     setEditingId(bookmark.id);
@@ -60,7 +60,7 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
     try {
       const formattedUrl = formatUrl(newBookmarkUrl, window.location.hostname);
       const metadata = await fetchLinkMetadata(formattedUrl);
-      const newBookmark = await addBookmark(formattedUrl, metadata.title, metadata.image, user.uid);
+      const newBookmark = await addBookmark(formattedUrl, metadata.title, metadata.image, user.uid, projectId);
       setBookmarks((prev) => [newBookmark, ...prev]);
       setNewBookmarkUrl('');
     } catch (err) {
@@ -160,7 +160,7 @@ const BookmarkList = ({ user, bookmarks, setBookmarks, limit = 5 }) => {
           ))}
           {hasMoreBookmarks && (
             <li className={`${styles.listItem} text-center`}>
-              <Link to="/bookmarks">View More</Link>
+              <Link to={`/project/${projectId}/bookmarks`}>View More</Link>
             </li>
           )}
         </ul>

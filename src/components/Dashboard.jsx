@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import TaskList from './TaskList';
 import Notes from './Notes';
 import BookmarkList from './BookmarkList';
@@ -7,7 +8,12 @@ import CustomAPIModule from './CustomAPIModule';
 import DocumentListPreview from './DocumentListPreview';
 
 const Dashboard = ({ user }) => {
+  const { projectId } = useParams();
   const [bookmarks, setBookmarks] = useState([]);
+
+  if (!projectId) {
+    return <div>Error: No project selected</div>;
+  }
 
   return (
     <div className="container">
@@ -15,21 +21,22 @@ const Dashboard = ({ user }) => {
         {/* Left Column */}
         <div className="col-md-6">
           <div className="mb-4">
-            <TaskList user={user} />
+            <TaskList user={user} projectId={projectId} />
           </div>
           <div className="mb-4">
-            <Notes user={user} limit={5} />
+            <Notes user={user} projectId={projectId} limit={5} />
           </div>
         </div>
 
         {/* Right Column */}
         <div className="col-md-6">
           <div className="mb-4">
-            <DocumentListPreview user={user} limit={5} />
+            <DocumentListPreview user={user} projectId={projectId} limit={5} />
           </div>
           <div className="mb-4">
             <BookmarkList 
               user={user} 
+              projectId={projectId}
               bookmarks={bookmarks} 
               setBookmarks={setBookmarks} 
               limit={5} 
@@ -37,10 +44,10 @@ const Dashboard = ({ user }) => {
             />
           </div>
           <div className="mb-4">
-            <AIAssistant user={user} />
+            <AIAssistant user={user} projectId={projectId} />
           </div>
           <div className="mb-4">
-            <CustomAPIModule />
+            <CustomAPIModule projectId={projectId} />
           </div>
         </div>
       </div>

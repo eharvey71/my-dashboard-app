@@ -34,7 +34,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             nextDueDate: nextDueDate.toISOString(),
           };
           delete newTask.id; // Remove the id so a new one is generated
-          await addTask(newTask.title, task.userId, newTask);
+          await addTask(newTask.title, task.userId, task.projectId, newTask);
         }
       }
       onTaskUpdate();
@@ -133,7 +133,6 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
   };
 
   const taskClasses = `list-group-item ${task.completed ? styles.completed : ""} ${isOverdue() ? styles.taskOverdue : ""}`;
-
 
   const getPriorityStyle = (priority) => {
     const colors = {

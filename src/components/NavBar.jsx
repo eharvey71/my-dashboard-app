@@ -1,9 +1,32 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { logout } from '../services/firebaseAuth';
+import { getUserProjects } from '../services/firebaseConfig';
 
 const NavBar = ({ user, displayName }) => {
   const navigate = useNavigate();
+  const { projectId } = useParams();
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(projectId);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (user) {
+        const userProjects = await getUserProjects(user.uid);
+        setProjects(userProjects);
+        if (!selectedProject && userProjects.length > 0) {
+          setSelectedProject(userProjects[0].id);
+        }
+      }
+    };
+    fetchProjects();
+  }, [user]);
+
+  useEffect(() => {
+    if (projectId) {
+      setSelectedProject(projectId);
+    }
+  }, [projectId]);
 
   const handleLogout = async () => {
     try {
@@ -12,6 +35,12 @@ const NavBar = ({ user, displayName }) => {
     } catch (error) {
       console.error('Error logging out:', error);
     }
+  };
+
+  const handleProjectChange = (e) => {
+    const newProjectId = e.target.value;
+    setSelectedProject(newProjectId);
+    navigate(`/project/${newProjectId}`);
   };
 
   const appTitle = user && displayName ? `${displayName}'s Cognify` : 'My Cognify';
@@ -28,13 +57,24 @@ const NavBar = ({ user, displayName }) => {
             {user ? (
               <>
                 <li className="nav-item">
-                  <Link className="nav-link" to="/">Dashboard</Link>
+                  <select 
+                    className="form-select" 
+                    value={selectedProject} 
+                    onChange={handleProjectChange}
+                  >
+                    {projects.map(project => (
+                      <option key={project.id} value={project.id}>{project.name}</option>
+                    ))}
+                  </select>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link" to="/documents">Documents</Link>
+                  <Link className="nav-link" to={`/project/${selectedProject}`}>Dashboard</Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link" to="/focus">Focus</Link>
+                  <Link className="nav-link" to={`/project/${selectedProject}/documents`}>Documents</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to={`/project/${selectedProject}/focus`}>Focus</Link>
                 </li>
                 <li className="nav-item">
                   <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>

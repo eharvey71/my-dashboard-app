@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { getDocuments, deleteDocument } from '../services/firebaseConfig';
 import { Trash2, Edit2, PlusCircle } from 'lucide-react';
 import styles from './DocumentList.module.css';
 
 const DocumentList = ({ user }) => {
+  const { projectId } = useParams();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDocuments();
-  }, [user]);
+  }, [user, projectId]);
 
   const fetchDocuments = async () => {
     try {
-      const docs = await getDocuments(user.uid);
+      const docs = await getDocuments(user.uid, projectId);
       // Sort documents by updatedAt in descending order
       const sortedDocs = docs.sort((a, b) => b.updatedAt.seconds - a.updatedAt.seconds);
       setDocuments(sortedDocs);
@@ -43,7 +44,7 @@ const DocumentList = ({ user }) => {
   return (
     <div className={styles.documentList}>
       <h2 className={styles.title}>My Documents</h2>
-      <Link to="/documents/new" className={styles.newDocButton}>
+      <Link to={`/project/${projectId}/documents/new`} className={styles.newDocButton}>
         <PlusCircle size={20} />
         New Document
       </Link>
@@ -55,7 +56,7 @@ const DocumentList = ({ user }) => {
               Last updated: {new Date(doc.updatedAt.seconds * 1000).toLocaleDateString()}
             </p>
             <div className={styles.documentActions}>
-              <Link to={`/documents/${doc.id}`} className={styles.editButton}>
+              <Link to={`/project/${projectId}/documents/${doc.id}`} className={styles.editButton}>
                 <Edit2 size={18} />
                 Edit
               </Link>

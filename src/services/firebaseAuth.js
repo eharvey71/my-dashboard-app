@@ -64,10 +64,10 @@ export const login = async (email, password) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    if (!user.emailVerified) {
-      await signOut(auth);
-      return { success: false, error: "Please verify your email before logging in." };
-    }
+    // if (!user.emailVerified) {
+    //   await signOut(auth);
+    //   return { success: false, error: "Please verify your email before logging in." };
+    // }
 
     return { success: true, user };
   } catch (error) {

@@ -11,6 +11,7 @@ import FullPageBookmarks from './components/FullPageBookmarks';
 import DocumentEditor from './components/DocumentEditor';
 import DocumentList from './components/DocumentList';
 import FocusTimer from './components/FocusTimer';
+import ProjectList from './components/ProjectList';
 import { db } from './services/firebaseConfig';
 import { auth, onAuthStateChanged } from './services/firebaseAuth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -27,10 +28,8 @@ const App = () => {
         if (userDoc.exists()) {
           setDisplayName(userDoc.data().displayName || '');
         }
-        // Check if email is verified
         if (!user.emailVerified) {
-          // If not verified, sign out the user
-          await auth.signOut();
+          //await auth.signOut();
           setUser(null);
         } else {
           setUser(user);
@@ -54,36 +53,40 @@ const App = () => {
       <NavBar user={user} displayName={displayName} />
       <div className="main-container">
         <Routes>
-          <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
+          <Route path="/" element={user ? <ProjectList user={user} /> : <Navigate to="/login" />} />
           <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
           <Route path="/email-verification" element={<EmailVerification />} />
           <Route 
-            path="/notes" 
+            path="/project/:projectId" 
+            element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/project/:projectId/notes" 
             element={user ? <FullPageNotes user={user} /> : <Navigate to="/login" />} 
           />
           <Route 
-            path="/tasks" 
+            path="/project/:projectId/tasks" 
             element={user ? <FullPageTasks user={user} /> : <Navigate to="/login" />} 
           />
           <Route 
-            path="/bookmarks" 
+            path="/project/:projectId/bookmarks" 
             element={user ? <FullPageBookmarks user={user} /> : <Navigate to="/login" />} 
           />
           <Route 
-            path="/documents" 
+            path="/project/:projectId/documents" 
             element={user ? <DocumentList user={user} /> : <Navigate to="/login" />} 
           />
           <Route 
-            path="/documents/new" 
+            path="/project/:projectId/documents/new" 
             element={user ? <DocumentEditor user={user} /> : <Navigate to="/login" />} 
           />
           <Route 
-            path="/documents/:id" 
+            path="/project/:projectId/documents/:id" 
             element={user ? <DocumentEditor user={user} /> : <Navigate to="/login" />} 
           />
           <Route 
-            path="/focus" 
+            path="/project/:projectId/focus" 
             element={user ? <FocusTimer user={user} /> : <Navigate to="/login" />} 
           />
         </Routes>

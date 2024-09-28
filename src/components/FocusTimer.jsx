@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   getTasks,
   updateAnalytics,
@@ -16,6 +17,7 @@ import {
 import styles from "./FocusTimer.module.css";
 
 const FocusTimer = ({ user }) => {
+  const { projectId } = useParams();
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [time, setTime] = useState(25 * 60);
@@ -26,17 +28,17 @@ const FocusTimer = ({ user }) => {
 
   useEffect(() => {
     const fetchTasks = async () => {
-      const fetchedTasks = await getTasks(user.uid);
+      const fetchedTasks = await getTasks(user.uid, projectId);
       setTasks(fetchedTasks.filter((task) => !task.completed));
     };
     const fetchAnalytics = async () => {
-      const fetchedAnalytics = await getAnalytics(user.uid);
+      const fetchedAnalytics = await getAnalytics(user.uid, projectId);
       setAnalytics(fetchedAnalytics || {});
       setLocalAnalytics(fetchedAnalytics || {});
     };
     fetchTasks();
     fetchAnalytics();
-  }, [user]);
+  }, [user, projectId]);
 
   useEffect(() => {
     let interval = null;
@@ -60,7 +62,7 @@ const FocusTimer = ({ user }) => {
 
   const updateDatabaseAnalytics = async () => {
     if (user && selectedTask) {
-      await updateAnalytics(user.uid, localAnalytics);
+      await updateAnalytics(user.uid, projectId, localAnalytics);
       setAnalytics(localAnalytics);
     }
   };
@@ -119,8 +121,6 @@ const FocusTimer = ({ user }) => {
       };
     })
     .sort((a, b) => b.time - a.time);
-
-  //console.log("Sorted analytics with colors:", sortedAnalytics);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {

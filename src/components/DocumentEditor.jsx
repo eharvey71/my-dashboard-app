@@ -11,7 +11,7 @@ const DocumentEditor = ({ user }) => {
   const [initialContent, setInitialContent] = useState('');
   const editorRef = useRef(null);
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id, projectId } = useParams();
   const location = useLocation();
 
   useEffect(() => {
@@ -24,14 +24,14 @@ const DocumentEditor = ({ user }) => {
         setTitle(initialTitle);
         setInitialContent(content);
         // Create a new document immediately
-        const newDoc = await addDocument(initialTitle, content, user.uid);
+        const newDoc = await addDocument(initialTitle, content, user.uid, projectId);
         setDocumentId(newDoc.id);
-        navigate(`/documents/${newDoc.id}`, { replace: true });
+        navigate(`/project/${projectId}/documents/${newDoc.id}`, { replace: true });
       }
     };
 
     initializeDocument();
-  }, [id, location.state, user.uid, navigate]);
+  }, [id, location.state, user.uid, projectId, navigate]);
 
   useEffect(() => {
     if (editorRef.current && initialContent) {
@@ -41,7 +41,7 @@ const DocumentEditor = ({ user }) => {
 
   const fetchDocument = async (docId) => {
     try {
-      const docs = await getDocuments(user.uid);
+      const docs = await getDocuments(user.uid, projectId);
       const doc = docs.find(d => d.id === docId);
       if (doc) {
         setTitle(doc.title);
@@ -71,15 +71,15 @@ const DocumentEditor = ({ user }) => {
         await updateDocument(documentId, updateData);
       } else {
         // Create new document
-        const newDoc = await addDocument(title, currentContent, user.uid);
+        const newDoc = await addDocument(title, currentContent, user.uid, projectId);
         setDocumentId(newDoc.id);
-        navigate(`/documents/${newDoc.id}`, { replace: true });
+        navigate(`/project/${projectId}/documents/${newDoc.id}`, { replace: true });
       }
       setLastSaved(new Date());
     } catch (error) {
       console.error('Error saving document:', error);
     }
-  }, [documentId, title, user.uid, navigate]);
+  }, [documentId, title, user.uid, projectId, navigate]);
 
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
@@ -95,7 +95,7 @@ const DocumentEditor = ({ user }) => {
     if (window.confirm('Are you sure you want to delete this document?')) {
       try {
         await deleteDocument(documentId);
-        navigate('/documents');
+        navigate(`/project/${projectId}/documents`);
       } catch (error) {
         console.error('Error deleting document:', error);
       }

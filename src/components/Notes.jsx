@@ -73,7 +73,7 @@ const Note = ({ note, onDeleteNote, onExpandNote }) => {
   );
 };
 
-const Notes = ({ user, limit }) => {
+const Notes = ({ user, projectId, limit }) => {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState("");
@@ -82,14 +82,14 @@ const Notes = ({ user, limit }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    if (user && projectId) {
       fetchNotes();
     }
-  }, [user]);
+  }, [user, projectId]);
 
   const fetchNotes = async () => {
     try {
-      const fetchedNotes = await getNotes(user.uid);
+      const fetchedNotes = await getNotes(user.uid, projectId);
       const notesWithValidDates = fetchedNotes.map(note => ({
         ...note,
         createdAt: note.createdAt instanceof Date ? note.createdAt : new Date(note.createdAt.seconds * 1000)
@@ -107,7 +107,7 @@ const Notes = ({ user, limit }) => {
     if (newNote.trim() === '') return;
     setError(null);
     try {
-      const addedNote = await addNote(newNote, user.uid);
+      const addedNote = await addNote(newNote, user.uid, projectId);
 
       const noteWithValidDate = {
         ...addedNote,
@@ -150,8 +150,8 @@ const Notes = ({ user, limit }) => {
   const handleExpandNote = async (note) => {
     try {
       const title = note.content.substring(0, 50) + (note.content.length > 50 ? "..." : "");
-      const newDoc = await addDocument(title, note.content, user.uid);
-      navigate(`/documents/${newDoc.id}`, { state: { initialContent: note.content, initialTitle: title } });
+      const newDoc = await addDocument(title, note.content, user.uid, projectId);
+      navigate(`/project/${projectId}/documents/${newDoc.id}`, { state: { initialContent: note.content, initialTitle: title } });
     } catch (error) {
       console.error("Error expanding note to document:", error);
       setError("Failed to expand note to document");
@@ -195,7 +195,7 @@ const Notes = ({ user, limit }) => {
         </ul>
         {hasMoreNotes && (
           <div className="text-center mt-3">
-            <Link to="/notes" className="btn btn-link">View More</Link>
+            <Link to={`/project/${projectId}/notes`} className="btn btn-link">View More</Link>
           </div>
         )}
         {error && <p className="text-danger">{error}</p>}

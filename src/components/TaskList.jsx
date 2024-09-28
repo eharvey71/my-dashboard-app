@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from 'react-router-dom';
-import { getTasks, addTask, deleteTask, updateTask } from "../services/firebaseConfig";
+import { getTasks, addTask, deleteTask } from "../services/firebaseConfig";
 import Task from "./Task";
 import styles from "./TaskList.module.css";
 
-const TaskList = ({ user, limit = 5 }) => {
+const TaskList = ({ user, projectId, limit = 5 }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState("");
   const [error, setError] = useState(null);
 
   const fetchTasks = useCallback(async () => {
-    if (!user) return;
+    if (!user || !projectId) return;
     try {
-      const fetchedTasks = await getTasks(user.uid);
+      const fetchedTasks = await getTasks(user.uid, projectId);
       console.log("Fetched tasks with colors:", fetchedTasks);
       setTasks(fetchedTasks);
       setLoading(false);
@@ -22,7 +22,7 @@ const TaskList = ({ user, limit = 5 }) => {
       setLoading(false);
       setError("Failed to fetch tasks");
     }
-  }, [user]);
+  }, [user, projectId]);
 
   useEffect(() => {
     fetchTasks();
@@ -31,7 +31,7 @@ const TaskList = ({ user, limit = 5 }) => {
   const handleAddTask = async () => {
     if (newTask.trim() === "") return;
     try {
-      const addedTask = await addTask(newTask, user.uid);
+      const addedTask = await addTask(newTask, user.uid, projectId);
       console.log("Added task with color:", addedTask);
       setTasks(prevTasks => [addedTask, ...prevTasks]);
       setNewTask('');
@@ -105,7 +105,7 @@ const TaskList = ({ user, limit = 5 }) => {
           ))}
           {hasMoreTasks && (
             <div className={`${styles.textCenter} ${styles.mt3}`}>
-              <Link to="/tasks" className={styles.btnLink}>View More</Link>
+              <Link to={`/project/${projectId}/tasks`} className={styles.btnLink}>View More</Link>
             </div>
           )}
         </ul>

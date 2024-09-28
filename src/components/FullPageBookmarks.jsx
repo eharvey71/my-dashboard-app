@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { getBookmarks, deleteBookmark } from '../services/firebaseConfig';
 import { Trash2, Check, X } from 'lucide-react';
 import './FullPageBookmarks.css';
@@ -68,13 +69,14 @@ const BookmarkCard = ({ bookmark, onDelete }) => {
 };
 
 const FullPageBookmarks = ({ user }) => {
+  const { projectId } = useParams();
   const [bookmarks, setBookmarks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBookmarks = async () => {
       try {
-        const fetchedBookmarks = await getBookmarks(user.uid);
+        const fetchedBookmarks = await getBookmarks(user.uid, projectId);
         setBookmarks(fetchedBookmarks);
         setLoading(false);
       } catch (error) {
@@ -83,10 +85,10 @@ const FullPageBookmarks = ({ user }) => {
       }
     };
 
-    if (user) {
+    if (user && projectId) {
       fetchBookmarks();
     }
-  }, [user]);
+  }, [user, projectId]);
 
   const handleDelete = async (id) => {
     try {

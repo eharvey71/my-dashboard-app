@@ -20,7 +20,32 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-const addItem = async (content, userId, type, additionalData = {}) => {
+// Project-related functions
+const createProject = async (userId, projectName) => {
+  const projectsCollection = collection(db, "projects");
+  try {
+    const docRef = await addDoc(projectsCollection, {
+      name: projectName,
+      userId,
+      createdAt: new Date(),
+    });
+    console.log(`Project created with ID: ${docRef.id}`);
+    return { id: docRef.id, name: projectName, userId, createdAt: new Date() };
+  } catch (error) {
+    console.error("Error creating project:", error);
+    throw error;
+  }
+};
+
+const getUserProjects = async (userId) => {
+  const projectsCollection = collection(db, "projects");
+  const q = query(projectsCollection, where("userId", "==", userId));
+  const projectSnapshot = await getDocs(q);
+  return projectSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};
+
+// Generic add item function
+const addItem = async (content, userId, projectId, type, additionalData = {}) => {
   const collectionRef = collection(db, `${type}s`);
   try {
     const docRef = await addDoc(collectionRef, {
@@ -28,9 +53,11 @@ const addItem = async (content, userId, type, additionalData = {}) => {
       content: content,
       createdAt: new Date(),
       userId,
+      projectId,
       indexedInPinecone: false,
       ...(type === "task"
-        ? { completed: false, 
+        ? { 
+            completed: false, 
             timerSeconds: 1500,
             timerActive: false,
             isRecurring: additionalData.isRecurring || false,
@@ -43,13 +70,13 @@ const addItem = async (content, userId, type, additionalData = {}) => {
 
     console.log(`${type} added to Firebase with ID: ${docRef.id}`);
 
-    // The Cloud Function will handle the Pinecone indexing
     return {
       id: docRef.id,
       title: content,
       content: content,
       createdAt: new Date(),
       userId,
+      projectId,
       indexedInPinecone: false,
       ...(type === "task"
         ? { 
@@ -68,6 +95,15 @@ const addItem = async (content, userId, type, additionalData = {}) => {
   }
 };
 
+// Generic get items function
+const getItems = async (userId, projectId, type) => {
+  const itemsCollection = collection(db, `${type}s`);
+  const q = query(itemsCollection, where("userId", "==", userId), where("projectId", "==", projectId));
+  const itemSnapshot = await getDocs(q);
+  return itemSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};
+
+// Generic update item function
 const updateItem = async (id, updates, type) => {
   const itemDoc = doc(db, `${type}s`, id);
   try {
@@ -107,6 +143,7 @@ const updateItem = async (id, updates, type) => {
   }
 };
 
+// Generic delete item function
 const deleteItem = async (id, type) => {
   const itemDoc = doc(db, `${type}s`, id);
   try {
@@ -116,31 +153,21 @@ const deleteItem = async (id, type) => {
     }
     const itemData = itemSnapshot.data();
     await deleteDoc(itemDoc);
-    //await deleteVector(itemData.userId, id, type);
-    //console.log(
-    //  `${type} ${id} deleted from Firebase and Pinecone for user ${itemData.userId}`
-    //);
+    console.log(`${type} ${id} deleted from Firebase for user ${itemData.userId}`);
   } catch (error) {
     console.error(`Error deleting ${type}:`, error);
     throw error;
   }
 };
 
-const getItems = async (userId, type) => {
-  const itemsCollection = collection(db, `${type}s`);
-  const q = query(itemsCollection, where("userId", "==", userId));
-  const itemSnapshot = await getDocs(q);
-  return itemSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-};
-
-// Specific functions for tasks and notes
-const addTask = async (content, userId, additionalData = {}) => {
+// Task-specific functions
+const addTask = async (content, userId, projectId, additionalData = {}) => {
   const availableColors = [
     "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8",
     "#F7DC6F", "#BB8FCE", "#82E0AA", "#F1948A", "#85C1E9"
   ];
   
-  const existingTasks = await getTasks(userId);
+  const existingTasks = await getTasks(userId, projectId);
   const usedColors = existingTasks.map(task => task.color).filter(Boolean);
   const availableColorPool = availableColors.filter(color => !usedColors.includes(color));
 
@@ -150,35 +177,22 @@ const addTask = async (content, userId, additionalData = {}) => {
     color = availableColorPool[randomIndex];
   }
 
-  return addItem(content, userId, "task", { ...additionalData, color });
+  return addItem(content, userId, projectId, "task", { ...additionalData, color });
 };
 
-const updateTask = async (id, updates) => {
-  await updateItem(id, updates, "task");
-};
-
+const updateTask = async (id, updates) => updateItem(id, updates, "task");
 const deleteTask = (id) => deleteItem(id, "task");
+const getTasks = async (userId, projectId) => getItems(userId, projectId, "task");
 
-const getTasks = async (userId) => {
-  const tasksCollection = collection(db, "tasks");
-  const q = query(tasksCollection, where("userId", "==", userId));
-  const taskSnapshot = await getDocs(q);
-  return taskSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-};
-
-const addNote = (content, userId) => addItem(content, userId, "note");
-//const updateNote = (id, updates) => updateItem(id, updates, "note");
+// Note-specific functions
+const addNote = (content, userId, projectId) => addItem(content, userId, projectId, "note");
 const deleteNote = (id) => deleteItem(id, "note");
-const getNotes = (userId) => getItems(userId, "note");
+const getNotes = (userId, projectId) => getItems(userId, projectId, "note");
 
-const getBookmarks = async (userId) => {
-  const bookmarksCollection = collection(db, "bookmarks");
-  const q = query(bookmarksCollection, where("userId", "==", userId));
-  const bookmarkSnapshot = await getDocs(q);
-  return bookmarkSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-};
+// Bookmark-specific functions
+const getBookmarks = async (userId, projectId) => getItems(userId, projectId, "bookmark");
 
-const addBookmark = async (url, title, image, userId) => {
+const addBookmark = async (url, title, image, userId, projectId) => {
   const bookmarksCollection = collection(db, "bookmarks");
   const formattedUrl = formatUrl(url, window.location.hostname);
   const bookmarkData = {
@@ -186,6 +200,7 @@ const addBookmark = async (url, title, image, userId) => {
     title,
     image,
     userId,
+    projectId,
     indexedInPinecone: false,
   };
 
@@ -201,64 +216,13 @@ const addBookmark = async (url, title, image, userId) => {
   }
 };
 
-const deleteBookmark = async (id) => {
-  try {
-    const bookmarkRef = doc(db, "bookmarks", id);
-    const bookmarkDoc = await getDoc(bookmarkRef);
+const deleteBookmark = (id) => deleteItem(id, "bookmark");
+const updateBookmark = async (id, updates) => updateItem(id, updates, "bookmark");
 
-    if (bookmarkDoc.exists()) {
-      const bookmarkData = bookmarkDoc.data();
-      const url = bookmarkData.url;
-
-      // Delete the bookmark from Firebase
-      await deleteDoc(bookmarkRef);
-      console.log(`Bookmark deleted from Firebase with ID: ${id}`);
-
-    } else {
-      console.log(`Bookmark with ID ${id} not found`);
-    }
-  } catch (error) {
-    console.error("Error in deleteBookmark function:", error);
-    throw error;
-  }
-};
-
-const updateBookmark = async (id, updates) => {
-  const bookmarkRef = doc(db, 'bookmarks', id);
-  await updateDoc(bookmarkRef, updates);
-};
-
-const updateAnalytics = async (userId, analyticsData) => {
-  try {
-    const analyticsRef = doc(db, 'analytics', userId);
-    await setDoc(analyticsRef, analyticsData, { merge: true });
-    console.log("Analytics updated successfully for user:", userId);
-  } catch (error) {
-    console.error("Error updating analytics:", error);
-    throw error;
-  }
-};
-
-const getAnalytics = async (userId) => {
-  try {
-    const analyticsRef = doc(db, 'analytics', userId);
-    const docSnap = await getDoc(analyticsRef);
-    if (docSnap.exists()) {
-      return docSnap.data();
-    } else {
-      console.log("No analytics found for user:", userId);
-      return {};
-    }
-  } catch (error) {
-    console.error("Error getting analytics:", error);
-    throw error;
-  }
-};
-
-// Document functions
-const addDocument = async (title, content, userId) => {
+// Document-specific functions
+const addDocument = async (title, content, userId, projectId) => {
   const timestamp = new Date();
-  return addItem(title, userId, "document", { 
+  return addItem(title, userId, projectId, "document", { 
     content, 
     createdAt: timestamp,
     updatedAt: timestamp
@@ -274,17 +238,61 @@ const updateDocument = async (id, updates) => {
 };
 
 const deleteDocument = (id) => deleteItem(id, "document");
+const getDocuments = async (userId, projectId) => getItems(userId, projectId, "document");
 
-const getDocuments = async (userId) => {
-  const documentsCollection = collection(db, "documents");
-  const q = query(documentsCollection, where("userId", "==", userId));
-  const documentSnapshot = await getDocs(q);
-  return documentSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+// Analytics functions
+const updateAnalytics = async (userId, projectId, analyticsData) => {
+  try {
+    const analyticsRef = doc(db, 'analytics', `${userId}_${projectId}`);
+    await setDoc(analyticsRef, analyticsData, { merge: true });
+    console.log("Analytics updated successfully for user:", userId, "and project:", projectId);
+  } catch (error) {
+    console.error("Error updating analytics:", error);
+    throw error;
+  }
 };
 
+const getAnalytics = async (userId, projectId) => {
+  try {
+    const analyticsRef = doc(db, 'analytics', `${userId}_${projectId}`);
+    const docSnap = await getDoc(analyticsRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    } else {
+      console.log("No analytics found for user:", userId, "and project:", projectId);
+      return {};
+    }
+  } catch (error) {
+    console.error("Error getting analytics:", error);
+    throw error;
+  }
+};
+
+// Cloud functions
 const queryPinecone = httpsCallable(functions, 'queryPinecone');
 const analyzeContent = httpsCallable(functions, 'analyzeContent');
 
-export { db, getTasks, addTask, updateTask, deleteTask, getNotes, addNote, deleteNote, getBookmarks, addBookmark, deleteBookmark,
-  updateBookmark, queryPinecone, analyzeContent, updateAnalytics, getAnalytics,
-  addDocument, updateDocument, deleteDocument, getDocuments };
+export { 
+  db, 
+  createProject, 
+  getUserProjects, 
+  getTasks, 
+  addTask, 
+  updateTask, 
+  deleteTask, 
+  getNotes, 
+  addNote, 
+  deleteNote, 
+  getBookmarks, 
+  addBookmark, 
+  deleteBookmark,
+  updateBookmark, 
+  queryPinecone, 
+  analyzeContent, 
+  updateAnalytics, 
+  getAnalytics,
+  addDocument, 
+  updateDocument, 
+  deleteDocument, 
+  getDocuments 
+};

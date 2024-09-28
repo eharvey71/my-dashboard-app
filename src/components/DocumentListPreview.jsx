@@ -3,15 +3,15 @@ import { Link } from 'react-router-dom';
 import { getDocuments } from '../services/firebaseConfig';
 import styles from './DocumentListPreview.module.css';
 
-const DocumentListPreview = ({ user, limit = 5 }) => {
+const DocumentListPreview = ({ user, projectId, limit = 5 }) => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDocuments = async () => {
-      if (user) {
+      if (user && projectId) {
         try {
-          const fetchedDocuments = await getDocuments(user.uid);
+          const fetchedDocuments = await getDocuments(user.uid, projectId);
           // Sort documents by updatedAt in descending order
           const sortedDocs = fetchedDocuments.sort((a, b) => {
             const dateA = a.updatedAt?.seconds ? new Date(a.updatedAt.seconds * 1000) : new Date(0);
@@ -28,7 +28,7 @@ const DocumentListPreview = ({ user, limit = 5 }) => {
     };
 
     fetchDocuments();
-  }, [user, limit]);
+  }, [user, projectId, limit]);
 
   if (loading) {
     return <div>Loading documents...</div>;
@@ -52,7 +52,7 @@ const DocumentListPreview = ({ user, limit = 5 }) => {
         <ul className={`list-group ${styles.documentList}`}>
           {documents.map((document) => (
             <li key={document.id} className={`list-group-item ${styles.documentItem}`}>
-              <Link to={`/documents/${document.id}`} className={styles.documentLink}>
+              <Link to={`/project/${projectId}/documents/${document.id}`} className={styles.documentLink}>
                 <span className={styles.documentTitle}>{document.title || 'Untitled Document'}</span>
                 <small className={styles.documentDate}>
                   Last updated: {formatDate(document.updatedAt)}
@@ -63,7 +63,7 @@ const DocumentListPreview = ({ user, limit = 5 }) => {
         </ul>
         {documents.length === limit && (
           <div className={`${styles.viewMoreContainer} mt-3`}>
-            <Link to="/documents" className={`btn btn-link ${styles.viewMoreLink}`}>View More</Link>
+            <Link to={`/project/${projectId}/documents`} className={`btn btn-link ${styles.viewMoreLink}`}>View More</Link>
           </div>
         )}
       </div>

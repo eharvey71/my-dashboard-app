@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getNotes, addNote, deleteNote, addDocument } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
 import { Trash2, Check, X, ArrowUpRight } from 'lucide-react';
@@ -72,6 +72,7 @@ const Note = ({ note, onDeleteNote, onExpandNote }) => {
 };
 
 const FullPageNotes = ({ user }) => {
+  const { projectId } = useParams();
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState("");
@@ -80,14 +81,14 @@ const FullPageNotes = ({ user }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    if (user && projectId) {
       fetchNotes();
     }
-  }, [user]);
+  }, [user, projectId]);
 
   const fetchNotes = async () => {
     try {
-      const fetchedNotes = await getNotes(user.uid);
+      const fetchedNotes = await getNotes(user.uid, projectId);
       const notesWithValidDates = fetchedNotes.map(note => ({
         ...note,
         createdAt: note.createdAt instanceof Date ? note.createdAt : new Date(note.createdAt.seconds * 1000)
@@ -105,7 +106,7 @@ const FullPageNotes = ({ user }) => {
     if (newNote.trim() === '') return;
     setError(null);
     try {
-      const addedNote = await addNote(newNote, user.uid);
+      const addedNote = await addNote(newNote, user.uid, projectId);
   
       const noteWithValidDate = {
         ...addedNote,
@@ -149,8 +150,8 @@ const FullPageNotes = ({ user }) => {
   const handleExpandNote = async (note) => {
     try {
       const title = note.content.substring(0, 50) + (note.content.length > 50 ? "..." : "");
-      const newDoc = await addDocument(title, note.content, user.uid);
-      navigate(`/documents/${newDoc.id}`, { state: { initialContent: note.content, initialTitle: title } });
+      const newDoc = await addDocument(title, note.content, user.uid, projectId);
+      navigate(`/project/${projectId}/documents/${newDoc.id}`, { state: { initialContent: note.content, initialTitle: title } });
     } catch (error) {
       console.error("Error expanding note to document:", error);
       setError("Failed to expand note to document");

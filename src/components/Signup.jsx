@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from './AuthForms.module.css';
+import { doc, setDoc, getFirestore } from "firebase/firestore";
 
 function Signup() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,7 @@ function Signup() {
   const [message, setMessage] = useState('');
   const [displayName, setDisplayName] = useState('');
   const auth = getAuth();
+  const db = getFirestore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -21,6 +23,13 @@ function Signup() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+
+      // Save user information in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        displayName: displayName,
+        emailVerified: false,
+      });
 
       // Send verification email
       await sendEmailVerification(user);

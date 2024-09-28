@@ -4,7 +4,7 @@ import { fetchLinkMetadata } from "../services/externalServices";
 import styles from "./Bookmark.module.css";
 import formatUrl from '../utils/urlFormatter';
 
-const Bookmark = ({ user, setBookmarks }) => {
+const Bookmark = ({ user, projectId, setBookmarks }) => {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -18,7 +18,7 @@ const Bookmark = ({ user, setBookmarks }) => {
     try {
       const formattedUrl = formatUrl(url, window.location.hostname);
       const metadata = await fetchLinkMetadata(formattedUrl);
-      const newBookmark = await addBookmark(formattedUrl, metadata.title, metadata.image, user.uid);
+      const newBookmark = await addBookmark(formattedUrl, metadata.title, metadata.image, user.uid, projectId);
       setBookmarks((prev) => [newBookmark, ...prev]);
       setUrl("");
     } catch (err) {
