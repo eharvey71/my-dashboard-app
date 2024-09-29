@@ -20,6 +20,54 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
+// AI Response functions
+const addAIResponse = async (userId, projectId, content) => {
+  const aiResponsesCollection = collection(db, "aiResponses");
+  try {
+    const docRef = await addDoc(aiResponsesCollection, {
+      content,
+      userId,
+      projectId,
+      createdAt: new Date(),
+      included: false,
+    });
+    console.log(`AI Response added with ID: ${docRef.id}`);
+    return { id: docRef.id, content, createdAt: new Date(), included: false };
+  } catch (error) {
+    console.error("Error adding AI Response:", error);
+    throw error;
+  }
+};
+
+const getAIResponses = async (userId, projectId) => {
+  const aiResponsesCollection = collection(db, "aiResponses");
+  const q = query(aiResponsesCollection, where("userId", "==", userId), where("projectId", "==", projectId));
+  const aiResponseSnapshot = await getDocs(q);
+  return aiResponseSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+};
+
+const deleteAIResponse = async (id) => {
+  const aiResponseDoc = doc(db, "aiResponses", id);
+  try {
+    await deleteDoc(aiResponseDoc);
+    console.log(`AI Response ${id} deleted from Firebase`);
+  } catch (error) {
+    console.error("Error deleting AI Response:", error);
+    throw error;
+  }
+};
+
+const updateAIResponse = async (id, updates) => {
+  const aiResponseDoc = doc(db, "aiResponses", id);
+  try {
+    await updateDoc(aiResponseDoc, updates);
+    console.log(`AI Response ${id} updated in Firebase`);
+  } catch (error) {
+    console.error("Error updating AI Response:", error);
+    throw error;
+  }
+};
+
 // Project-related functions
 const createProject = async (userId, projectName) => {
   const projectsCollection = collection(db, "projects");
@@ -33,6 +81,17 @@ const createProject = async (userId, projectName) => {
     return { id: docRef.id, name: projectName, userId, createdAt: new Date() };
   } catch (error) {
     console.error("Error creating project:", error);
+    throw error;
+  }
+};
+
+const updateProject = async (projectId, updates) => {
+  const projectRef = doc(db, "projects", projectId);
+  try {
+    await updateDoc(projectRef, updates);
+    console.log(`Project ${projectId} updated successfully`);
+  } catch (error) {
+    console.error("Error updating project:", error);
     throw error;
   }
 };
@@ -299,7 +358,8 @@ const analyzeContent = httpsCallable(functions, 'analyzeContent');
 
 export { 
   db, 
-  createProject, 
+  createProject,
+  updateProject,
   getUserProjects, 
   getTasks, 
   addTask, 
@@ -321,5 +381,9 @@ export {
   deleteDocument, 
   getDocuments,
   setLastAccessedProject,
-  getLastAccessedProject
+  getLastAccessedProject,
+  addAIResponse,
+  getAIResponses,
+  deleteAIResponse,
+  updateAIResponse
 };

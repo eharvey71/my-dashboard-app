@@ -9,6 +9,7 @@ import EmailVerification from './components/EmailVerification';
 import FullPageNotes from './components/FullPageNotes';
 import FullPageTasks from './components/FullPageTasks';
 import FullPageBookmarks from './components/FullPageBookmarks';
+import FullPageAIAssistant from './components/FullPageAIAssistant'; 
 import DocumentEditor from './components/DocumentEditor';
 import DocumentList from './components/DocumentList';
 import FocusTimer from './components/FocusTimer';
@@ -105,6 +106,10 @@ const App = () => {
             <Route 
               path="/project/:projectId/documents" 
               element={user ? <DocumentList user={user} /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/project/:projectId/ai-assistant" 
+              element={user ? <FullPageAIAssistant user={user} /> : <Navigate to="/login" />} 
             />
             <Route 
               path="/project/:projectId/documents/new" 

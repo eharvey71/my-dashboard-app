@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { addAIResponse, getAIResponses } from '../services/firebaseConfig';
 
 const AIAssistant = ({ user, projectId }) => {
   const [input, setInput] = useState("");
@@ -76,6 +77,22 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
     }
   };
 
+  const handleSaveResponse = async () => {
+    if (response.trim() === '') return;
+    try {
+      await addAIResponse(user.uid, projectId, response);
+      setError(null);
+    } catch (error) {
+      console.error("Error saving AI response:", error);
+      setError("Failed to save AI response");
+    }
+  };
+
+  const handleClearResponse = () => {
+    setResponse("");
+  };
+
+
   return (
     <div className="ai-assistant card">
       <div className="card-body">
@@ -99,7 +116,7 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
           <h4>Response</h4>
           <textarea
             ref={responseRef}
-            className="form-control"
+            className="form-control mb-3"
             value={response}
             readOnly
             style={{
@@ -108,6 +125,22 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
               minHeight: "150px",
             }}
           />
+        </div>
+        <div className="d-flex justify-content-between">
+          <button
+            className="btn btn-outline-primary"
+            onClick={handleSaveResponse}
+            disabled={response.trim() === ''}
+          >
+            Save Response
+          </button>
+          <button
+            className="btn btn-outline-secondary"
+            onClick={handleClearResponse}
+            disabled={response.trim() === ''}
+          >
+            Clear Response
+          </button>
         </div>
       </div>
     </div>

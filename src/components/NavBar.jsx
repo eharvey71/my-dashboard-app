@@ -61,6 +61,9 @@ const NavBar = ({ user, displayName }) => {
                     <li className="nav-item">
                       <Link className="nav-link" to={`/project/${activeProject}/focus`}>Focus</Link>
                     </li>
+                    <li className="nav-item">
+                      <Link className="nav-link" to={`/project/${activeProject}/ai-assistant`}>AI Assistant</Link>
+                    </li>
                   </>
                 )}
                 <li className="nav-item">

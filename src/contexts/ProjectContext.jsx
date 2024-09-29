@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getUserProjects } from '../services/firebaseConfig';
 
 const ProjectContext = createContext();
@@ -10,29 +10,33 @@ export const ProjectProvider = ({ children, user }) => {
   const [activeProject, setActiveProject] = useState(null);
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      if (user) {
-        const userProjects = await getUserProjects(user.uid);
-        setProjects(userProjects);
-        if (userProjects.length > 0 && !activeProject) {
-          setActiveProject(userProjects[0].id);
-        }
-      }
-    };
-    fetchProjects();
-  }, [user, activeProject]);
+    if (user) {
+      getUserProjects(user.uid).then(setProjects);
+    }
+  }, [user]);
 
-  const addProject = (newProject) => {
-    setProjects(prevProjects => [...prevProjects, newProject]);
-    setActiveProject(newProject.id);
+  const addProject = (project) => {
+    setProjects([...projects, project]);
   };
 
   const updateActiveProject = (projectId) => {
     setActiveProject(projectId);
   };
 
+  const updateProjectName = (projectId, newName) => {
+    setProjects(projects.map(project => 
+      project.id === projectId ? { ...project, name: newName } : project
+    ));
+  };
+
   return (
-    <ProjectContext.Provider value={{ projects, activeProject, addProject, updateActiveProject }}>
+    <ProjectContext.Provider value={{ 
+      projects, 
+      addProject, 
+      activeProject, 
+      updateActiveProject,
+      updateProjectName 
+    }}>
       {children}
     </ProjectContext.Provider>
   );
