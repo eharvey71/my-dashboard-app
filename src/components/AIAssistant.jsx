@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-const AIAssistant = ({ user }) => {
+const AIAssistant = ({ user, projectId }) => {
   const [input, setInput] = useState("");
   const [response, setResponse] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -28,26 +28,32 @@ const AIAssistant = ({ user }) => {
     setIsTyping(true);
     setError(null);
     try {
-      const userContentResult = await queryPinecone({ query: input });
+      const userContentResult = await queryPinecone({ 
+        query: input, 
+        userId: user.uid, 
+        projectId: projectId 
+      });
       const userContent = userContentResult.data.relevantContent;
 
       const prompt = `
-You are an AI assistant with access to the user's tasks, notes, and bookmarked content. 
-Below is the relevant information from the user's data:
+You are an AI assistant with access to the user's tasks, notes, and bookmarked content for a specific project. 
+Below is the relevant information from the user's data for this project:
 
-${userContent || "No specific user data found for this query."}
+${userContent || "No specific user data found for this query in the current project."}
 
 Now, please answer the following question or request from the user:
 User: ${input}
 
 In your response, please:
 1. Directly address the user's query.
-2. Identify and explain any correlations between tasks, notes, and bookmarked content.
-3. Provide insights or suggestions based on the combined information.
-4. If relevant, suggest any actions the user might take based on the analyzed information.
+2. Identify and explain any correlations between tasks, notes, and bookmarked content within this project.
+3. Provide insights or suggestions based on the combined information for this project.
+4. If relevant, suggest any actions the user might take based on the analyzed information within the project scope.
 5. For tasks, consider their priorities (if available) when providing recommendations or insights.
 
-A: Certainly! I've analyzed your tasks (including their priorities), notes, and bookmarked content. Here's my response:
+Remember to focus only on the information related to the current project.
+
+A: Certainly! I've analyzed your tasks (including their priorities), notes, and bookmarked content for this specific project. Here's my response:
 `;
 
       const aiResponseResult = await analyzeContent({ prompt });
@@ -78,7 +84,7 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
           className="form-control mb-3"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about your tasks, notes, or bookmarked content..."
+          placeholder="Ask about your tasks, notes, or bookmarked content for this project..."
           rows="3"
         />
         <button

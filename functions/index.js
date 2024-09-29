@@ -36,7 +36,12 @@ exports.scrapeAndIndexBookmark = functions.firestore
   .document('bookmarks/{bookmarkId}')
   .onCreate(async (snap, context) => {
     const bookmark = snap.data();
-    const { url, userId } = bookmark;
+    const { url, userId, projectId } = bookmark;
+
+    if (!projectId) {
+      console.error(`No projectId found for bookmark ${context.params.bookmarkId}`);
+      return;
+    }
 
     try {
       // Scrape website content
@@ -64,10 +69,11 @@ exports.scrapeAndIndexBookmark = functions.firestore
       for (let i = 0; i < chunks.length; i++) {
         const embedding = await createEmbedding(chunks[i]);
         await index.upsert([{
-          id: `${userId}-bookmark-${context.params.bookmarkId}-${i}`,
+          id: `${userId}-${projectId}-bookmark-${context.params.bookmarkId}-${i}`,
           values: embedding,
           metadata: {
             userId,
+            projectId,
             type: 'bookmark',
             content: chunks[i],
             url,
@@ -103,17 +109,19 @@ exports.cleanupPineconeVectors = functions.pubsub.schedule('every 12 hours').onR
 
   try {
     // Fetch all document IDs from Firestore for notes and tasks
-    const notesSnapshot = await db.collection('notes').get();
-    const tasksSnapshot = await db.collection('tasks').get();
+    const notesSnapshot = await db.collectionGroup('notes').get();
+    const tasksSnapshot = await db.collectionGroup('tasks').get();
 
     const validIds = new Set([
-      ...notesSnapshot.docs.map(doc => doc.id),
-      ...tasksSnapshot.docs.map(doc => doc.id)
+      ...notesSnapshot.docs.map(doc => `${doc.ref.parent.parent.id}-${doc.ref.parent.id}-${doc.id}`),
+      ...tasksSnapshot.docs.map(doc => `${doc.ref.parent.parent.id}-${doc.ref.parent.id}-${doc.id}`)
     ]);
 
     // Fetch all bookmarks from Firestore
-    const bookmarksSnapshot = await db.collection('bookmarks').get();
-    const validBookmarkUrls = new Set(bookmarksSnapshot.docs.map(doc => doc.data().url));
+    const bookmarksSnapshot = await db.collectionGroup('bookmarks').get();
+    const validBookmarks = new Set(bookmarksSnapshot.docs.map(doc => 
+      `${doc.ref.parent.parent.id}-${doc.ref.parent.id}-${doc.id}-${doc.data().url}`
+    ));
 
     // Fetch all vector IDs from Pinecone
     const queryResponse = await index.query({
@@ -125,16 +133,16 @@ exports.cleanupPineconeVectors = functions.pubsub.schedule('every 12 hours').onR
     const idsToDelete = [];
 
     queryResponse.matches.forEach(match => {
-      const [userId, type, docId, chunkIndex] = match.id.split('-');
+      const [userId, projectId, type, docId, ...rest] = match.id.split('-');
       
       if (type === 'bookmark') {
         // For bookmarks, check against the URL in metadata
-        if (!validBookmarkUrls.has(match.metadata.url)) {
+        if (!validBookmarks.has(`${userId}-${projectId}-${docId}-${match.metadata.url}`)) {
           idsToDelete.push(match.id);
         }
       } else {
         // For notes and tasks, check against the document ID
-        if (!validIds.has(docId)) {
+        if (!validIds.has(`${userId}-${projectId}-${docId}`)) {
           idsToDelete.push(match.id);
         }
       }
@@ -162,7 +170,12 @@ exports.indexTaskOrNote = functions.firestore
     if (collectionName !== 'tasks' && collectionName !== 'notes') return;
 
     const data = snap.data();
-    const { content, userId, priority } = data;
+    const { content, userId, priority, projectId } = data;
+
+    if (!projectId) {
+      console.error(`No projectId found for ${collectionName} ${docId}`);
+      return;
+    }
 
     try {
       // Initialize Pinecone index
@@ -170,6 +183,7 @@ exports.indexTaskOrNote = functions.firestore
 
       let metadata = {
         userId,
+        projectId,
         type: collectionName.slice(0, -1),
         content,
       };
@@ -183,7 +197,7 @@ exports.indexTaskOrNote = functions.firestore
 
       // Index the task or note
       await index.upsert([{
-        id: `${userId}-${collectionName.slice(0, -1)}-${docId}`,
+        id: `${userId}-${projectId}-${collectionName.slice(0, -1)}-${docId}`,
         values: embedding,
         metadata: metadata,
       }]);
@@ -191,7 +205,7 @@ exports.indexTaskOrNote = functions.firestore
       // Update document to indicate successful indexing
       await snap.ref.update({ indexedInPinecone: true });
 
-      console.log(`Successfully indexed ${collectionName.slice(0, -1)} with ID: ${docId}`);
+      console.log(`Successfully indexed ${collectionName.slice(0, -1)} with ID: ${docId} for project: ${projectId}`);
     } catch (error) {
       console.error(`Error indexing ${collectionName.slice(0, -1)} ${docId}:`, error);
       // Update document to indicate failed indexing
@@ -239,7 +253,11 @@ exports.queryPinecone = functions.https.onCall(async (data, context) => {
   }
 
   const userId = context.auth.uid;
-  const query = data.query;
+  const { query, projectId } = data;
+
+  if (!projectId) {
+    throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a projectId.');
+  }
 
   try {
     const index = pc.Index(pineconeIndexName);
@@ -254,7 +272,7 @@ exports.queryPinecone = functions.https.onCall(async (data, context) => {
 
     const queryRequest = {
       topK: 20,
-      filter: { userId: userId },
+      filter: { userId: userId, projectId: projectId },
       includeMetadata: true,
     };
 
