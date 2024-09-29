@@ -1,32 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { logout } from '../services/firebaseAuth';
-import { getUserProjects } from '../services/firebaseConfig';
+import { useProjectContext } from '../contexts/ProjectContext';
 
 const NavBar = ({ user, displayName }) => {
   const navigate = useNavigate();
-  const { projectId } = useParams();
-  const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(projectId || '');
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      if (user) {
-        const userProjects = await getUserProjects(user.uid);
-        setProjects(userProjects);
-        if (!selectedProject && userProjects.length > 0) {
-          setSelectedProject(userProjects[0].id);
-        }
-      }
-    };
-    fetchProjects();
-  }, [user]);
-
-  useEffect(() => {
-    if (projectId) {
-      setSelectedProject(projectId);
-    }
-  }, [projectId]);
+  const { projects, activeProject, updateActiveProject } = useProjectContext();
 
   const handleLogout = async () => {
     try {
@@ -39,10 +18,8 @@ const NavBar = ({ user, displayName }) => {
 
   const handleProjectChange = (e) => {
     const newProjectId = e.target.value;
-    setSelectedProject(newProjectId);
-    if (newProjectId) {
-      navigate(`/project/${newProjectId}`);
-    }
+    updateActiveProject(newProjectId);
+    navigate(`/project/${newProjectId}`);
   };
 
   const appTitle = user && displayName ? `${displayName}'s Cognify` : 'My Cognify';
@@ -61,7 +38,7 @@ const NavBar = ({ user, displayName }) => {
                 <li className="nav-item">
                   <select 
                     className="form-select" 
-                    value={selectedProject} 
+                    value={activeProject || ''} 
                     onChange={handleProjectChange}
                   >
                     {projects.length === 0 ? (
@@ -73,16 +50,16 @@ const NavBar = ({ user, displayName }) => {
                     )}
                   </select>
                 </li>
-                {selectedProject && (
+                {activeProject && (
                   <>
                     <li className="nav-item">
-                      <Link className="nav-link" to={`/project/${selectedProject}`}>Dashboard</Link>
+                      <Link className="nav-link" to={`/project/${activeProject}`}>Dashboard</Link>
                     </li>
                     <li className="nav-item">
-                      <Link className="nav-link" to={`/project/${selectedProject}/documents`}>Documents</Link>
+                      <Link className="nav-link" to={`/project/${activeProject}/documents`}>Documents</Link>
                     </li>
                     <li className="nav-item">
-                      <Link className="nav-link" to={`/project/${selectedProject}/focus`}>Focus</Link>
+                      <Link className="nav-link" to={`/project/${activeProject}/focus`}>Focus</Link>
                     </li>
                   </>
                 )}

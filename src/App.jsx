@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ProjectProvider } from './contexts/ProjectContext';
 import NavBar from './components/NavBar';
 import Signup from './components/Signup';
 import Login from './components/Login';
@@ -60,64 +61,66 @@ const App = () => {
 
   return (
     <Router>
-      <NavBar user={user} displayName={displayName} />
-      <div className="main-container">
-        <Routes>
-          <Route path="/" element={
-            user ? (
-              hasProjects ? (
-                lastAccessedProject ? (
-                  <Navigate to={`/project/${lastAccessedProject}`} />
+      <ProjectProvider user={user}>
+        <NavBar user={user} displayName={displayName} />
+        <div className="main-container">
+          <Routes>
+            <Route path="/" element={
+              user ? (
+                hasProjects ? (
+                  lastAccessedProject ? (
+                    <Navigate to={`/project/${lastAccessedProject}`} />
+                  ) : (
+                    <Navigate to="/projects" />
+                  )
                 ) : (
                   <Navigate to="/projects" />
                 )
               ) : (
-                <Navigate to="/projects" />
+                <Navigate to="/login" />
               )
-            ) : (
-              <Navigate to="/login" />
-            )
-          } />
-          <Route path="/projects" element={
-            user ? <ProjectList user={user} onProjectsUpdate={(projects) => setHasProjects(projects.length > 0)} /> : <Navigate to="/login" />
-          } />
-          <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
-          <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
-          <Route path="/email-verification" element={<EmailVerification />} />
-          <Route 
-            path="/project/:projectId" 
-            element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/project/:projectId/notes" 
-            element={user ? <FullPageNotes user={user} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/project/:projectId/tasks" 
-            element={user ? <FullPageTasks user={user} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/project/:projectId/bookmarks" 
-            element={user ? <FullPageBookmarks user={user} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/project/:projectId/documents" 
-            element={user ? <DocumentList user={user} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/project/:projectId/documents/new" 
-            element={user ? <DocumentEditor user={user} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/project/:projectId/documents/:id" 
-            element={user ? <DocumentEditor user={user} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/project/:projectId/focus" 
-            element={user ? <FocusTimer user={user} /> : <Navigate to="/login" />} 
-          />
-        </Routes>
-      </div>
+            } />
+            <Route path="/projects" element={
+              user ? <ProjectList user={user} onProjectsUpdate={(projects) => setHasProjects(projects.length > 0)} /> : <Navigate to="/login" />
+            } />
+            <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
+            <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+            <Route path="/email-verification" element={<EmailVerification />} />
+            <Route 
+              path="/project/:projectId" 
+              element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/project/:projectId/notes" 
+              element={user ? <FullPageNotes user={user} /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/project/:projectId/tasks" 
+              element={user ? <FullPageTasks user={user} /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/project/:projectId/bookmarks" 
+              element={user ? <FullPageBookmarks user={user} /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/project/:projectId/documents" 
+              element={user ? <DocumentList user={user} /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/project/:projectId/documents/new" 
+              element={user ? <DocumentEditor user={user} /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/project/:projectId/documents/:id" 
+              element={user ? <DocumentEditor user={user} /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/project/:projectId/focus" 
+              element={user ? <FocusTimer user={user} /> : <Navigate to="/login" />} 
+            />
+          </Routes>
+        </div>
+      </ProjectProvider>
     </Router>
   );
 };

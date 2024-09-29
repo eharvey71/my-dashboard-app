@@ -1,25 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { getUserProjects, createProject } from '../services/firebaseConfig';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { createProject } from '../services/firebaseConfig';
+import { useProjectContext } from '../contexts/ProjectContext';
 
-const ProjectList = ({ user, onProjectsUpdate }) => {
-  const [projects, setProjects] = useState([]);
+const ProjectList = ({ user }) => {
   const [newProjectName, setNewProjectName] = useState('');
   const [error, setError] = useState('');
-
-  const fetchProjects = async () => {
-    if (user) {
-      const userProjects = await getUserProjects(user.uid);
-      setProjects(userProjects);
-      if (onProjectsUpdate) {
-        onProjectsUpdate(userProjects);
-      }
-    }
-  };
-
-  useEffect(() => {
-    fetchProjects();
-  }, [user]);
+  const { projects, addProject, updateActiveProject } = useProjectContext();
+  const navigate = useNavigate();
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
@@ -29,12 +17,18 @@ const ProjectList = ({ user, onProjectsUpdate }) => {
       return;
     }
     try {
-      await createProject(user.uid, newProjectName.trim());
-      await fetchProjects();
+      const newProject = await createProject(user.uid, newProjectName.trim());
+      addProject(newProject);
       setNewProjectName('');
+      navigate(`/project/${newProject.id}`);
     } catch (error) {
       setError('Failed to create project. Please try again.');
     }
+  };
+
+  const handleProjectClick = (projectId) => {
+    updateActiveProject(projectId);
+    navigate(`/project/${projectId}`);
   };
 
   return (
@@ -44,7 +38,7 @@ const ProjectList = ({ user, onProjectsUpdate }) => {
         <ul className="list-group mb-4">
           {projects.map((project) => (
             <li key={project.id} className="list-group-item">
-              <Link to={`/project/${project.id}`}>{project.name}</Link>
+              <a href="#" onClick={() => handleProjectClick(project.id)}>{project.name}</a>
             </li>
           ))}
         </ul>
