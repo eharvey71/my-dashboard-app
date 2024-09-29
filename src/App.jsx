@@ -12,7 +12,6 @@ import DocumentEditor from './components/DocumentEditor';
 import DocumentList from './components/DocumentList';
 import FocusTimer from './components/FocusTimer';
 import ProjectList from './components/ProjectList';
-import CreateProject from './components/CreateProject';
 import { db } from './services/firebaseConfig';
 import { auth, onAuthStateChanged } from './services/firebaseAuth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -70,19 +69,21 @@ const App = () => {
                 lastAccessedProject ? (
                   <Navigate to={`/project/${lastAccessedProject}`} />
                 ) : (
-                  <ProjectList user={user} onProjectsUpdate={(projects) => setHasProjects(projects.length > 0)} />
+                  <Navigate to="/projects" />
                 )
               ) : (
-                <Navigate to="/create-project" />
+                <Navigate to="/projects" />
               )
             ) : (
               <Navigate to="/login" />
             )
           } />
+          <Route path="/projects" element={
+            user ? <ProjectList user={user} onProjectsUpdate={(projects) => setHasProjects(projects.length > 0)} /> : <Navigate to="/login" />
+          } />
           <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
           <Route path="/email-verification" element={<EmailVerification />} />
-          <Route path="/create-project" element={user ? <CreateProject user={user} setHasProjects={setHasProjects} /> : <Navigate to="/login" />} />
           <Route 
             path="/project/:projectId" 
             element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
