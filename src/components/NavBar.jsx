@@ -32,55 +32,55 @@ const NavBar = ({ user, displayName }) => {
           <span className="navbar-toggler-icon"></span>
         </button>
         <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav ms-auto">
-            {user ? (
-              <>
-                <li className="nav-item">
-                  <select 
-                    className="form-select" 
-                    value={activeProject || ''} 
-                    onChange={handleProjectChange}
-                  >
-                    {projects.length === 0 ? (
-                      <option value="">Select Project</option>
-                    ) : (
-                      projects.map(project => (
-                        <option key={project.id} value={project.id}>{project.name}</option>
-                      ))
-                    )}
-                  </select>
-                </li>
-                {activeProject && (
-                  <>
-                    <li className="nav-item">
-                      <Link className="nav-link" to={`/project/${activeProject}`}>Dashboard</Link>
-                    </li>
-                    <li className="nav-item">
-                      <Link className="nav-link" to={`/project/${activeProject}/documents`}>Documents</Link>
-                    </li>
-                    <li className="nav-item">
-                      <Link className="nav-link" to={`/project/${activeProject}/focus`}>Focus</Link>
-                    </li>
-                    <li className="nav-item">
-                      <Link className="nav-link" to={`/project/${activeProject}/ai-assistant`}>AI Assistant</Link>
-                    </li>
-                  </>
-                )}
-                <li className="nav-item">
-                  <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
-                </li>
-              </>
-            ) : (
-              <>
-                <li className="nav-item">
-                  <Link className="nav-link" to="/login">Login</Link>
-                </li>
-                <li className="nav-item">
-                  <Link className="nav-link" to="/signup">Signup</Link>
-                </li>
-              </>
-            )}
-          </ul>
+        <ul className="navbar-nav ms-auto">
+          {user ? (
+            <>
+              <li className="nav-item">
+                <select 
+                  className="form-select" 
+                  value={activeProject || ''} 
+                  onChange={handleProjectChange}
+                >
+                  {projects.length === 0 ? (
+                    <option value="">Select Project</option>
+                  ) : (
+                    projects.map(project => (
+                      <option key={project.id} value={project.id}>{project.name}</option>
+                    ))
+                  )}
+                </select>
+              </li>
+              {activeProject && projects.length > 0 && (
+                <>
+                  <li className="nav-item">
+                    <Link className="nav-link" to={`/project/${activeProject}`}>Dashboard</Link>
+                  </li>
+                  <li className="nav-item">
+                    <Link className="nav-link" to={`/project/${activeProject}/documents`}>Documents</Link>
+                  </li>
+                  <li className="nav-item">
+                    <Link className="nav-link" to={`/project/${activeProject}/focus`}>Focus</Link>
+                  </li>
+                  <li className="nav-item">
+                    <Link className="nav-link" to={`/project/${activeProject}/ai-assistant`}>AI Assistant</Link>
+                  </li>
+                </>
+              )}
+              <li className="nav-item">
+                <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
+              </li>
+            </>
+          ) : (
+            <>
+              <li className="nav-item">
+                <Link className="nav-link" to="/login">Login</Link>
+              </li>
+              <li className="nav-item">
+                <Link className="nav-link" to="/signup">Signup</Link>
+              </li>
+            </>
+          )}
+        </ul>
         </div>
       </div>
     </nav>

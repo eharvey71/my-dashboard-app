@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getUserProjects } from '../services/firebaseConfig';
+import { getUserProjects, getLastAccessedProject, setLastAccessedProject } from '../services/firebaseConfig';
 
 const ProjectContext = createContext();
 
@@ -11,7 +11,17 @@ export const ProjectProvider = ({ children, user }) => {
 
   useEffect(() => {
     if (user) {
-      getUserProjects(user.uid).then(setProjects);
+      getUserProjects(user.uid).then(fetchedProjects => {
+        setProjects(fetchedProjects);
+        getLastAccessedProject(user.uid).then(lastProjectId => {
+          if (lastProjectId && fetchedProjects.some(p => p.id === lastProjectId)) {
+            setActiveProject(lastProjectId);
+          } else if (fetchedProjects.length > 0) {
+            setActiveProject(fetchedProjects[0].id);
+            setLastAccessedProject(user.uid, fetchedProjects[0].id);
+          }
+        });
+      });
     }
   }, [user]);
 
@@ -21,6 +31,9 @@ export const ProjectProvider = ({ children, user }) => {
 
   const updateActiveProject = (projectId) => {
     setActiveProject(projectId);
+    if (user) {
+      setLastAccessedProject(user.uid, projectId);
+    }
   };
 
   const updateProjectName = (projectId, newName) => {
