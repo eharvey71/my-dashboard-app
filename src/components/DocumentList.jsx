@@ -1,35 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDocuments, deleteDocument, addDocumentFromGoogleDrive } from '../services/firebaseConfig';
 import { indexContent, deleteVector } from '../services/pineconeService';
 import { Trash2, Edit2, PlusCircle, FileText } from 'lucide-react';
-import { initializeGoogleDriveApi, signIn, signOut, isSignedIn, listFiles, getFileContent } from '../services/googleDriveService';
+import { signIn, signOut, isSignedIn } from '../services/googleDriveService';
 import styles from './DocumentList.module.css';
+import GoogleDrivePicker from './GoogleDrivePicker';
+import { AppContext } from '../App'; // We'll create this context in App.js
 
 const DocumentList = ({ user }) => {
   const { projectId } = useParams();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [googleDriveSignedIn, setGoogleDriveSignedIn] = useState(false);
-  const [googleDriveFiles, setGoogleDriveFiles] = useState([]);
-  const [showGoogleDriveFiles, setShowGoogleDriveFiles] = useState(false);
+  const [isGoogleDrivePickerOpen, setIsGoogleDrivePickerOpen] = useState(false);
+  const { googleDriveSignedIn, setGoogleDriveSignedIn } = useContext(AppContext);
 
   useEffect(() => {
     fetchDocuments();
-    initializeGoogleDrive();
+    checkGoogleDriveSignIn();
   }, [user, projectId]);
 
-  const initializeGoogleDrive = async () => {
-    try {
-      await initializeGoogleDriveApi();
-      const signedIn = isSignedIn();
-      setGoogleDriveSignedIn(signedIn);
-      if (signedIn) {
-        await fetchGoogleDriveFiles();
-      }
-    } catch (error) {
-      console.error('Error initializing Google Drive:', error);
-    }
+  const checkGoogleDriveSignIn = () => {
+    const signedIn = isSignedIn();
+    setGoogleDriveSignedIn(signedIn);
   };
 
   const fetchDocuments = async () => {
@@ -41,16 +34,6 @@ const DocumentList = ({ user }) => {
     } catch (error) {
       console.error('Error fetching documents:', error);
       setLoading(false);
-    }
-  };
-
-  const fetchGoogleDriveFiles = async () => {
-    try {
-      const files = await listFiles();
-      setGoogleDriveFiles(files);
-    } catch (error) {
-      console.error('Error fetching Google Drive files:', error);
-      setGoogleDriveFiles([]);
     }
   };
 
@@ -70,8 +53,6 @@ const DocumentList = ({ user }) => {
     try {
       await signIn();
       setGoogleDriveSignedIn(true);
-      await fetchGoogleDriveFiles();
-      setShowGoogleDriveFiles(true);
     } catch (error) {
       console.error('Error signing in to Google Drive:', error);
     }
@@ -81,8 +62,6 @@ const DocumentList = ({ user }) => {
     try {
       signOut();
       setGoogleDriveSignedIn(false);
-      setGoogleDriveFiles([]);
-      setShowGoogleDriveFiles(false);
     } catch (error) {
       console.error('Error signing out from Google Drive:', error);
     }
@@ -90,18 +69,11 @@ const DocumentList = ({ user }) => {
 
   const handleAddFromGoogleDrive = async (file) => {
     try {
-      const content = await getFileContent(file.id, file.mimeType);
-      const newDoc = await addDocumentFromGoogleDrive(user.uid, projectId, {
-        name: file.name,
-        id: file.id,
-        mimeType: file.mimeType,
-        content: content
-      });
+      const newDoc = await addDocumentFromGoogleDrive(user.uid, projectId, file);
       
-      // Ensure that newDoc has all required properties before adding it to the state
       if (newDoc && newDoc.id && newDoc.updatedAt) {
         setDocuments(prevDocuments => [newDoc, ...prevDocuments]);
-        await indexContent(user.uid, content, 'document', newDoc.id, `Google Drive Document: ${file.name}`, 'Google Drive');
+        await indexContent(user.uid, file.content, 'document', newDoc.id, `Google Drive Document: ${file.name}`, 'Google Drive');
         alert(`Document "${file.name}" has been added to your project and indexed for AI processing.`);
       } else {
         throw new Error('Invalid document structure returned from addDocumentFromGoogleDrive');
@@ -130,29 +102,10 @@ const DocumentList = ({ user }) => {
             <button onClick={handleGoogleDriveSignOut} className={styles.googleDriveButton}>
               Sign Out from Google Drive
             </button>
-            <button onClick={() => setShowGoogleDriveFiles(!showGoogleDriveFiles)} className={styles.toggleGoogleDriveButton}>
-              {showGoogleDriveFiles ? 'Hide Google Drive Files' : 'Show Google Drive Files'}
+            <button onClick={() => setIsGoogleDrivePickerOpen(true)} className={styles.googleDriveButton}>
+              <FileText size={18} />
+              Import from Google Drive
             </button>
-            {showGoogleDriveFiles && (
-              <>
-                <h3>Google Drive Documents</h3>
-                <div className={styles.documentGrid}>
-                  {googleDriveFiles.length > 0 ? (
-                    googleDriveFiles.map(file => (
-                      <div key={file.id} className={styles.documentCard}>
-                        <h3 className={styles.documentTitle}>{file.name}</h3>
-                        <button onClick={() => handleAddFromGoogleDrive(file)} className={styles.addButton}>
-                          <FileText size={18} />
-                          Add to Project
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <p>No Google Drive files found.</p>
-                  )}
-                </div>
-              </>
-            )}
           </>
         ) : (
           <button onClick={handleGoogleDriveSignIn} className={styles.googleDriveButton}>
@@ -187,6 +140,12 @@ const DocumentList = ({ user }) => {
           </div>
         ))}
       </div>
+
+      <GoogleDrivePicker
+        isOpen={isGoogleDrivePickerOpen}
+        onClose={() => setIsGoogleDrivePickerOpen(false)}
+        onSelect={handleAddFromGoogleDrive}
+      />
     </div>
   );
 };
