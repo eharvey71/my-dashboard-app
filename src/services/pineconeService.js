@@ -60,24 +60,15 @@ export const indexContent = async (
   content,
   type,
   id,
-  additionalContext = ""
+  additionalContext = "",
+  source = "native"
 ) => {
   try {
     await ensureInitialized();
 
-    // if (!index) {
-    //   throw new Error("Pinecone index is not initialized");
-    // }
-
-    const contextualizedContent = `${type.toUpperCase()}: ${content}\nContext: ${additionalContext}`;
+    const contextualizedContent = `${type.toUpperCase()}: ${content}\nContext: ${additionalContext}\nSource: ${source}`;
     const embedding = await generateEmbedding(contextualizedContent);
     console.log(`Generated embedding for ${type} ${id}`);
-
-    // if (embedding.length !== EMBEDDING_DIMENSION) {
-    //   throw new Error(
-    //     `Embedding dimension ${embedding.length} does not match the expected dimension ${EMBEDDING_DIMENSION}`
-    //   );
-    // }
 
     const vectorId = `${userId}-${type}-${id}`;
 
@@ -90,6 +81,7 @@ export const indexContent = async (
           type,
           content: contextualizedContent,
           id,
+          source,
         },
       },
     ]);

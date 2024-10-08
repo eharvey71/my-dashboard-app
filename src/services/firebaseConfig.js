@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, setDoc, updateDoc, getDoc, Timestamp } from "firebase/firestore";
 import { updateVector } from "./pineconeService";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import formatUrl from '../utils/urlFormatter';
@@ -279,15 +279,16 @@ const deleteBookmark = (id) => deleteItem(id, "bookmark");
 const updateBookmark = async (id, updates) => updateItem(id, updates, "bookmark");
 
 // Document-specific functions
-const addDocument = async (title, content, userId, projectId) => {
+const addDocument = async (title, content, userId, projectId, source = 'native', originalId = null) => {
   const timestamp = new Date();
   return addItem(title, userId, projectId, "document", { 
     content, 
     createdAt: timestamp,
-    updatedAt: timestamp
+    updatedAt: timestamp,
+    source,
+    originalId
   });
 };
-
 const updateDocument = async (id, updates) => {
   const updatesWithTimestamp = {
     ...updates,
@@ -297,7 +298,50 @@ const updateDocument = async (id, updates) => {
 };
 
 const deleteDocument = (id) => deleteItem(id, "document");
-const getDocuments = async (userId, projectId) => getItems(userId, projectId, "document");
+
+const getDocuments = async (userId, projectId) => {
+  const documents = await getItems(userId, projectId, "document");
+  return documents.map(doc => ({
+    ...doc,
+    source: doc.source || 'native', // Default to 'native' for existing documents
+    originalId: doc.originalId || null
+  }));
+};
+
+const addDocumentFromGoogleDrive = async (userId, projectId, driveFileData) => {
+  const { name, id, mimeType, content } = driveFileData;
+  const timestamp = Timestamp.now();
+  
+  try {
+    const docRef = await addDoc(collection(db, "documents"), {
+      title: name,
+      content: content,
+      userId,
+      projectId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      source: 'Google Drive',
+      originalId: id,
+      mimeType
+    });
+
+    return {
+      id: docRef.id,
+      title: name,
+      content: content,
+      userId,
+      projectId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      source: 'Google Drive',
+      originalId: id,
+      mimeType
+    };
+  } catch (error) {
+    console.error('Error adding document from Google Drive:', error);
+    throw error;
+  }
+};
 
 // Analytics functions
 const updateAnalytics = async (userId, projectId, analyticsData) => {
@@ -380,6 +424,7 @@ export {
   updateDocument, 
   deleteDocument, 
   getDocuments,
+  addDocumentFromGoogleDrive, // New export
   setLastAccessedProject,
   getLastAccessedProject,
   addAIResponse,
