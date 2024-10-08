@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, setDoc, updateDoc, getDoc, Timestamp } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, setDoc, updateDoc, getDoc, Timestamp, orderBy } from "firebase/firestore";
 import { updateVector } from "./pineconeService";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import formatUrl from '../utils/urlFormatter';
@@ -21,11 +21,12 @@ const db = getFirestore(app);
 const functions = getFunctions(app);
 
 // AI Response functions
-const addAIResponse = async (userId, projectId, content) => {
+const addAIResponse = async (userId, projectId, content, question) => {
   const aiResponsesCollection = collection(db, "aiResponses");
   try {
     const docRef = await addDoc(aiResponsesCollection, {
       content,
+      question,
       userId,
       projectId,
       createdAt: new Date(),
@@ -41,9 +42,18 @@ const addAIResponse = async (userId, projectId, content) => {
 
 const getAIResponses = async (userId, projectId) => {
   const aiResponsesCollection = collection(db, "aiResponses");
-  const q = query(aiResponsesCollection, where("userId", "==", userId), where("projectId", "==", projectId));
+  const q = query(
+    aiResponsesCollection,
+    where("userId", "==", userId),
+    where("projectId", "==", projectId),
+    orderBy("createdAt", "desc")
+  );
   const aiResponseSnapshot = await getDocs(q);
-  return aiResponseSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return aiResponseSnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt.toDate()
+  }));
 };
 
 const deleteAIResponse = async (id) => {

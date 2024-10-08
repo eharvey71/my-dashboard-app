@@ -3,10 +3,12 @@ import { useParams } from 'react-router-dom';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { addAIResponse, getAIResponses, deleteAIResponse } from '../services/firebaseConfig';
 import styles from './FullPageAIAssistant.module.css';
-import { Trash2, Check, X } from 'lucide-react';
+import { Trash2, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const AIResponse = ({ response, onDeleteResponse, onToggleInclude }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleDeleteClick = () => {
     setIsConfirmingDelete(true);
@@ -21,9 +23,24 @@ const AIResponse = ({ response, onDeleteResponse, onToggleInclude }) => {
     setIsConfirmingDelete(false);
   };
 
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  const truncatedContent = response.content.slice(0, 150) + (response.content.length > 150 ? '...' : '');
+
   return (
     <div className={styles.responseCard}>
-      <p>{response.content}</p>
+      <div className={styles.questionContainer}>
+        <strong>Q: </strong>{response.question}
+      </div>
+      <div className={isExpanded ? styles.expandedResponse : styles.truncatedResponse}>
+        <MarkdownRenderer content={isExpanded ? response.content : truncatedContent} />
+      </div>
+      <button className={styles.expandButton} onClick={toggleExpand}>
+        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        {isExpanded ? 'Show Less' : 'Show More'}
+      </button>
       <div className={styles.responseFooter}>
         <small className={styles.textMuted}>
           {response.createdAt instanceof Date ? response.createdAt.toLocaleString() : 'Invalid Date'}
@@ -78,7 +95,6 @@ const FullPageAIAssistant = ({ user }) => {
   const [savedResponses, setSavedResponses] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
-  const responseRef = useRef(null);
   const responseContainerRef = useRef(null);
 
   const functions = getFunctions();
@@ -91,26 +107,16 @@ const FullPageAIAssistant = ({ user }) => {
     }
   }, [user, projectId]);
 
-  useEffect(() => {
-    if (responseRef.current) {
-      responseRef.current.style.height = "auto";
-      responseRef.current.style.height = `${responseRef.current.scrollHeight}px`;
-    }
-    
-    if (responseContainerRef.current) {
-      responseContainerRef.current.scrollTop = responseContainerRef.current.scrollHeight;
-    }
-  }, [response]);
+  //useEffect(() => {
+  //  if (responseContainerRef.current) {
+  //    responseContainerRef.current.scrollTop = responseContainerRef.current.scrollHeight;
+  //  }
+  //}, [response]);
 
   const fetchSavedResponses = async () => {
     try {
       const fetchedResponses = await getAIResponses(user.uid, projectId);
-      const responsesWithValidDates = fetchedResponses.map(response => ({
-        ...response,
-        createdAt: response.createdAt instanceof Date ? response.createdAt : new Date(response.createdAt.seconds * 1000),
-        included: response.included || false
-      }));
-      setSavedResponses(responsesWithValidDates);
+      setSavedResponses(fetchedResponses);
     } catch (error) {
       console.error("Error fetching saved responses:", error);
       setError("Failed to fetch saved responses");
@@ -173,19 +179,17 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
       );
     } finally {
       setIsTyping(false);
-      setInput("");
     }
   };
 
   const handleSaveResponse = async () => {
     if (response.trim() === '') return;
     try {
-      const savedResponse = await addAIResponse(user.uid, projectId, response);
-      setSavedResponses(prevResponses => [
-        { ...savedResponse, included: false },
-        ...prevResponses
-      ]);
+      const savedResponse = await addAIResponse(user.uid, projectId, response, input);
+      setSavedResponses(prevResponses => [savedResponse, ...prevResponses]);
       setError(null);
+      setInput("");
+      setResponse("");
     } catch (error) {
       console.error("Error saving AI response:", error);
       setError("Failed to save AI response");
@@ -241,21 +245,11 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
       {error && <p className={styles.textDanger}>{error}</p>}
       <div ref={responseContainerRef} className={styles.responseContainer}>
         <h4>Response</h4>
-        <textarea
-          ref={responseRef}
-          className="form-control mb-3"
-          value={response}
-          readOnly
-          style={{
-            resize: "none",
-            overflow: "hidden",
-            minHeight: "200px",
-          }}
-        />
+        <MarkdownRenderer content={response} />
       </div>
-      <div className="d-flex justify-content-between mb-4">
+      <div className="d-flex mb-4">
         <button
-          className="btn btn-outline-primary"
+          className="btn btn-outline-primary me-2"
           onClick={handleSaveResponse}
           disabled={response.trim() === ''}
         >

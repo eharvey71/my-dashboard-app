@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { addAIResponse, getAIResponses } from '../services/firebaseConfig';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const AIAssistant = ({ user, projectId }) => {
   const [input, setInput] = useState("");
   const [response, setResponse] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
-  const responseRef = useRef(null);
   const responseContainerRef = useRef(null);
 
   const functions = getFunctions();
@@ -15,11 +15,6 @@ const AIAssistant = ({ user, projectId }) => {
   const analyzeContent = httpsCallable(functions, 'analyzeContent');
 
   useEffect(() => {
-    if (responseRef.current) {
-      responseRef.current.style.height = "auto";
-      responseRef.current.style.height = `${responseRef.current.scrollHeight}px`;
-    }
-    
     if (responseContainerRef.current) {
       responseContainerRef.current.scrollTop = responseContainerRef.current.scrollHeight;
     }
@@ -92,7 +87,6 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
     setResponse("");
   };
 
-
   return (
     <div className="ai-assistant card">
       <div className="card-body">
@@ -114,19 +108,11 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
         {error && <div className="alert alert-danger">{error}</div>}
         <div ref={responseContainerRef} style={{ maxHeight: "400px", overflowY: "auto" }}>
           <h4>Response</h4>
-          <textarea
-            ref={responseRef}
-            className="form-control mb-3"
-            value={response}
-            readOnly
-            style={{
-              resize: "none",
-              overflow: "hidden",
-              minHeight: "150px",
-            }}
-          />
+          <div className="bg-light p-3 rounded">
+            <MarkdownRenderer content={response} />
+          </div>
         </div>
-        <div className="d-flex justify-content-between">
+        <div className="d-flex justify-content-between mt-3">
           <button
             className="btn btn-outline-primary"
             onClick={handleSaveResponse}
