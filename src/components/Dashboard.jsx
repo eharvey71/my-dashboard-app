@@ -7,6 +7,7 @@ import BookmarkList from './BookmarkList';
 import AIAssistant from './AIAssistant';
 import CustomAPIModule from './CustomAPIModule';
 import DocumentListPreview from './DocumentListPreview';
+import { openGoogleDriveDocument } from '../services/googleDriveService';
 
 const Dashboard = ({ user }) => {
   const { projectId } = useParams();
@@ -22,6 +23,15 @@ const Dashboard = ({ user }) => {
   if (!projectId) {
     return <div>Error: No project selected</div>;
   }
+
+  const handleDocumentClick = (document) => {
+    if (document.source === 'Google Drive' && document.originalId) {
+      openGoogleDriveDocument(document.originalId);
+    } else {
+      // Handle native document opening (you might want to use React Router here)
+      window.location.href = `/project/${projectId}/documents/${document.id}`;
+    }
+  };
 
   return (
     <div className="container">
@@ -39,7 +49,12 @@ const Dashboard = ({ user }) => {
         {/* Right Column */}
         <div className="col-md-6">
           <div className="mb-4">
-            <DocumentListPreview user={user} projectId={projectId} limit={5} />
+            <DocumentListPreview 
+              user={user} 
+              projectId={projectId} 
+              limit={5} 
+              onDocumentClick={handleDocumentClick}
+            />
           </div>
           <div className="mb-4">
             <BookmarkList 

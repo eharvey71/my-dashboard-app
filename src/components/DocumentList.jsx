@@ -2,8 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDocuments, deleteDocument, addDocumentFromGoogleDrive } from '../services/firebaseConfig';
 import { indexContent, deleteVector } from '../services/pineconeService';
-import { Trash2, Edit2, PlusCircle, FileText } from 'lucide-react';
-import { signIn, signOut, isSignedIn } from '../services/googleDriveService';
+import { Trash2, Edit2, PlusCircle, FileText, ExternalLink } from 'lucide-react';
+import { signIn, signOut, isSignedIn, openGoogleDriveDocument } from '../services/googleDriveService';
 import styles from './DocumentList.module.css';
 import GoogleDrivePicker from './GoogleDrivePicker';
 import { AppContext } from '../App'; // We'll create this context in App.js
@@ -84,6 +84,15 @@ const DocumentList = ({ user }) => {
     }
   };
 
+  const handleOpenDocument = (doc) => {
+    if (doc.source === 'Google Drive' && doc.originalId) {
+      openGoogleDriveDocument(doc.originalId);
+    } else {
+      // For native documents, use the existing route
+      window.location.href = `/project/${projectId}/documents/${doc.id}`;
+    }
+  };
+
   if (loading) {
     return <div className={styles.loading}>Loading documents...</div>;
   }
@@ -126,12 +135,10 @@ const DocumentList = ({ user }) => {
               Source: {doc.source || 'Native'}
             </p>
             <div className={styles.documentActions}>
-              {doc.source !== 'Google Drive' && (
-                <Link to={`/project/${projectId}/documents/${doc.id}`} className={styles.editButton}>
-                  <Edit2 size={18} />
-                  Edit
-                </Link>
-              )}
+              <button onClick={() => handleOpenDocument(doc)} className={styles.openButton}>
+                {doc.source === 'Google Drive' ? <ExternalLink size={18} /> : <Edit2 size={18} />}
+                {doc.source === 'Google Drive' ? 'Open in Drive' : 'Edit'}
+              </button>
               <button onClick={() => handleDelete(doc.id)} className={styles.deleteButton}>
                 <Trash2 size={18} />
                 Delete

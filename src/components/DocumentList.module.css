@@ -141,6 +141,25 @@
   margin-top: 50px;
 }
 
+.openButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: background-color 0.3s;
+  color: white;
+  background-color: #2196F3;
+}
+
+.openButton:hover {
+  background-color: #1976D2;
+}
+
 @media (max-width: 768px) {
   .documentGrid {
     grid-template-columns: 1fr;

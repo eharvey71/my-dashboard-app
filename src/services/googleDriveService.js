@@ -192,3 +192,7 @@ export const getFileContent = async (fileId, mimeType) => {
     throw err;
   }
 };
+
+export const openGoogleDriveDocument = (fileId) => {
+  window.open(`https://drive.google.com/file/d/${fileId}/view`, '_blank');
+};

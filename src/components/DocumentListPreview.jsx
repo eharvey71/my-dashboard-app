@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getDocuments } from '../services/firebaseConfig';
 import styles from './DocumentListPreview.module.css';
+import { FileText, ExternalLink } from 'lucide-react';
 
-const DocumentListPreview = ({ user, projectId, limit = 5 }) => {
+const DocumentListPreview = ({ user, projectId, limit = 5, onDocumentClick }) => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,12 +53,22 @@ const DocumentListPreview = ({ user, projectId, limit = 5 }) => {
         <ul className={`list-group ${styles.documentList}`}>
           {documents.map((document) => (
             <li key={document.id} className={`list-group-item ${styles.documentItem}`}>
-              <Link to={`/project/${projectId}/documents/${document.id}`} className={styles.documentLink}>
-                <span className={styles.documentTitle}>{document.title || 'Untitled Document'}</span>
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  onDocumentClick(document);
+                }} 
+                className={styles.documentLink}
+              >
+                <span className={styles.documentTitle}>
+                  {document.source === 'Google Drive' ? <ExternalLink size={16} /> : <FileText size={16} />}
+                  {document.title || 'Untitled Document'}
+                </span>
                 <small className={styles.documentDate}>
                   Last updated: {formatDate(document.updatedAt)}
                 </small>
-              </Link>
+              </a>
             </li>
           ))}
         </ul>
