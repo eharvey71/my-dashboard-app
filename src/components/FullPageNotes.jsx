@@ -120,7 +120,7 @@ const FullPageNotes = ({ user }) => {
         setError('Note added, but not indexed in Pinecone. Retrying...');
   
         try {
-          await indexContent(user.uid, noteWithValidDate.content, 'note', noteWithValidDate.id);
+          await indexContent(user.uid, projectId, noteWithValidDate.content, 'note', noteWithValidDate.id);
           setNotes(prevNotes => prevNotes.map(note =>
             note.id === noteWithValidDate.id ? { ...note, indexedInPinecone: true } : note
           ));

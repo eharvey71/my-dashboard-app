@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { getDocuments, deleteDocument, addDocumentFromGoogleDrive } from '../services/firebaseConfig';
 import { indexContent, deleteVector } from '../services/pineconeService';
 import { Trash2, Edit2, PlusCircle, FileText, ExternalLink } from 'lucide-react';
-import { signIn, signOut, isSignedIn, openGoogleDriveDocument } from '../services/googleDriveService';
+import { signIn, signOut, isSignedIn, openGoogleDriveDocument, ensureValidToken } from '../services/googleDriveService';
 import styles from './DocumentList.module.css';
 import GoogleDrivePicker from './GoogleDrivePicker';
 import { AppContext } from '../App'; // We'll create this context in App.js
@@ -20,9 +20,14 @@ const DocumentList = ({ user }) => {
     checkGoogleDriveSignIn();
   }, [user, projectId]);
 
-  const checkGoogleDriveSignIn = () => {
-    const signedIn = isSignedIn();
-    setGoogleDriveSignedIn(signedIn);
+  const checkGoogleDriveSignIn = async () => {
+    try {
+      await ensureValidToken();
+      setGoogleDriveSignedIn(true);
+    } catch (error) {
+      console.error('Error checking Google Drive sign-in:', error);
+      setGoogleDriveSignedIn(false);
+    }
   };
 
   const fetchDocuments = async () => {
@@ -55,6 +60,7 @@ const DocumentList = ({ user }) => {
       setGoogleDriveSignedIn(true);
     } catch (error) {
       console.error('Error signing in to Google Drive:', error);
+      setGoogleDriveSignedIn(false);
     }
   };
 
@@ -69,18 +75,22 @@ const DocumentList = ({ user }) => {
 
   const handleAddFromGoogleDrive = async (file) => {
     try {
+      await ensureValidToken();
       const newDoc = await addDocumentFromGoogleDrive(user.uid, projectId, file);
       
       if (newDoc && newDoc.id && newDoc.updatedAt) {
         setDocuments(prevDocuments => [newDoc, ...prevDocuments]);
-        await indexContent(user.uid, file.content, 'document', newDoc.id, `Google Drive Document: ${file.name}`, 'Google Drive');
-        alert(`Document "${file.name}" has been added to your project and indexed for AI processing.`);
+        await indexContent(user.uid, projectId, file.content, 'document', newDoc.id, `Google Drive Document: ${file.name}`, 'Google Drive');
+        //alert(`Document "${file.name}" has been added to your project and indexed for AI processing.`);
       } else {
         throw new Error('Invalid document structure returned from addDocumentFromGoogleDrive');
       }
     } catch (error) {
       console.error('Error adding document from Google Drive:', error);
       alert('Failed to add document from Google Drive. Please try again.');
+      if (error.message === 'Google Drive session expired. Please sign in again.') {
+        setGoogleDriveSignedIn(false);
+      }
     }
   };
 

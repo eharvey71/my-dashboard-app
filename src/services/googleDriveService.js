@@ -27,6 +27,7 @@ export const initializeGoogleDriveApi = () => {
                 const storedToken = localStorage.getItem('googleDriveToken');
                 if (storedToken) {
                   accessToken = JSON.parse(storedToken);
+                  gapi.client.setToken({ access_token: accessToken });
                 }
                 resolve();
               })
@@ -45,6 +46,7 @@ export const initializeGoogleDriveApi = () => {
         // User logged out, clear the token
         localStorage.removeItem('googleDriveToken');
         accessToken = null;
+        gapi.client.setToken(null);
       }
     });
   });
@@ -122,7 +124,13 @@ export const getAccessToken = () => {
 
 export const ensureValidToken = async () => {
   if (!accessToken) {
-    throw new Error('Not signed in to Google Drive');
+    const storedToken = localStorage.getItem('googleDriveToken');
+    if (storedToken) {
+      accessToken = JSON.parse(storedToken);
+      gapi.client.setToken({ access_token: accessToken });
+    } else {
+      throw new Error('Not signed in to Google Drive');
+    }
   }
 
   try {
@@ -135,6 +143,9 @@ export const ensureValidToken = async () => {
         await signIn();
       } catch (refreshError) {
         // Unable to refresh, user needs to sign in again
+        localStorage.removeItem('googleDriveToken');
+        accessToken = null;
+        gapi.client.setToken(null);
         throw new Error('Google Drive session expired. Please sign in again.');
       }
     } else {

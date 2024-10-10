@@ -57,6 +57,7 @@ const initializeClient = async () => {
 
 export const indexContent = async (
   userId,
+  projectId,
   content,
   type,
   id,
@@ -78,6 +79,7 @@ export const indexContent = async (
         values: embedding,
         metadata: {
           userId,
+          projectId,
           type,
           content: contextualizedContent,
           id,
