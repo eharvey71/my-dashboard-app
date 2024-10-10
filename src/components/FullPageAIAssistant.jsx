@@ -95,15 +95,18 @@ const FullPageAIAssistant = ({ user }) => {
   const [savedResponses, setSavedResponses] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
   const responseContainerRef = useRef(null);
 
   const functions = getFunctions();
   const queryPinecone = httpsCallable(functions, 'queryPinecone');
   const analyzeContent = httpsCallable(functions, 'analyzeContent');
+  const generateSuggestions = httpsCallable(functions, 'generateSuggestions');
 
   useEffect(() => {
     if (user && projectId) {
       fetchSavedResponses();
+      fetchSuggestions();
     }
   }, [user, projectId]);
 
@@ -120,6 +123,16 @@ const FullPageAIAssistant = ({ user }) => {
     } catch (error) {
       console.error("Error fetching saved responses:", error);
       setError("Failed to fetch saved responses");
+    }
+  };
+
+  const fetchSuggestions = async () => {
+    try {
+      const result = await generateSuggestions({ userId: user.uid, projectId });
+      setSuggestions(result.data.suggestions);
+    } catch (error) {
+      console.error("Error fetching suggestions:", error);
+      setError("Failed to fetch suggestions");
     }
   };
 
@@ -182,6 +195,11 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
     }
   };
 
+  const handleSuggestionClick = (suggestion) => {
+    setInput(suggestion);
+    handleAnalyze();
+  };
+
   const handleSaveResponse = async () => {
     if (response.trim() === '') return;
     try {
@@ -234,6 +252,18 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
           placeholder="Ask about your tasks, notes, or bookmarked content for this project..."
           rows="3"
         />
+      </div>
+      <div className="mb-3">
+        <h5>Suggested Questions:</h5>
+        {suggestions.map((suggestion, index) => (
+          <button
+            key={index}
+            className="btn btn-outline-secondary me-2 mb-2"
+            onClick={() => handleSuggestionClick(suggestion)}
+          >
+            {suggestion}
+          </button>
+        ))}
       </div>
       <button
         className="btn btn-primary mb-3"

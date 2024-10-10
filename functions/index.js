@@ -102,7 +102,6 @@ async function createEmbedding(text) {
   return response.data[0].embedding;
 }
 
-// New Pinecone cleanup function
 exports.cleanupPineconeVectors = functions.pubsub.schedule('every 12 hours').onRun(async (context) => {
   const db = admin.firestore();
   const index = pc.Index(pineconeIndexName);
@@ -113,15 +112,19 @@ exports.cleanupPineconeVectors = functions.pubsub.schedule('every 12 hours').onR
     const tasksSnapshot = await db.collectionGroup('tasks').get();
 
     const validIds = new Set([
-      ...notesSnapshot.docs.map(doc => `${doc.ref.parent.parent.id}-${doc.ref.parent.id}-${doc.id}`),
-      ...tasksSnapshot.docs.map(doc => `${doc.ref.parent.parent.id}-${doc.ref.parent.id}-${doc.id}`)
+      ...notesSnapshot.docs.map(doc => `${doc.data().userId}-${doc.data().projectId}-${doc.id}`),
+      ...tasksSnapshot.docs.map(doc => `${doc.data().userId}-${doc.data().projectId}-${doc.id}`)
     ]);
+
+    console.log(`Found ${validIds.size} valid note/task IDs`);
 
     // Fetch all bookmarks from Firestore
     const bookmarksSnapshot = await db.collectionGroup('bookmarks').get();
     const validBookmarks = new Set(bookmarksSnapshot.docs.map(doc => 
-      `${doc.ref.parent.parent.id}-${doc.ref.parent.id}-${doc.id}-${doc.data().url}`
+      `${doc.data().userId}-${doc.data().projectId}-${doc.id}-${doc.data().url}`
     ));
+
+    console.log(`Found ${validBookmarks.size} valid bookmark IDs`);
 
     // Fetch all vector IDs from Pinecone
     const queryResponse = await index.query({
@@ -129,6 +132,8 @@ exports.cleanupPineconeVectors = functions.pubsub.schedule('every 12 hours').onR
       topK: 10000,  // Adjust based on your expected maximum number of vectors
       includeMetadata: true
     });
+
+    console.log(`Retrieved ${queryResponse.matches.length} vectors from Pinecone`);
 
     const idsToDelete = [];
 
@@ -148,10 +153,17 @@ exports.cleanupPineconeVectors = functions.pubsub.schedule('every 12 hours').onR
       }
     });
 
+    console.log(`Identified ${idsToDelete.length} vectors to delete`);
+
     if (idsToDelete.length > 0) {
-      // Delete vectors from Pinecone
-      await index.deleteMany(idsToDelete);
-      console.log(`Deleted ${idsToDelete.length} vectors from Pinecone`);
+      // Implement batch deletion
+      const batchSize = 1000;
+      for (let i = 0; i < idsToDelete.length; i += batchSize) {
+        const batch = idsToDelete.slice(i, i + batchSize);
+        await index.deleteMany(batch);
+        console.log(`Deleted batch of ${batch.length} vectors from Pinecone`);
+      }
+      console.log(`Successfully deleted all ${idsToDelete.length} vectors from Pinecone`);
     } else {
       console.log('No vectors to delete');
     }
@@ -321,5 +333,51 @@ exports.analyzeContent = functions.https.onCall(async (data, context) => {
   } catch (error) {
     console.error('Error analyzing content:', error);
     throw new functions.https.HttpsError('internal', 'Error analyzing content', error);
+  }
+});
+
+// New function to generate suggestions
+exports.generateSuggestions = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate suggestions.');
+  }
+
+  const { userId, projectId } = data;
+  
+  // Fetch project content (tasks, notes, bookmarks, documents)
+  const db = admin.firestore();
+  const [tasks, notes, bookmarks] = await Promise.all([
+    db.collection('tasks').where('userId', '==', userId).where('projectId', '==', projectId).get(),
+    db.collection('notes').where('userId', '==', userId).where('projectId', '==', projectId).get(),
+    db.collection('bookmarks').where('userId', '==', userId).where('projectId', '==', projectId).get(),
+  ]);
+
+  // Combine all content
+  const allContent = [
+    ...tasks.docs.map(doc => doc.data().content),
+    ...notes.docs.map(doc => doc.data().content),
+    ...bookmarks.docs.map(doc => doc.data().title),
+  ].join(' ');
+
+  console.log('Project content:', allContent);
+
+  try {
+    // Use OpenAI to generate suggestions based on the project content
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: 'You are an AI assistant that generates insightful questions based on project content. Generate 3 questions that would help the user analyze or explore their project further.' },
+        { role: 'user', content: `Based on the following project content, generate 3 insightful questions:\n\n${allContent}` },
+      ],
+      max_tokens: 150,
+      temperature: 0.7,
+    });
+
+    const suggestions = response.choices[0].message.content.trim().split('\n');
+
+    return { suggestions: suggestions.slice(0, 3) };
+  } catch (error) {
+    console.error('Error generating suggestions:', error);
+    throw new functions.https.HttpsError('internal', 'Error generating suggestions', error);
   }
 });

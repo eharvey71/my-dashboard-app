@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const LINKPREVIEW_API_KEY = 'aedc1f8b83d606e8fe30c8c9a8669598';
+const LOCAL_PLACEHOLDER_IMAGE = '/images/cognify-logo.png';
 
 export const fetchLinkMetadata = async (url) => {
   try {
@@ -13,16 +14,17 @@ export const fetchLinkMetadata = async (url) => {
         },
       }
     );
+
     return {
       title: response.data.title || url,
-      image: response.data.image || '/api/placeholder/400/300',
+      image: response.data.image || LOCAL_PLACEHOLDER_IMAGE,
       description: response.data.description || '',
     };
   } catch (error) {
     console.error('Error fetching link metadata:', error);
     return {
       title: url,
-      image: '/api/placeholder/400/300',
+      image: LOCAL_PLACEHOLDER_IMAGE,
       description: '',
     };
   }
