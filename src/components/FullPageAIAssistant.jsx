@@ -3,29 +3,20 @@ import { useParams } from 'react-router-dom';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { addAIResponse, getAIResponses, deleteAIResponse } from '../services/firebaseConfig';
 import styles from './FullPageAIAssistant.module.css';
-import { Trash2, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Check, X, ChevronDown, ChevronUp, Loader } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
 
 const AIResponse = ({ response, onDeleteResponse, onToggleInclude }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const handleDeleteClick = () => {
-    setIsConfirmingDelete(true);
-  };
-
+  const handleDeleteClick = () => setIsConfirmingDelete(true);
+  const handleCancelDelete = () => setIsConfirmingDelete(false);
   const handleConfirmDelete = async () => {
     await onDeleteResponse(response.id);
     setIsConfirmingDelete(false);
   };
-
-  const handleCancelDelete = () => {
-    setIsConfirmingDelete(false);
-  };
-
-  const toggleExpand = () => {
-    setIsExpanded(!isExpanded);
-  };
+  const toggleExpand = () => setIsExpanded(!isExpanded);
 
   const truncatedContent = response.content.slice(0, 150) + (response.content.length > 150 ? '...' : '');
 
@@ -90,31 +81,30 @@ const AIResponse = ({ response, onDeleteResponse, onToggleInclude }) => {
 
 const FullPageAIAssistant = ({ user }) => {
   const { projectId } = useParams();
+  const responseContainerRef = useRef(null);
+  
+  // State management
   const [input, setInput] = useState("");
   const [response, setResponse] = useState("");
   const [savedResponses, setSavedResponses] = useState([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [error, setError] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
-  const responseContainerRef = useRef(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(true);
+  const [error, setError] = useState(null);
 
+  // Firebase functions setup
   const functions = getFunctions();
   const queryPinecone = httpsCallable(functions, 'queryPinecone');
   const analyzeContent = httpsCallable(functions, 'analyzeContent');
   const generateSuggestions = httpsCallable(functions, 'generateSuggestions');
 
+  // Initial data fetching
   useEffect(() => {
     if (user && projectId) {
       fetchSavedResponses();
       fetchSuggestions();
     }
   }, [user, projectId]);
-
-  //useEffect(() => {
-  //  if (responseContainerRef.current) {
-  //    responseContainerRef.current.scrollTop = responseContainerRef.current.scrollHeight;
-  //  }
-  //}, [response]);
 
   const fetchSavedResponses = async () => {
     try {
@@ -127,23 +117,30 @@ const FullPageAIAssistant = ({ user }) => {
   };
 
   const fetchSuggestions = async () => {
+    setIsFetchingSuggestions(true);
     try {
       const result = await generateSuggestions({ userId: user.uid, projectId });
-      setSuggestions(result.data.suggestions);
+      const cleanedSuggestions = result.data.suggestions
+        .map(suggestion => suggestion.replace(/^\d+\.\s*/, '').trim())
+        .filter(suggestion => suggestion !== '');
+      setSuggestions(cleanedSuggestions);
     } catch (error) {
       console.error("Error fetching suggestions:", error);
       setError("Failed to fetch suggestions");
+    } finally {
+      setIsFetchingSuggestions(false);
     }
   };
 
   const handleAnalyze = async () => {
     setIsTyping(true);
     setError(null);
+    
     try {
       const userContentResult = await queryPinecone({ 
         query: input, 
         userId: user.uid, 
-        projectId: projectId 
+        projectId 
       });
       const userContent = userContentResult.data.relevantContent;
 
@@ -187,21 +184,22 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
       }
     } catch (error) {
       console.error("Error getting AI response:", error);
-      setError(
-        "Sorry, there was an error processing your request. Please try again."
-      );
+      setError("Sorry, there was an error processing your request. Please try again.");
     } finally {
       setIsTyping(false);
     }
   };
 
   const handleSuggestionClick = (suggestion) => {
-    setInput(suggestion);
-    handleAnalyze();
+    if (suggestion) {
+      setInput(suggestion);
+      handleAnalyze();
+    }
   };
 
   const handleSaveResponse = async () => {
     if (response.trim() === '') return;
+    
     try {
       const savedResponse = await addAIResponse(user.uid, projectId, response, input);
       setSavedResponses(prevResponses => [savedResponse, ...prevResponses]);
@@ -214,9 +212,7 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
     }
   };
 
-  const handleClearResponse = () => {
-    setResponse("");
-  };
+  const handleClearResponse = () => setResponse("");
 
   const handleDeleteResponse = async (id) => {
     try {
@@ -230,15 +226,40 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
 
   const handleToggleInclude = async (id) => {
     try {
-      const updatedResponses = savedResponses.map(response =>
-        response.id === id ? { ...response, included: !response.included } : response
+      setSavedResponses(prevResponses => 
+        prevResponses.map(response =>
+          response.id === id ? { ...response, included: !response.included } : response
+        )
       );
-      setSavedResponses(updatedResponses);
-      // You might want to update this in your database as well
     } catch (error) {
       console.error("Error toggling include status:", error);
       setError("Failed to update include status");
     }
+  };
+
+  const renderSuggestions = () => {
+    if (isFetchingSuggestions) {
+      return (
+        <div className="d-flex align-items-center">
+          <Loader className="me-2" size={18} />
+          <span>Loading suggestions...</span>
+        </div>
+      );
+    }
+
+    if (!suggestions.length) {
+      return <p>No suggestions available.</p>;
+    }
+
+    return suggestions.map((suggestion, index) => (
+      <button
+        key={index}
+        className="btn btn-outline-secondary me-2 mb-2"
+        onClick={() => handleSuggestionClick(suggestion)}
+      >
+        {suggestion}
+      </button>
+    ));
   };
 
   return (
@@ -254,24 +275,18 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
         />
       </div>
       <div className="mb-3">
-        <h5>Suggested Questions:</h5>
-        {suggestions.map((suggestion, index) => (
-          <button
-            key={index}
-            className="btn btn-outline-secondary me-2 mb-2"
-            onClick={() => handleSuggestionClick(suggestion)}
-          >
-            {suggestion}
-          </button>
-        ))}
+        <button
+          className="btn btn-primary mb-3"
+          onClick={handleAnalyze}
+          disabled={isTyping}
+        >
+          {isTyping ? "Analyzing..." : "Ask AI Assistant"}
+        </button>
       </div>
-      <button
-        className="btn btn-primary mb-3"
-        onClick={handleAnalyze}
-        disabled={isTyping}
-      >
-        {isTyping ? "Analyzing..." : "Ask AI Assistant"}
-      </button>
+      <div className="mb-3">
+        <h5>Suggested Questions:</h5>
+        {renderSuggestions()}
+      </div>
       {error && <p className={styles.textDanger}>{error}</p>}
       <div ref={responseContainerRef} className={styles.responseContainer}>
         <h4>Response</h4>
