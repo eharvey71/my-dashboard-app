@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { logout } from '../services/firebaseAuth';
 import { useProjectContext } from '../contexts/ProjectContext';
+import LogoutButton from './LogoutButton';
 
 const NavBar = ({ user, displayName }) => {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ const NavBar = ({ user, displayName }) => {
                 </>
               )}
               <li className="nav-item">
-                <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
+                <LogoutButton />
               </li>
             </>
           ) : (
