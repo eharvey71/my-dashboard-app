@@ -133,13 +133,30 @@ const FullPageAIAssistant = ({ user }) => {
     }
   };
 
-  const handleAnalyze = async () => {
+  const handleSuggestionClick = (suggestion) => {
+    if (suggestion) {
+      setInput(suggestion);
+      setTimeout(() => {
+        handleAnalyze(suggestion);
+      }, 0);
+    }
+  };
+
+  const handleAnalyze = async (forcedInput = null) => {
     setIsTyping(true);
     setError(null);
     
     try {
+      const queryText = forcedInput || input;
+
+      if (!queryText.trim()) {
+        setError("Please enter a question or select a suggestion");
+        setIsTyping(false);
+        return;
+      }
+
       const userContentResult = await queryPinecone({ 
-        query: input, 
+        query: queryText, 
         userId: user.uid, 
         projectId 
       });
@@ -188,13 +205,6 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
       setError("Sorry, there was an error processing your request. Please try again.");
     } finally {
       setIsTyping(false);
-    }
-  };
-
-  const handleSuggestionClick = (suggestion) => {
-    if (suggestion) {
-      setInput(suggestion);
-      handleAnalyze();
     }
   };
 
