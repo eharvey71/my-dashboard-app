@@ -5,6 +5,7 @@ import { addAIResponse, getAIResponses, deleteAIResponse } from '../services/fir
 import styles from './FullPageAIAssistant.module.css';
 import { Trash2, Check, X, ChevronDown, ChevronUp, Loader } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
+import TypingIndicator from './TypingIndicator';
 
 const AIResponse = ({ response, onDeleteResponse, onToggleInclude }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -289,7 +290,19 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
       </div>
       {error && <p className={styles.textDanger}>{error}</p>}
       <div ref={responseContainerRef} className={styles.responseContainer}>
-        <h4>Response</h4>
+        <div className="d-flex align-items-center mb-2">
+          <h4 className="mb-0 me-2">Response</h4>
+          {isTyping && (
+            <div className={styles.typingIndicator}>
+              <div className={styles.dots}>
+                <div className={styles.dot}></div>
+                <div className={styles.dot}></div>
+                <div className={styles.dot}></div>
+              </div>
+              <span className={styles.thinkingText}>AI is thinking...</span>
+            </div>
+          )}
+        </div>
         <MarkdownRenderer content={response} />
       </div>
       <div className="d-flex mb-4">
