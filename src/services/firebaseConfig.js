@@ -20,7 +20,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-// AI Response functions
 const addAIResponse = async (userId, projectId, content, question) => {
   const aiResponsesCollection = collection(db, "aiResponses");
   try {
@@ -33,7 +32,13 @@ const addAIResponse = async (userId, projectId, content, question) => {
       included: false,
     });
     console.log(`AI Response added with ID: ${docRef.id}`);
-    return { id: docRef.id, content, createdAt: new Date(), included: false };
+    return { 
+      id: docRef.id, 
+      content, 
+      question,
+      createdAt: new Date(), 
+      included: false 
+    };
   } catch (error) {
     console.error("Error adding AI Response:", error);
     throw error;
