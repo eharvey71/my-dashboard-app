@@ -17,15 +17,23 @@ const DocumentList = ({ user }) => {
 
   useEffect(() => {
     fetchDocuments();
-    checkGoogleDriveSignIn();
+    if (localStorage.getItem('googleDriveToken')) {
+      checkGoogleDriveSignIn();
+    } else {
+      setGoogleDriveSignedIn(false);
+    } 
   }, [user, projectId]);
 
   const checkGoogleDriveSignIn = async () => {
     try {
+      if (!isSignedIn()) {
+        setGoogleDriveSignedIn(false);
+        return;
+      }
       await ensureValidToken();
       setGoogleDriveSignedIn(true);
     } catch (error) {
-      console.error('Error checking Google Drive sign-in:', error);
+      console.error('Not connected to Google Drive:', error);
       setGoogleDriveSignedIn(false);
     }
   };

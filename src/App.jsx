@@ -30,12 +30,15 @@ const initialState = {
   loading: true,
   initialized: false,
   googleDriveSignedIn: false,
-  googleDriveInitialized: false,
-  authInProgress: false  // New state to track auth state changes
+  googleDriveInitialized: false
 };
 
 const App = () => {
   const [state, setState] = useState(initialState);
+
+  const setGoogleDriveSignedIn = useCallback((signedIn) => {
+    setState(prevState => ({ ...prevState, googleDriveSignedIn: signedIn }));
+  }, []);
 
   const initializeUserData = useCallback(async (user) => {
     if (user) {
@@ -62,16 +65,14 @@ const App = () => {
           hasProjects,
           lastAccessedProject,
           loading: false,
-          initialized: true,
-          authInProgress: false
+          initialized: true
         }));
       } catch (error) {
         console.error('Error initializing user data:', error);
         setState(prevState => ({
           ...prevState,
           loading: false,
-          initialized: true,
-          authInProgress: false
+          initialized: true
         }));
       }
     } else {
@@ -79,8 +80,7 @@ const App = () => {
         ...initialState,
         loading: false,
         initialized: true,
-        googleDriveInitialized: prevState.googleDriveInitialized,
-        authInProgress: false
+        googleDriveInitialized: prevState.googleDriveInitialized
       }));
     }
   }, []);
@@ -88,18 +88,11 @@ const App = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Auth state changed. User:', user);
-      setState(prevState => ({ 
-        ...prevState, 
-        user, 
-        loading: true,
-        authInProgress: true 
-      }));
+      setState(prevState => ({ ...prevState, loading: true }));
       await initializeUserData(user);
     });
 
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [initializeUserData]);
 
   useEffect(() => {
@@ -116,15 +109,6 @@ const App = () => {
     initGoogleDrive();
   }, []);
 
-  useEffect(() => {
-    console.log('State updated:', state);
-  }, [state]);
-
-  if (state.loading || !state.googleDriveInitialized) {
-    console.log('App is loading');
-    return <div>Loading...</div>;
-  }
-
   const getRedirectPath = () => {
     if (!state.user) return '/login';
     if (!state.hasProjects) return '/projects';
@@ -132,12 +116,7 @@ const App = () => {
     return '/projects';
   };
 
-  const setGoogleDriveSignedIn = useCallback((signedIn) => {
-    setState(prevState => ({ ...prevState, googleDriveSignedIn: signedIn }));
-  }, []);
-
-  // Don't render routes until authentication state is settled
-  if (state.authInProgress) {
+  if (state.loading || !state.googleDriveInitialized) {
     return <div>Loading...</div>;
   }
 
@@ -163,57 +142,38 @@ const App = () => {
                   )
                 } 
               />
-              <Route path="/projects" element={
-                state.user ? (
-                  <ProjectList 
-                    user={state.user} 
-                    onProjectsUpdate={(projects) => 
-                      setState(prev => ({ ...prev, hasProjects: projects.length > 0 }))
-                    } 
-                  />
-                ) : (
-                  <Navigate to="/login" replace />
-                )
-              } />
+              <Route 
+                path="/projects" 
+                element={
+                  state.user ? (
+                    <ProjectList 
+                      user={state.user} 
+                      onProjectsUpdate={(projects) => 
+                        setState(prev => ({ ...prev, hasProjects: projects.length > 0 }))
+                      } 
+                    />
+                  ) : (
+                    <Navigate to="/login" replace />
+                  )
+                } 
+              />
               <Route path="/signup" element={state.user ? <Navigate to="/" replace /> : <Signup />} />
               <Route path="/login" element={state.user ? <Navigate to="/" replace /> : <Login />} />
               <Route path="/email-verification" element={<EmailVerification />} />
-              <Route 
-                path="/project/:projectId" 
-                element={state.user ? <Dashboard user={state.user} /> : <Navigate to="/login" replace />} 
-              />
-              <Route 
-                path="/project/:projectId/notes" 
-                element={state.user ? <FullPageNotes user={state.user} /> : <Navigate to="/login" replace />} 
-              />
-              <Route 
-                path="/project/:projectId/tasks" 
-                element={state.user ? <FullPageTasks user={state.user} /> : <Navigate to="/login" replace />} 
-              />
-              <Route 
-                path="/project/:projectId/bookmarks" 
-                element={state.user ? <FullPageBookmarks user={state.user} /> : <Navigate to="/login" replace />} 
-              />
-              <Route 
-                path="/project/:projectId/documents" 
-                element={state.user ? <DocumentList user={state.user} /> : <Navigate to="/login" replace />} 
-              />
-              <Route 
-                path="/project/:projectId/ai-assistant" 
-                element={state.user ? <FullPageAIAssistant user={state.user} /> : <Navigate to="/login" replace />} 
-              />
-              <Route 
-                path="/project/:projectId/documents/new" 
-                element={state.user ? <DocumentEditor user={state.user} /> : <Navigate to="/login" replace />} 
-              />
-              <Route 
-                path="/project/:projectId/documents/:id" 
-                element={state.user ? <DocumentEditor user={state.user} /> : <Navigate to="/login" replace />} 
-              />
-              <Route 
-                path="/project/:projectId/focus" 
-                element={state.user ? <FocusTimer user={state.user} /> : <Navigate to="/login" replace />} 
-              />
+              {/* Protected Routes */}
+              {state.user ? (
+                <>
+                  <Route path="/project/:projectId" element={<Dashboard user={state.user} />} />
+                  <Route path="/project/:projectId/notes" element={<FullPageNotes user={state.user} />} />
+                  <Route path="/project/:projectId/tasks" element={<FullPageTasks user={state.user} />} />
+                  <Route path="/project/:projectId/bookmarks" element={<FullPageBookmarks user={state.user} />} />
+                  <Route path="/project/:projectId/documents" element={<DocumentList user={state.user} />} />
+                  <Route path="/project/:projectId/ai-assistant" element={<FullPageAIAssistant user={state.user} />} />
+                  <Route path="/project/:projectId/documents/new" element={<DocumentEditor user={state.user} />} />
+                  <Route path="/project/:projectId/documents/:id" element={<DocumentEditor user={state.user} />} />
+                  <Route path="/project/:projectId/focus" element={<FocusTimer user={state.user} />} />
+                </>
+              ) : null}
             </Routes>
           </div>
         </ProjectProvider>

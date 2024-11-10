@@ -22,7 +22,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const auth = getAuth(app);
 export const db = getFirestore(app);
 
 export const signup = async (email, password, displayName) => {
@@ -81,8 +81,8 @@ export const logout = async () => {
     await signOut(auth);
     return { success: true };
   } catch (error) {
-    console.error("Error signing out:", error);
-    return { success: false, error: error.message };
+    console.error('Logout error:', error);
+    throw error;
   }
 };
 
@@ -115,4 +115,6 @@ export const resendVerificationEmail = async () => {
   }
 };
 
-export { onAuthStateChanged };
+export { auth };
+
+export { onAuthStateChanged } from 'firebase/auth';
