@@ -336,7 +336,6 @@ exports.analyzeContent = functions.https.onCall(async (data, context) => {
   }
 });
 
-// New function to generate suggestions
 exports.generateSuggestions = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate suggestions.');
@@ -346,10 +345,11 @@ exports.generateSuggestions = functions.https.onCall(async (data, context) => {
   
   // Fetch project content (tasks, notes, bookmarks, documents)
   const db = admin.firestore();
-  const [tasks, notes, bookmarks] = await Promise.all([
+  const [tasks, notes, bookmarks, documents] = await Promise.all([
     db.collection('tasks').where('userId', '==', userId).where('projectId', '==', projectId).get(),
     db.collection('notes').where('userId', '==', userId).where('projectId', '==', projectId).get(),
     db.collection('bookmarks').where('userId', '==', userId).where('projectId', '==', projectId).get(),
+    db.collection('documents').where('userId', '==', userId).where('projectId', '==', projectId).get(),
   ]);
 
   // Combine all content
@@ -357,7 +357,11 @@ exports.generateSuggestions = functions.https.onCall(async (data, context) => {
     ...tasks.docs.map(doc => doc.data().content),
     ...notes.docs.map(doc => doc.data().content),
     ...bookmarks.docs.map(doc => doc.data().title),
-  ].join(' ');
+    ...documents.docs.map(doc => {
+      const data = doc.data();
+      return `Document (${data.title}): ${data.content}`;
+    }),
+  ].join('\n\n');
 
   console.log('Project content:', allContent);
 
@@ -366,10 +370,16 @@ exports.generateSuggestions = functions.https.onCall(async (data, context) => {
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [
-        { role: 'system', content: 'You are an AI assistant that generates insightful questions based on project content. Generate 3 questions that would help the user analyze or explore their project further.' },
-        { role: 'user', content: `Based on the following project content, generate 3 insightful questions:\n\n${allContent}` },
+        { 
+          role: 'system', 
+          content: 'You are an AI assistant that generates insightful questions based on project content. Generate 3 questions that would help the user analyze or explore their project further. Consider relationships between documents, tasks, notes, and bookmarks.'
+        },
+        { 
+          role: 'user', 
+          content: `Based on the following project content, generate 3 insightful questions. Pay special attention to any documents and how they relate to other project items:\n\n${allContent}` 
+        },
       ],
-      max_tokens: 150,
+      max_tokens: 200, // Increased to accommodate more complex responses
       temperature: 0.7,
     });
 

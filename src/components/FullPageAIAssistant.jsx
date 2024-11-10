@@ -150,7 +150,7 @@ const FullPageAIAssistant = ({ user }) => {
         .join('\n\n');
 
       const prompt = `
-You are an AI assistant with access to the user's tasks, notes, and bookmarked content for a specific project. 
+You are an AI assistant with access to the user's tasks, notes, documents, and bookmarked content for a specific project. 
 Below is the relevant information from the user's data for this project:
 
 ${userContent || "No specific user data found for this query in the current project."}
