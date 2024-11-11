@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, isSignInWithEmailLink, completeSignInWithEmailLink } from '../services/firebaseAuth';
-import { db } from '../services/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
 import styles from './AuthForms.module.css';
 
 const EmailLinkHandler = () => {
@@ -30,23 +28,14 @@ const EmailLinkHandler = () => {
       try {
         const result = await completeSignInWithEmailLink(emailForSignIn, window.location.href);
         if (result.success) {
-          try {
-            // Get user data from Firestore
-            const userDoc = await getDoc(doc(db, 'users', result.user.uid));
-            const userData = userDoc.exists() ? userDoc.data() : {};
-            
-            // Check if user has a display name set (works for both old and new user documents)
-            if (!userDoc.exists() || (!userData.displayName && !userData.displayNameSet)) {
-                // New user or no display name set
-                navigate('/setup-profile');
-            } else {
-                // Existing user with display name
-                navigate('/');
-            }
-            } catch (error) {
-            console.error("Error checking user data:", error);
-            setError("Error checking user data. Please try again.");
-            setProcessing(false);
+          // For existing users with displayName, go to dashboard
+          if (result.userData && result.userData.displayName) {
+            console.log('Existing user with display name, redirecting to dashboard');
+            navigate('/');
+          } else {
+            // For new users or users without displayName, go to profile setup
+            console.log('User needs display name setup');
+            navigate('/setup-profile');
           }
         } else {
           setError(result.error);
@@ -68,22 +57,14 @@ const EmailLinkHandler = () => {
     try {
       const result = await completeSignInWithEmailLink(email, window.location.href);
       if (result.success) {
-        try {
-          // Get user data from Firestore
-          const userDoc = await getDoc(doc(db, 'users', result.user.uid));
-          const userData = userDoc.exists() ? userDoc.data() : {};
-          
-          if (!userDoc.exists() || !userData.displayName) {
-            // New user or no display name set
-            navigate('/setup-profile');
-          } else {
-            // Existing user with display name
-            navigate('/');
-          }
-        } catch (error) {
-          console.error("Error checking user data:", error);
-          setError("Error checking user data. Please try again.");
-          setProcessing(false);
+        // For existing users with displayName, go to dashboard
+        if (!result.isNewUser && result.userData && result.userData.displayName) {
+          console.log('Existing user with display name, redirecting to dashboard');
+          navigate('/');
+        } else {
+          // For new users or users without displayName, go to profile setup
+          console.log('User needs display name setup');
+          navigate('/setup-profile');
         }
       } else {
         setError(result.error);

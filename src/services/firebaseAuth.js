@@ -32,7 +32,6 @@ const actionCodeSettings = {
 export const sendSignInLink = async (email) => {
   try {
     await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    // Save email for confirmation
     window.localStorage.setItem('emailForSignIn', email);
     return { 
       success: true, 
@@ -52,24 +51,20 @@ export const completeSignInWithEmailLink = async (email, link) => {
     console.log('Completing sign in for email:', email);
     const result = await signInWithEmailLink(auth, email, link);
     const user = result.user;
-
-    console.log('Sign in completed, checking if new user:', result.additionalUserInfo?.isNewUser);
     
-    // Create user document for new users
-    if (result.additionalUserInfo?.isNewUser) {
-      console.log('Creating new user document');
-      try {
-        await setDoc(doc(db, "users", user.uid), {
-          email: user.email,
-          emailVerified: true,
-          displayName: '',
-          displayNameSet: false,
-          lastAccessedProject: null
-        });
-      } catch (error) {
-        console.error('Error creating user document:', error);
-        throw error;
-      }
+    // Always check for and create user document if it doesn't exist
+    const userRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      console.log('New user detected, creating user document');
+      await setDoc(userRef, {
+        email: user.email,
+        emailVerified: true,
+        displayName: '',
+        displayNameSet: false,
+        lastAccessedProject: null
+      });
     }
     
     // Clear email from storage
@@ -77,8 +72,9 @@ export const completeSignInWithEmailLink = async (email, link) => {
     
     return { 
       success: true, 
-      isNewUser: result.additionalUserInfo?.isNewUser,
-      user 
+      isNewUser: !userDoc.exists(),
+      user,
+      userData: userDoc.exists() ? userDoc.data(): null
     };
   } catch (error) {
     console.error("Error completing sign-in:", error);

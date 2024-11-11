@@ -1,24 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth, updateUserDisplayName } from '../services/firebaseAuth';
+import { auth, updateUserDisplayName, onAuthStateChanged } from '../services/firebaseAuth';
 import styles from './AuthForms.module.css';
 
 const SetupProfile = () => {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Redirect if no user is logged in
-    if (!auth.currentUser) {
-      console.log('No user found, redirecting to login');
-      navigate('/login');
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        console.log('No user found, redirecting to login');
+        navigate('/login');
+      } else {
+        console.log('Auth state ready, user found:', user.uid);
+        setAuthReady(true);
+      }
+    });
+
+    return () => unsubscribe();
   }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!authReady) {
+      console.log('Waiting for auth state to settle...');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -29,25 +41,38 @@ const SetupProfile = () => {
     }
 
     try {
-      console.log('Updating display name for user:', auth.currentUser?.uid);
-      const result = await updateUserDisplayName(auth.currentUser.uid, displayName.trim());
-      if (result.success) {
-        console.log('Display name updated successfully');
-        navigate('/projects');
-      } else {
-        console.error('Failed to update display name:', result.error);
-        setError(result.error || 'Failed to update display name');
-      }
+        console.log('Auth ready, updating display name for user:', auth.currentUser?.uid);
+        const result = await updateUserDisplayName(auth.currentUser.uid, displayName.trim());
+        if (result.success) {
+          console.log('Display name updated successfully, attempting navigation to /projects');
+          // Force a small delay to ensure Firestore update is complete
+          await new Promise(resolve => setTimeout(resolve, 100));
+          console.log('Executing navigation...');
+          navigate('/projects');
+          console.log('Navigation executed');
+        } else {
+          console.error('Failed to update display name:', result.error);
+          setError(result.error || 'Failed to update display name');
+        }
     } catch (error) {
-      console.error('Error in display name update:', error);
-      setError(error.message);
+        console.error('Error in display name update:', error);
+        setError(error.message);
     }
     
     setLoading(false);
   };
 
-  if (!auth.currentUser) {
-    return null;
+  if (!authReady || !auth.currentUser) {
+    return (
+      <div className={`${styles.authContainer} container mt-5`}>
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3">Preparing your profile setup...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -73,7 +98,7 @@ const SetupProfile = () => {
                 <button 
                   type="submit" 
                   className="btn btn-primary w-100" 
-                  disabled={loading}
+                  disabled={loading || !authReady}
                 >
                   {loading ? 'Saving...' : 'Complete Setup'}
                 </button>

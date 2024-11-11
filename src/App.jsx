@@ -153,11 +153,21 @@ const App = () => {
               <Route path="/login" element={state.user ? <Navigate to="/" replace /> : <AuthEntry />} />
               <Route path="/auth/email-link" element={<EmailLinkHandler />} />
               <Route path="/setup-profile" element={<SetupProfile />} />
-              
+              <Route path="/projects" element={
+                state.user ? (
+                  <ProjectList 
+                    user={state.user} 
+                    onProjectsUpdate={(projects) => setState(prev => ({ ...prev, hasProjects: projects.length > 0 }))} 
+                  />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              } />
+
+
               {/* Protected Routes */}
               {state.user && state.displayNameSet ? (
                 <>
-                  <Route path="/projects" element={<ProjectList user={state.user} onProjectsUpdate={(projects) => setState(prev => ({ ...prev, hasProjects: projects.length > 0 }))} />} />
                   <Route path="/project/:projectId" element={<Dashboard user={state.user} />} />
                   <Route path="/project/:projectId/notes" element={<FullPageNotes user={state.user} />} />
                   <Route path="/project/:projectId/tasks" element={<FullPageTasks user={state.user} />} />
