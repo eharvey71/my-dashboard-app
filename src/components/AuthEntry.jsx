@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { sendSignInLink } from '../services/firebaseAuth';
 import styles from './AuthForms.module.css';
 
-const Signup = () => {
+const AuthEntry = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -34,12 +33,12 @@ const Signup = () => {
         <div className="col-md-6">
           <div className="card">
             <div className="card-body">
-              <h2 className="card-title text-center mb-4">Sign Up</h2>
+              <h2 className="card-title text-center mb-4">Sign In / Sign Up</h2>
               {success ? (
                 <div className="text-center">
                   <div className="alert alert-success">
                     <p>A sign-in link has been sent to {email}</p>
-                    <p>Please check your email to complete the signup process.</p>
+                    <p>Please check your email to continue.</p>
                   </div>
                   <button 
                     className="btn btn-primary"
@@ -49,7 +48,7 @@ const Signup = () => {
                       setSuccess(false);
                     }}
                   >
-                    Sign up with a different email
+                    Use a different email
                   </button>
                 </div>
               ) : (
@@ -73,8 +72,10 @@ const Signup = () => {
                   >
                     {loading ? 'Sending link...' : 'Send Sign-in Link'}
                   </button>
-                  <p className="mt-3 text-center">
-                    Already have an account? <Link to="/login">Login</Link>
+                  <p className="mt-3 text-center text-muted">
+                    Enter your email to receive a sign-in link.
+                    <br />
+                    Works for both new and existing users.
                   </p>
                 </form>
               )}
@@ -86,4 +87,4 @@ const Signup = () => {
   );
 };
 
-export default Signup;
+export default AuthEntry;

@@ -1,14 +1,13 @@
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  sendEmailVerification as firebaseSendEmailVerification,
-  applyActionCode,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+  signOut,
   onAuthStateChanged
 } from "firebase/auth";
-import { getFirestore, doc, setDoc, updateDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
@@ -25,54 +24,109 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 export const db = getFirestore(app);
 
-export const signup = async (email, password, displayName) => {
+const actionCodeSettings = {
+  url: `${window.location.origin}/auth/email-link`,
+  handleCodeInApp: true
+};
+
+export const sendSignInLink = async (email) => {
   try {
-    // Create user with email and password
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    // Save user information in Firestore
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      displayName: displayName,
-      emailVerified: false,
-    });
-
-    // Send email verification and log the result or any errors
-    await firebaseSendEmailVerification(user)
-      .then(() => {
-        console.log("Verification email sent to:", user.email);
-      })
-      .catch((error) => {
-        console.error("Error sending email verification:", error);
-        throw new Error("Failed to send verification email.");
-      });
-
-    // Sign out the user after email is sent
-    await auth.signOut();
-
-    return { success: true, message: "Signup successful. Please check your email for verification." };
+    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+    // Save email for confirmation
+    window.localStorage.setItem('emailForSignIn', email);
+    return { 
+      success: true, 
+      message: "Sign-in link sent to your email. Please check your inbox." 
+    };
   } catch (error) {
-    console.error("Error in signup process:", error);
-    return { success: false, error: error.message };
+    console.error("Error sending sign-in link:", error);
+    return { 
+      success: false, 
+      error: error.message 
+    };
   }
 };
 
-
-export const login = async (email, password) => {
+export const completeSignInWithEmailLink = async (email, link) => {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+    console.log('Completing sign in for email:', email);
+    const result = await signInWithEmailLink(auth, email, link);
+    const user = result.user;
 
-    // if (!user.emailVerified) {
-    //   await signOut(auth);
-    //   return { success: false, error: "Please verify your email before logging in." };
-    // }
-
-    return { success: true, user };
+    console.log('Sign in completed, checking if new user:', result.additionalUserInfo?.isNewUser);
+    
+    // Create user document for new users
+    if (result.additionalUserInfo?.isNewUser) {
+      console.log('Creating new user document');
+      try {
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          emailVerified: true,
+          displayName: '',
+          displayNameSet: false,
+          lastAccessedProject: null
+        });
+      } catch (error) {
+        console.error('Error creating user document:', error);
+        throw error;
+      }
+    }
+    
+    // Clear email from storage
+    window.localStorage.removeItem('emailForSignIn');
+    
+    return { 
+      success: true, 
+      isNewUser: result.additionalUserInfo?.isNewUser,
+      user 
+    };
   } catch (error) {
-    console.error("Error in login process:", error);
-    return { success: false, error: error.message };
+    console.error("Error completing sign-in:", error);
+    return { 
+      success: false, 
+      error: error.message 
+    };
+  }
+};
+
+export const updateUserDisplayName = async (uid, displayName) => {
+  try {
+    console.log('Attempting to update display name for uid:', uid);
+    const userRef = doc(db, "users", uid);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      console.error('User document not found');
+      // Create the user document if it doesn't exist
+      console.log('Creating new user document during display name update');
+      await setDoc(userRef, {
+        email: auth.currentUser.email,
+        emailVerified: true,
+        displayName: displayName,
+        displayNameSet: true,
+        lastAccessedProject: null
+      });
+      return { success: true };
+    }
+    
+    const userData = userDoc.data();
+    console.log('Current user data:', userData);
+    
+    const updates = {
+      displayName: displayName,
+      displayNameSet: true,
+    };
+    
+    console.log('Applying updates:', updates);
+    await updateDoc(userRef, updates);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating display name:", error);
+    return { 
+      success: false, 
+      error: error.message 
+    };
   }
 };
 
@@ -86,35 +140,4 @@ export const logout = async () => {
   }
 };
 
-export const verifyEmail = async (actionCode) => {
-  try {
-    await applyActionCode(auth, actionCode);
-    const user = auth.currentUser;
-    if (user) {
-      await updateDoc(doc(db, "users", user.uid), { emailVerified: true });
-    }
-    return { success: true };
-  } catch (error) {
-    console.error("Error verifying email:", error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const resendVerificationEmail = async () => {
-  try {
-    const user = auth.currentUser;
-    if (user) {
-      await firebaseSendEmailVerification(user);
-      return { success: true, message: "Verification email sent successfully." };
-    } else {
-      return { success: false, error: "No user is currently signed in." };
-    }
-  } catch (error) {
-    console.error("Error resending verification email:", error);
-    return { success: false, error: error.message };
-  }
-};
-
-export { auth };
-
-export { onAuthStateChanged } from 'firebase/auth';
+export { auth, onAuthStateChanged, isSignInWithEmailLink };
