@@ -1,13 +1,19 @@
 import { initializeApp } from "firebase/app";
-import { 
-  getAuth, 
+import {
+  getAuth,
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
 } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
@@ -26,129 +32,151 @@ export const db = getFirestore(app);
 
 const actionCodeSettings = {
   url: `${window.location.origin}/auth/email-link`,
-  handleCodeInApp: true
+  handleCodeInApp: true,
 };
 
 export const sendSignInLink = async (email) => {
   try {
     await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    window.localStorage.setItem('emailForSignIn', email);
-    return { 
-      success: true, 
-      message: "Sign-in link sent to your email. Please check your inbox." 
+    window.localStorage.setItem("emailForSignIn", email);
+    return {
+      success: true,
+      message: "Sign-in link sent to your email. Please check your inbox.",
     };
   } catch (error) {
     console.error("Error sending sign-in link:", error);
-    return { 
-      success: false, 
-      error: error.message 
+    return {
+      success: false,
+      error: error.message,
     };
   }
 };
 
 export const completeSignInWithEmailLink = async (email, link) => {
   try {
-    console.log('Completing sign in for email:', email);
+    console.log("Completing sign in for email:", email);
     const result = await signInWithEmailLink(auth, email, link);
     const user = result.user;
-    
+
     // Create a Promise that resolves when the user document is confirmed to exist
     const ensureUserDocument = async () => {
       const userRef = doc(db, "users", user.uid);
       let attempts = 0;
       const maxAttempts = 3;
-      
+
       while (attempts < maxAttempts) {
         const userDoc = await getDoc(userRef);
-        
+
         if (userDoc.exists()) {
           return { exists: true, data: userDoc.data() };
         }
-        
+
         // If document doesn't exist, create it
         if (attempts === 0) {
           await setDoc(userRef, {
             email: user.email,
             emailVerified: true,
-            displayName: '',
+            displayName: "",
             displayNameSet: false,
-            lastAccessedProject: null
+            lastAccessedProject: null,
           });
         }
-        
+
         // Wait before next attempt
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         attempts++;
       }
-      
+
       // Final check after all attempts
       const finalCheck = await getDoc(userRef);
-      return { 
-        exists: finalCheck.exists(), 
-        data: finalCheck.exists() ? finalCheck.data() : null 
+      return {
+        exists: finalCheck.exists(),
+        data: finalCheck.exists() ? finalCheck.data() : null,
       };
     };
-    
+
     const userDocStatus = await ensureUserDocument();
-    
+
     // Clear email from storage
-    window.localStorage.removeItem('emailForSignIn');
-    
+    window.localStorage.removeItem("emailForSignIn");
+
     if (!userDocStatus.exists) {
-      throw new Error('Failed to confirm user document creation');
+      throw new Error("Failed to confirm user document creation");
     }
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       user,
-      userData: userDocStatus.data
+      userData: userDocStatus.data,
     };
   } catch (error) {
     console.error("Error completing sign-in:", error);
-    return { 
-      success: false, 
-      error: error.message 
+    return {
+      success: false,
+      error: error.message,
     };
   }
 };
 
 export const updateUserDisplayName = async (uid, displayName) => {
   try {
-    console.log('Attempting to update display name for uid:', uid);
+    console.log("Attempting to update display name for uid:", uid);
     const userRef = doc(db, "users", uid);
+
+    // First attempt to get the document
     const userDoc = await getDoc(userRef);
-    
+
+    // Create or update the document
     if (!userDoc.exists()) {
-      console.error('User document not found');
-      // Create the user document if it doesn't exist
-      console.log('Creating new user document during display name update');
+      console.log("Creating new user document during display name update");
       await setDoc(userRef, {
         email: auth.currentUser.email,
         emailVerified: true,
         displayName: displayName,
         displayNameSet: true,
-        lastAccessedProject: null
+        lastAccessedProject: null,
       });
-      return { success: true };
+    } else {
+      console.log("Updating existing user document");
+      await updateDoc(userRef, {
+        displayName: displayName,
+        displayNameSet: true,
+      });
     }
-    
-    const userData = userDoc.data();
-    console.log('Current user data:', userData);
-    
-    const updates = {
-      displayName: displayName,
-      displayNameSet: true,
-    };
-    
-    console.log('Applying updates:', updates);
-    await updateDoc(userRef, updates);
-    
-    return { success: true };
+
+    // Verify the update with retries
+    let verificationAttempts = 0;
+    const maxAttempts = 3;
+
+    while (verificationAttempts < maxAttempts) {
+      const verifyDoc = await getDoc(userRef);
+      if (
+        verifyDoc.exists() &&
+        verifyDoc.data().displayNameSet &&
+        verifyDoc.data().displayName === displayName
+      ) {
+        console.log("Display name update verified");
+        return {
+          success: true,
+          userData: verifyDoc.data(),
+        };
+      }
+
+      console.log(
+        `Verification attempt ${verificationAttempts + 1} failed, retrying...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      verificationAttempts++;
+    }
+
+    throw new Error(
+      "Could not verify display name update after multiple attempts"
+    );
   } catch (error) {
     console.error("Error updating display name:", error);
-    return { 
-      success: false, 
-      error: error.message 
+    return {
+      success: false,
+      error: error.message,
     };
   }
 };
@@ -158,7 +186,7 @@ export const logout = async () => {
     await signOut(auth);
     return { success: true };
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error("Logout error:", error);
     throw error;
   }
 };
