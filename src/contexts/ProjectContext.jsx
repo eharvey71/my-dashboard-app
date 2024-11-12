@@ -57,10 +57,15 @@ export const ProjectProvider = ({ children, user }) => {
     setProjects([...projects, project]);
   };
 
-  const updateActiveProject = (projectId) => {
+  const updateActiveProject = async (projectId) => {
+    console.log("ProjectContext: Setting active project:", projectId);
     setActiveProject(projectId);
     if (user) {
-      setLastAccessedProject(user.uid, projectId);
+      console.log(
+        "ProjectContext: Updating last accessed project in Firestore"
+      );
+      await setLastAccessedProject(user.uid, projectId);
+      console.log("ProjectContext: Last accessed project updated");
     }
   };
 
