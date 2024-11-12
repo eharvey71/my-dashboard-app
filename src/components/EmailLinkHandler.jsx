@@ -1,41 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { auth, isSignInWithEmailLink, completeSignInWithEmailLink } from '../services/firebaseAuth';
-import styles from './AuthForms.module.css';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  auth,
+  isSignInWithEmailLink,
+  completeSignInWithEmailLink,
+} from "../services/firebaseAuth";
+import { useProjectContext } from "../contexts/ProjectContext";
+import styles from "./AuthForms.module.css";
 
 const EmailLinkHandler = () => {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
   const [processing, setProcessing] = useState(true);
   const navigate = useNavigate();
+  const { updateDisplayName } = useProjectContext();
 
   useEffect(() => {
     const completeSignIn = async () => {
       if (!isSignInWithEmailLink(auth, window.location.href)) {
-        setError('Invalid sign-in link.');
+        setError("Invalid sign-in link.");
         setProcessing(false);
         return;
       }
 
-      // Get email from storage or prompt user
-      let emailForSignIn = window.localStorage.getItem('emailForSignIn');
-      
+      let emailForSignIn = window.localStorage.getItem("emailForSignIn");
+
       if (!emailForSignIn) {
         setProcessing(false);
         return;
       }
 
       try {
-        const result = await completeSignInWithEmailLink(emailForSignIn, window.location.href);
+        const result = await completeSignInWithEmailLink(
+          emailForSignIn,
+          window.location.href
+        );
         if (result.success) {
-          // For existing users with displayName, go to dashboard
           if (result.userData && result.userData.displayName) {
-            console.log('Existing user with display name, redirecting to dashboard');
-            navigate('/');
+            updateDisplayName(result.userData.displayName);
+            console.log(
+              "Existing user with display name, redirecting to dashboard"
+            );
+            navigate("/");
           } else {
-            // For new users or users without displayName, go to profile setup
-            console.log('User needs display name setup');
-            navigate('/setup-profile');
+            console.log("User needs display name setup");
+            navigate("/setup-profile");
           }
         } else {
           setError(result.error);
@@ -48,23 +57,27 @@ const EmailLinkHandler = () => {
     };
 
     completeSignIn();
-  }, [navigate]);
+  }, [navigate, updateDisplayName]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setProcessing(true);
-    
+
     try {
-      const result = await completeSignInWithEmailLink(email, window.location.href);
+      const result = await completeSignInWithEmailLink(
+        email,
+        window.location.href
+      );
       if (result.success) {
-        // For existing users with displayName, go to dashboard
-        if (!result.isNewUser && result.userData && result.userData.displayName) {
-          console.log('Existing user with display name, redirecting to dashboard');
-          navigate('/');
+        if (result.userData && result.userData.displayName) {
+          updateDisplayName(result.userData.displayName);
+          console.log(
+            "Existing user with display name, redirecting to dashboard"
+          );
+          navigate("/");
         } else {
-          // For new users or users without displayName, go to profile setup
-          console.log('User needs display name setup');
-          navigate('/setup-profile');
+          console.log("User needs display name setup");
+          navigate("/setup-profile");
         }
       } else {
         setError(result.error);
@@ -96,11 +109,17 @@ const EmailLinkHandler = () => {
           <div className="col-md-6">
             <div className="card">
               <div className="card-body">
-                <h2 className="card-title text-center mb-4">Confirm Your Email</h2>
-                <p className="text-center">Please enter your email to complete the sign-in process.</p>
+                <h2 className="card-title text-center mb-4">
+                  Confirm Your Email
+                </h2>
+                <p className="text-center">
+                  Please enter your email to complete the sign-in process.
+                </p>
                 <form onSubmit={handleSubmit}>
                   <div className="mb-3">
-                    <label htmlFor="email" className="form-label">Email:</label>
+                    <label htmlFor="email" className="form-label">
+                      Email:
+                    </label>
                     <input
                       type="email"
                       id="email"

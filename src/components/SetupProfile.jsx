@@ -7,6 +7,7 @@ import {
 } from "../services/firebaseAuth";
 import { db } from "../services/firebaseConfig"; // Make sure this import exists
 import { doc, getDoc } from "firebase/firestore"; // Add this import
+import { useProjectContext } from "../contexts/ProjectContext";
 import styles from "./AuthForms.module.css";
 
 const SetupProfile = () => {
@@ -15,6 +16,8 @@ const SetupProfile = () => {
   const [loading, setLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const navigate = useNavigate();
+
+  const { updateDisplayName } = useProjectContext();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -58,6 +61,7 @@ const SetupProfile = () => {
 
       if (result.success) {
         console.log("Display name updated successfully");
+        updateDisplayName(displayName.trim()); // Update the context
 
         // Verify user document exists before navigation
         const userRef = doc(db, "users", auth.currentUser.uid);
