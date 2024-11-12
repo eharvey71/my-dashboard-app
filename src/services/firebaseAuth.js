@@ -52,29 +52,56 @@ export const completeSignInWithEmailLink = async (email, link) => {
     const result = await signInWithEmailLink(auth, email, link);
     const user = result.user;
     
-    // Always check for and create user document if it doesn't exist
-    const userRef = doc(db, "users", user.uid);
-    const userDoc = await getDoc(userRef);
+    // Create a Promise that resolves when the user document is confirmed to exist
+    const ensureUserDocument = async () => {
+      const userRef = doc(db, "users", user.uid);
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          return { exists: true, data: userDoc.data() };
+        }
+        
+        // If document doesn't exist, create it
+        if (attempts === 0) {
+          await setDoc(userRef, {
+            email: user.email,
+            emailVerified: true,
+            displayName: '',
+            displayNameSet: false,
+            lastAccessedProject: null
+          });
+        }
+        
+        // Wait before next attempt
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+      }
+      
+      // Final check after all attempts
+      const finalCheck = await getDoc(userRef);
+      return { 
+        exists: finalCheck.exists(), 
+        data: finalCheck.exists() ? finalCheck.data() : null 
+      };
+    };
     
-    if (!userDoc.exists()) {
-      console.log('New user detected, creating user document');
-      await setDoc(userRef, {
-        email: user.email,
-        emailVerified: true,
-        displayName: '',
-        displayNameSet: false,
-        lastAccessedProject: null
-      });
-    }
+    const userDocStatus = await ensureUserDocument();
     
     // Clear email from storage
     window.localStorage.removeItem('emailForSignIn');
     
+    if (!userDocStatus.exists) {
+      throw new Error('Failed to confirm user document creation');
+    }
+    
     return { 
       success: true, 
-      isNewUser: !userDoc.exists(),
       user,
-      userData: userDoc.exists() ? userDoc.data(): null
+      userData: userDocStatus.data
     };
   } catch (error) {
     console.error("Error completing sign-in:", error);
