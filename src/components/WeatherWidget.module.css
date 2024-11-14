@@ -1,0 +1,76 @@
+/* WeatherWidget.module.css */
+.weatherWidget {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: inherit;
+  position: relative;
+  top: 0; /* Ensure no unwanted offset */
+}
+
+.tempContainer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.temp {
+  font-weight: normal;
+  line-height: 1.5; /* Match the navbar line height */
+  margin: 0;
+  padding: 0;
+}
+
+.iconContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.weatherIcon {
+  width: 32px; /* Slightly smaller for better navbar fit */
+  height: 32px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.unitToggle {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.8em;
+}
+
+.tooltip {
+  visibility: hidden;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  text-align: center;
+  border-radius: 4px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  top: 100%; /* Position below the icon */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.iconContainer:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.city {
+  font-size: 0.9em;
+  opacity: 0.9;
+}

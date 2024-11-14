@@ -27,6 +27,7 @@ import {
   getLastAccessedProject,
 } from "./services/firebaseConfig";
 import AuthEntry from "./components/AuthEntry";
+import UserAccount from "./components/UserAccount";
 
 export const AppContext = createContext();
 
@@ -66,7 +67,12 @@ const App = () => {
 
         setState((prevState) => ({
           ...prevState,
-          user,
+          user: {
+            ...user,
+            city: userData.city,
+            timezone: userData.timezone,
+            unit: userData.unit || "imperial",
+          },
           displayNameSet,
           hasProjects,
           lastAccessedProject,
@@ -188,6 +194,16 @@ const App = () => {
                         }))
                       }
                     />
+                  ) : (
+                    <Navigate to="/login" replace />
+                  )
+                }
+              />
+              <Route
+                path="/account"
+                element={
+                  state.user ? (
+                    <UserAccount user={state.user} />
                   ) : (
                     <Navigate to="/login" replace />
                   )
