@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { logout } from "../services/firebaseAuth";
 import { useProjectContext } from "../contexts/ProjectContext";
 import LogoutButton from "./LogoutButton";
+import styles from "./NavBar.module.css";
 
 const NavBar = ({ user }) => {
   const navigate = useNavigate();
@@ -28,13 +29,16 @@ const NavBar = ({ user }) => {
     user && displayName ? `${displayName}'s Cognify` : "My Cognify";
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-light">
+    <nav className={`navbar navbar-expand-lg ${styles.customNavbar}`}>
       <div className="container-fluid">
-        <Link className="navbar-brand" to={user ? "/projects" : "/login"}>
+        <Link
+          className={`navbar-brand ${styles.navBrand}`}
+          to={user ? "/projects" : "/login"}
+        >
           {appTitle}
         </Link>
         <button
-          className="navbar-toggler"
+          className={`navbar-toggler ${styles.navToggler}`}
           type="button"
           data-bs-toggle="collapse"
           data-bs-target="#navbarNav"
@@ -50,7 +54,7 @@ const NavBar = ({ user }) => {
               <>
                 <li className="nav-item">
                   <select
-                    className="form-select"
+                    className={`form-select ${styles.projectSelect}`}
                     value={activeProject || ""}
                     onChange={handleProjectChange}
                   >
