@@ -1,4 +1,3 @@
-// src/contexts/TimerContext.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { updateAnalytics, getAnalytics } from "../services/firebaseConfig";
 
@@ -65,22 +64,28 @@ export const TimerProvider = ({ children }) => {
 
   const updateDatabaseAnalytics = async (secondsToAdd) => {
     if (activeTimer && secondsToAdd > 0) {
-      const currentAnalytics = await getAnalytics(
-        activeTimer.userId,
-        activeTimer.projectId
-      );
-      const updatedAnalytics = {
-        ...currentAnalytics,
-        [activeTimer.taskId]:
-          (currentAnalytics[activeTimer.taskId] || 0) + secondsToAdd,
-      };
+      try {
+        console.log("Updating analytics with seconds:", secondsToAdd);
+        const currentAnalytics = await getAnalytics(
+          activeTimer.userId,
+          activeTimer.projectId
+        );
+        const updatedAnalytics = {
+          ...currentAnalytics,
+          [activeTimer.taskId]:
+            (currentAnalytics[activeTimer.taskId] || 0) + secondsToAdd,
+        };
 
-      await updateAnalytics(
-        activeTimer.userId,
-        activeTimer.projectId,
-        updatedAnalytics
-      );
-      setLastUpdateTime(elapsedSeconds);
+        await updateAnalytics(
+          activeTimer.userId,
+          activeTimer.projectId,
+          updatedAnalytics
+        );
+        setLastUpdateTime(elapsedSeconds);
+        console.log("Analytics updated successfully");
+      } catch (error) {
+        console.error("Error updating analytics:", error);
+      }
     }
   };
 
@@ -100,12 +105,16 @@ export const TimerProvider = ({ children }) => {
 
   const pauseTimer = async () => {
     if (activeTimer?.isActive) {
-      const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
-      await updateDatabaseAnalytics(secondsSinceLastUpdate);
-      setActiveTimer((prev) => ({
-        ...prev,
-        isActive: false,
-      }));
+      try {
+        const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
+        await updateDatabaseAnalytics(secondsSinceLastUpdate);
+        setActiveTimer((prev) => ({
+          ...prev,
+          isActive: false,
+        }));
+      } catch (error) {
+        console.error("Error in pauseTimer:", error);
+      }
     }
   };
 
@@ -120,14 +129,18 @@ export const TimerProvider = ({ children }) => {
 
   const stopTimer = async () => {
     if (activeTimer) {
-      const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
-      if (secondsSinceLastUpdate > 0) {
-        await updateDatabaseAnalytics(secondsSinceLastUpdate);
+      try {
+        const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
+        if (secondsSinceLastUpdate > 0) {
+          await updateDatabaseAnalytics(secondsSinceLastUpdate);
+        }
+        setActiveTimer(null);
+        setRemainingTime(25 * 60);
+        setElapsedSeconds(0);
+        setLastUpdateTime(0);
+      } catch (error) {
+        console.error("Error in stopTimer:", error);
       }
-      setActiveTimer(null);
-      setRemainingTime(25 * 60);
-      setElapsedSeconds(0);
-      setLastUpdateTime(0);
     }
   };
 

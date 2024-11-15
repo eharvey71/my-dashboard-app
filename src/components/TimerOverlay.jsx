@@ -14,6 +14,18 @@ const TimerOverlay = () => {
 
   if (!activeTimer) return null;
 
+  const handlePauseResume = async () => {
+    if (activeTimer.isActive) {
+      await pauseTimer();
+    } else {
+      resumeTimer();
+    }
+  };
+
+  const handleStop = async () => {
+    await stopTimer();
+  };
+
   return (
     <div
       style={{
@@ -63,7 +75,7 @@ const TimerOverlay = () => {
         </span>
         <div style={{ display: "flex", gap: "8px" }}>
           <button
-            onClick={activeTimer.isActive ? pauseTimer : resumeTimer}
+            onClick={handlePauseResume}
             style={{
               border: "none",
               background: "none",
@@ -78,7 +90,7 @@ const TimerOverlay = () => {
             )}
           </button>
           <button
-            onClick={stopTimer}
+            onClick={handleStop}
             style={{
               border: "none",
               background: "none",
