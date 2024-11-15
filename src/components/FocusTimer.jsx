@@ -45,6 +45,7 @@ const FocusTimer = ({ user }) => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedTime, setSelectedTime] = useState(25);
   const [analytics, setAnalytics] = useState({});
+  const [lastUpdateTime, setLastUpdateTime] = useState(0);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -70,21 +71,18 @@ const FocusTimer = ({ user }) => {
     fetchAnalytics();
   }, [user, projectId, activeTimer?.taskId]);
 
-  const updateDatabaseAnalytics = async () => {
-    if (user && selectedTask && elapsedSeconds > 0) {
-      // Added elapsedSeconds > 0 check
-      // Get fresh analytics from database
+  const updateDatabaseAnalytics = async (secondsToAdd) => {
+    if (user && selectedTask && secondsToAdd > 0) {
       const currentAnalytics = await getAnalytics(user.uid, projectId);
-
-      // Add elapsed seconds to current database value
       const updatedAnalytics = {
         ...currentAnalytics,
         [selectedTask.id]:
-          (currentAnalytics[selectedTask.id] || 0) + elapsedSeconds,
+          (currentAnalytics[selectedTask.id] || 0) + secondsToAdd,
       };
 
       await updateAnalytics(user.uid, projectId, updatedAnalytics);
       setAnalytics(updatedAnalytics);
+      setLastUpdateTime(elapsedSeconds);
     }
   };
 
@@ -103,8 +101,10 @@ const FocusTimer = ({ user }) => {
 
     if (!activeTimer) {
       startTimer(selectedTask, projectId, selectedTime);
+      setLastUpdateTime(0);
     } else if (activeTimer.isActive) {
-      await updateDatabaseAnalytics();
+      const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
+      await updateDatabaseAnalytics(secondsSinceLastUpdate);
       pauseTimer();
     } else {
       resumeTimer();
@@ -112,11 +112,14 @@ const FocusTimer = ({ user }) => {
   };
 
   const handleStopTimer = async () => {
-    if (!activeTimer?.isActive) {
-      // Only update analytics if timer wasn't already paused
-      await updateDatabaseAnalytics();
+    if (activeTimer) {
+      const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
+      if (secondsSinceLastUpdate > 0) {
+        await updateDatabaseAnalytics(secondsSinceLastUpdate);
+      }
     }
     stopTimer();
+    setLastUpdateTime(0);
   };
 
   const renderPriorityIndicator = (priority) => {
