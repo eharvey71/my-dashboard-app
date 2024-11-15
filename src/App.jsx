@@ -6,6 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ProjectProvider } from "./contexts/ProjectContext";
+import { TimerProvider } from "./contexts/TimerContext";
 import { initializeGoogleDriveApi } from "./services/googleDriveService";
 import NavBar from "./components/NavBar";
 import EmailLinkHandler from "./components/EmailLinkHandler";
@@ -28,6 +29,7 @@ import {
 } from "./services/firebaseConfig";
 import AuthEntry from "./components/AuthEntry";
 import UserAccount from "./components/UserAccount";
+import { Timer } from "lucide-react";
 
 export const AppContext = createContext();
 
@@ -160,99 +162,101 @@ const App = () => {
         }}
       >
         <ProjectProvider user={state.user}>
-          <NavBar user={state.user} />
-          <div className="main-container">
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  state.initialized ? (
-                    <Navigate to={getRedirectPath()} replace />
-                  ) : (
-                    <div>Initializing...</div>
-                  )
-                }
-              />
-              <Route
-                path="/login"
-                element={
-                  state.user ? <Navigate to="/" replace /> : <AuthEntry />
-                }
-              />
-              <Route path="/auth/email-link" element={<EmailLinkHandler />} />
-              <Route path="/setup-profile" element={<SetupProfile />} />
-              <Route
-                path="/projects"
-                element={
-                  state.user ? (
-                    <ProjectList
-                      user={state.user}
-                      onProjectsUpdate={(projects) =>
-                        setState((prev) => ({
-                          ...prev,
-                          hasProjects: projects.length > 0,
-                        }))
-                      }
-                    />
-                  ) : (
-                    <Navigate to="/login" replace />
-                  )
-                }
-              />
-              <Route
-                path="/account"
-                element={
-                  state.user ? (
-                    <UserAccount user={state.user} />
-                  ) : (
-                    <Navigate to="/login" replace />
-                  )
-                }
-              />
+          <TimerProvider>
+            <NavBar user={state.user} />
+            <div className="main-container">
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    state.initialized ? (
+                      <Navigate to={getRedirectPath()} replace />
+                    ) : (
+                      <div>Initializing...</div>
+                    )
+                  }
+                />
+                <Route
+                  path="/login"
+                  element={
+                    state.user ? <Navigate to="/" replace /> : <AuthEntry />
+                  }
+                />
+                <Route path="/auth/email-link" element={<EmailLinkHandler />} />
+                <Route path="/setup-profile" element={<SetupProfile />} />
+                <Route
+                  path="/projects"
+                  element={
+                    state.user ? (
+                      <ProjectList
+                        user={state.user}
+                        onProjectsUpdate={(projects) =>
+                          setState((prev) => ({
+                            ...prev,
+                            hasProjects: projects.length > 0,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <Navigate to="/login" replace />
+                    )
+                  }
+                />
+                <Route
+                  path="/account"
+                  element={
+                    state.user ? (
+                      <UserAccount user={state.user} />
+                    ) : (
+                      <Navigate to="/login" replace />
+                    )
+                  }
+                />
 
-              {/* Protected Routes */}
-              {state.user && state.displayNameSet ? (
-                <>
-                  <Route
-                    path="/project/:projectId"
-                    element={<Dashboard user={state.user} />}
-                  />
-                  <Route
-                    path="/project/:projectId/notes"
-                    element={<FullPageNotes user={state.user} />}
-                  />
-                  <Route
-                    path="/project/:projectId/tasks"
-                    element={<FullPageTasks user={state.user} />}
-                  />
-                  <Route
-                    path="/project/:projectId/bookmarks"
-                    element={<FullPageBookmarks user={state.user} />}
-                  />
-                  <Route
-                    path="/project/:projectId/documents"
-                    element={<DocumentList user={state.user} />}
-                  />
-                  <Route
-                    path="/project/:projectId/ai-assistant"
-                    element={<FullPageAIAssistant user={state.user} />}
-                  />
-                  <Route
-                    path="/project/:projectId/documents/new"
-                    element={<DocumentEditor user={state.user} />}
-                  />
-                  <Route
-                    path="/project/:projectId/documents/:id"
-                    element={<DocumentEditor user={state.user} />}
-                  />
-                  <Route
-                    path="/project/:projectId/focus"
-                    element={<FocusTimer user={state.user} />}
-                  />
-                </>
-              ) : null}
-            </Routes>
-          </div>
+                {/* Protected Routes */}
+                {state.user && state.displayNameSet ? (
+                  <>
+                    <Route
+                      path="/project/:projectId"
+                      element={<Dashboard user={state.user} />}
+                    />
+                    <Route
+                      path="/project/:projectId/notes"
+                      element={<FullPageNotes user={state.user} />}
+                    />
+                    <Route
+                      path="/project/:projectId/tasks"
+                      element={<FullPageTasks user={state.user} />}
+                    />
+                    <Route
+                      path="/project/:projectId/bookmarks"
+                      element={<FullPageBookmarks user={state.user} />}
+                    />
+                    <Route
+                      path="/project/:projectId/documents"
+                      element={<DocumentList user={state.user} />}
+                    />
+                    <Route
+                      path="/project/:projectId/ai-assistant"
+                      element={<FullPageAIAssistant user={state.user} />}
+                    />
+                    <Route
+                      path="/project/:projectId/documents/new"
+                      element={<DocumentEditor user={state.user} />}
+                    />
+                    <Route
+                      path="/project/:projectId/documents/:id"
+                      element={<DocumentEditor user={state.user} />}
+                    />
+                    <Route
+                      path="/project/:projectId/focus"
+                      element={<FocusTimer user={state.user} />}
+                    />
+                  </>
+                ) : null}
+              </Routes>
+            </div>
+          </TimerProvider>
         </ProjectProvider>
       </AppContext.Provider>
     </Router>

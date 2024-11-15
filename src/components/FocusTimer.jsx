@@ -14,100 +14,120 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { useTimer } from "../contexts/TimerContext.jsx";
 import styles from "./FocusTimer.module.css";
+
+const TIME_OPTIONS = [
+  { label: "5 minutes", value: 5 },
+  { label: "10 minutes", value: 10 },
+  { label: "15 minutes", value: 15 },
+  { label: "25 minutes", value: 25 },
+  { label: "30 minutes", value: 30 },
+  { label: "45 minutes", value: 45 },
+  { label: "60 minutes", value: 60 },
+];
 
 const FocusTimer = ({ user }) => {
   const { projectId } = useParams();
+  const {
+    activeTimer,
+    remainingTime,
+    setRemainingTime,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
+    stopTimer,
+    formatTime,
+    elapsedSeconds,
+  } = useTimer();
+
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [time, setTime] = useState(25 * 60);
-  const [isActive, setIsActive] = useState(false);
+  const [selectedTime, setSelectedTime] = useState(25);
   const [analytics, setAnalytics] = useState({});
-  const [isTimerComplete, setIsTimerComplete] = useState(false);
-  const [localAnalytics, setLocalAnalytics] = useState({});
 
   useEffect(() => {
     const fetchTasks = async () => {
       const fetchedTasks = await getTasks(user.uid, projectId);
       setTasks(fetchedTasks.filter((task) => !task.completed));
+
+      if (activeTimer?.taskId) {
+        const activeTask = fetchedTasks.find(
+          (task) => task.id === activeTimer.taskId
+        );
+        if (activeTask) {
+          setSelectedTask(activeTask);
+        }
+      }
     };
+
     const fetchAnalytics = async () => {
       const fetchedAnalytics = await getAnalytics(user.uid, projectId);
       setAnalytics(fetchedAnalytics || {});
-      setLocalAnalytics(fetchedAnalytics || {});
     };
+
     fetchTasks();
     fetchAnalytics();
-  }, [user, projectId]);
-
-  useEffect(() => {
-    let interval = null;
-    if (isActive && time > 0) {
-      interval = setInterval(() => {
-        setTime((time) => time - 1);
-        if (selectedTask) {
-          setLocalAnalytics((prev) => ({
-            ...prev,
-            [selectedTask.id]: (prev[selectedTask.id] || 0) + 1,
-          }));
-        }
-      }, 1000);
-    } else if (time === 0) {
-      setIsActive(false);
-      setIsTimerComplete(true);
-      updateDatabaseAnalytics();
-    }
-    return () => clearInterval(interval);
-  }, [isActive, time, selectedTask]);
+  }, [user, projectId, activeTimer?.taskId]);
 
   const updateDatabaseAnalytics = async () => {
-    if (user && selectedTask) {
-      await updateAnalytics(user.uid, projectId, localAnalytics);
-      setAnalytics(localAnalytics);
+    if (user && selectedTask && elapsedSeconds > 0) {
+      // Added elapsedSeconds > 0 check
+      // Get fresh analytics from database
+      const currentAnalytics = await getAnalytics(user.uid, projectId);
+
+      // Add elapsed seconds to current database value
+      const updatedAnalytics = {
+        ...currentAnalytics,
+        [selectedTask.id]:
+          (currentAnalytics[selectedTask.id] || 0) + elapsedSeconds,
+      };
+
+      await updateAnalytics(user.uid, projectId, updatedAnalytics);
+      setAnalytics(updatedAnalytics);
     }
   };
 
-  const formatTime = (seconds) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs > 0 ? hrs + "h " : ""}${mins > 0 ? mins + "m " : ""}${secs}s`;
-  };
-
-  const handleTaskClick = async (task) => {
-    if (isActive) {
-      await updateDatabaseAnalytics();
-    }
+  const handleTaskClick = (task) => {
     setSelectedTask(task);
-    setIsActive(false);
-    setTime(25 * 60);
-    setIsTimerComplete(false);
   };
 
-  const handleTimerOptionClick = async (minutes) => {
-    if (isActive) {
-      await updateDatabaseAnalytics();
-    }
-    setTime(minutes * 60);
-    setIsActive(false);
-    setIsTimerComplete(false);
+  const handleTimeChange = (event) => {
+    const minutes = parseInt(event.target.value);
+    setSelectedTime(minutes);
+    setRemainingTime(minutes * 60);
   };
 
-  const toggleTimer = async () => {
-    if (isActive) {
+  const handleTimerControl = async () => {
+    if (!selectedTask) return;
+
+    if (!activeTimer) {
+      startTimer(selectedTask, projectId, selectedTime);
+    } else if (activeTimer.isActive) {
       await updateDatabaseAnalytics();
+      pauseTimer();
+    } else {
+      resumeTimer();
     }
-    setIsActive(!isActive);
-    setIsTimerComplete(false);
   };
 
-  const resetTimer = async () => {
-    if (isActive) {
+  const handleStopTimer = async () => {
+    if (!activeTimer?.isActive) {
+      // Only update analytics if timer wasn't already paused
       await updateDatabaseAnalytics();
     }
-    setIsActive(false);
-    setTime(25 * 60);
-    setIsTimerComplete(false);
+    stopTimer();
+  };
+
+  const renderPriorityIndicator = (priority) => {
+    const indicators = {
+      1: "!!!",
+      2: "!!",
+      3: "!",
+      4: "",
+      5: "",
+    };
+    return indicators[priority] || "";
   };
 
   const sortedAnalytics = Object.entries(analytics)
@@ -136,97 +156,126 @@ const FocusTimer = ({ user }) => {
     return null;
   };
 
-  const renderPriorityIndicator = (priority) => {
-    const indicators = {
-      1: "!!!",
-      2: "!!",
-      3: "!",
-      4: "",
-      5: "",
-    };
-    return indicators[priority] || "";
-  };
-
   return (
-    <div className={styles.container}>
-      <div className={styles.taskGrid}>
-        {tasks.map((task) => (
-          <div
-            key={task.id}
-            className={`${styles.taskItem} ${
-              selectedTask && selectedTask.id === task.id ? styles.selected : ""
-            }`}
-            onClick={() => handleTaskClick(task)}
-            style={{ backgroundColor: task.color || "#CCCCCC" }}
-          >
-            <span className={styles.priorityIndicator}>
-              {renderPriorityIndicator(task.priority)}
-            </span>
-            {task.title}
-          </div>
-        ))}
-      </div>
-      <div className={styles.timerSection}>
-        <div className={styles.timerControls}>
-          <button onClick={toggleTimer}>{isActive ? "Pause" : "Start"}</button>
-          <button onClick={resetTimer}>Reset</button>
-        </div>
-        <div
-          className={`${styles.timerDisplay} ${
-            isTimerComplete ? styles.timerComplete : ""
-          }`}
-        >
-          {formatTime(time)}
-        </div>
-        {selectedTask && (
-          <div className={styles.selectedTask}>
-            Selected Task: <span>{selectedTask.title}</span>
-          </div>
-        )}
-        <div className={styles.timerOptions}>
-          <button onClick={() => handleTimerOptionClick(25)}>25 min</button>
-          <button onClick={() => handleTimerOptionClick(15)}>15 min</button>
-          <button onClick={() => handleTimerOptionClick(10)}>10 min</button>
-          <button onClick={() => handleTimerOptionClick(5)}>5 min</button>
-        </div>
-      </div>
-      <div className={styles.analyticsSection}>
-        <h2>Analytics Dashboard</h2>
-        <table className={styles.analyticsTable}>
-          <thead>
-            <tr>
-              <th>Task</th>
-              <th>Time Spent</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedAnalytics.map(({ taskId, taskTitle, time, color }) => (
-              <tr key={taskId}>
-                <td>
-                  <span
-                    className={styles.colorIndicator}
-                    style={{ backgroundColor: color }}
-                  ></span>
-                  {taskTitle}
-                </td>
-                <td>{formatTime(time)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className={styles.chartContainer}>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={sortedAnalytics}>
-              <XAxis dataKey="taskId" axisLine={false} tick={false} />
-              <YAxis />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="time">
-                {sortedAnalytics.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+    <div className="container-fluid p-4">
+      <div className="row">
+        <div className="col-md-8">
+          <div className="card mb-4">
+            <div className="card-body">
+              <h4 className="card-title mb-4">Tasks</h4>
+              <div className={styles.taskGrid}>
+                {tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={`${styles.taskItem} ${
+                      selectedTask?.id === task.id ? styles.selected : ""
+                    }`}
+                    onClick={() => handleTaskClick(task)}
+                    style={{ backgroundColor: task.color || "#CCCCCC" }}
+                  >
+                    <span className={styles.priorityIndicator}>
+                      {renderPriorityIndicator(task.priority)}
+                    </span>
+                    {task.title}
+                  </div>
                 ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {selectedTask && (
+            <div className="card">
+              <div className="card-body text-center">
+                <h5 className="card-title">Timer Controls</h5>
+                {!activeTimer && (
+                  <div className="mb-3">
+                    <select
+                      className="form-select form-select-lg w-auto mx-auto"
+                      value={selectedTime}
+                      onChange={handleTimeChange}
+                      disabled={activeTimer}
+                    >
+                      {TIME_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className={styles.timerDisplay}>
+                  {formatTime(remainingTime)}
+                </div>
+                <div className={styles.timerControls}>
+                  <button
+                    className={`btn ${
+                      activeTimer?.isActive ? "btn-warning" : "btn-success"
+                    } btn-lg mx-2`}
+                    onClick={handleTimerControl}
+                  >
+                    {!activeTimer
+                      ? "Start"
+                      : activeTimer.isActive
+                      ? "Pause"
+                      : "Resume"}
+                  </button>
+                  {activeTimer && (
+                    <button
+                      className="btn btn-danger btn-lg mx-2"
+                      onClick={handleStopTimer}
+                    >
+                      Stop
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="col-md-4">
+          <div className="card">
+            <div className="card-body">
+              <h4 className="card-title mb-4">Analytics Dashboard</h4>
+              <div className={styles.chartContainer}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={sortedAnalytics}>
+                    <XAxis dataKey="taskId" axisLine={false} tick={false} />
+                    <YAxis />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="time">
+                      {sortedAnalytics.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <table className={styles.analyticsTable}>
+                <thead>
+                  <tr>
+                    <th>Task</th>
+                    <th>Time Spent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedAnalytics.map(({ taskId, taskTitle, time, color }) => (
+                    <tr key={taskId}>
+                      <td>
+                        <span
+                          className={styles.colorIndicator}
+                          style={{ backgroundColor: color }}
+                        />
+                        {taskTitle}
+                      </td>
+                      <td>{formatTime(time)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
