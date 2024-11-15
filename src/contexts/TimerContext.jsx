@@ -1,5 +1,6 @@
 // src/contexts/TimerContext.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { updateAnalytics, getAnalytics } from "../services/firebaseConfig";
 
 export const TimerContext = createContext(null);
 
@@ -26,6 +27,8 @@ export const TimerProvider = ({ children }) => {
     const saved = localStorage.getItem("elapsedSeconds");
     return saved ? parseInt(saved) : 0;
   });
+
+  const [lastUpdateTime, setLastUpdateTime] = useState(0);
 
   // Persist timer state to localStorage
   useEffect(() => {
@@ -60,20 +63,45 @@ export const TimerProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [activeTimer?.isActive]);
 
-  const startTimer = (task, projectId, duration) => {
+  const updateDatabaseAnalytics = async (secondsToAdd) => {
+    if (activeTimer && secondsToAdd > 0) {
+      const currentAnalytics = await getAnalytics(
+        activeTimer.userId,
+        activeTimer.projectId
+      );
+      const updatedAnalytics = {
+        ...currentAnalytics,
+        [activeTimer.taskId]:
+          (currentAnalytics[activeTimer.taskId] || 0) + secondsToAdd,
+      };
+
+      await updateAnalytics(
+        activeTimer.userId,
+        activeTimer.projectId,
+        updatedAnalytics
+      );
+      setLastUpdateTime(elapsedSeconds);
+    }
+  };
+
+  const startTimer = (task, projectId, duration, userId) => {
     setActiveTimer({
       isActive: true,
       taskId: task.id,
       taskTitle: task.title,
       projectId,
+      userId,
       duration,
     });
     setRemainingTime(duration * 60);
     setElapsedSeconds(0);
+    setLastUpdateTime(0);
   };
 
-  const pauseTimer = () => {
-    if (activeTimer) {
+  const pauseTimer = async () => {
+    if (activeTimer?.isActive) {
+      const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
+      await updateDatabaseAnalytics(secondsSinceLastUpdate);
       setActiveTimer((prev) => ({
         ...prev,
         isActive: false,
@@ -90,10 +118,17 @@ export const TimerProvider = ({ children }) => {
     }
   };
 
-  const stopTimer = () => {
-    setActiveTimer(null);
-    setRemainingTime(25 * 60);
-    setElapsedSeconds(0);
+  const stopTimer = async () => {
+    if (activeTimer) {
+      const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
+      if (secondsSinceLastUpdate > 0) {
+        await updateDatabaseAnalytics(secondsSinceLastUpdate);
+      }
+      setActiveTimer(null);
+      setRemainingTime(25 * 60);
+      setElapsedSeconds(0);
+      setLastUpdateTime(0);
+    }
   };
 
   const formatTime = (seconds) => {

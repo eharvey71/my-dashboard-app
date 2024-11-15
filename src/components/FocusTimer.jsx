@@ -96,30 +96,20 @@ const FocusTimer = ({ user }) => {
     setRemainingTime(minutes * 60);
   };
 
-  const handleTimerControl = async () => {
+  const handleTimerControl = () => {
     if (!selectedTask) return;
 
     if (!activeTimer) {
-      startTimer(selectedTask, projectId, selectedTime);
-      setLastUpdateTime(0);
+      startTimer(selectedTask, projectId, selectedTime, user.uid);
     } else if (activeTimer.isActive) {
-      const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
-      await updateDatabaseAnalytics(secondsSinceLastUpdate);
       pauseTimer();
     } else {
       resumeTimer();
     }
   };
 
-  const handleStopTimer = async () => {
-    if (activeTimer) {
-      const secondsSinceLastUpdate = elapsedSeconds - lastUpdateTime;
-      if (secondsSinceLastUpdate > 0) {
-        await updateDatabaseAnalytics(secondsSinceLastUpdate);
-      }
-    }
+  const handleStopTimer = () => {
     stopTimer();
-    setLastUpdateTime(0);
   };
 
   const renderPriorityIndicator = (priority) => {

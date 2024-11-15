@@ -6,7 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ProjectProvider } from "./contexts/ProjectContext";
-import { TimerProvider } from "./contexts/TimerContext";
+import TimerProviderWithOverlay from "./components/TimerProviderWithOverlay";
 import { initializeGoogleDriveApi } from "./services/googleDriveService";
 import NavBar from "./components/NavBar";
 import EmailLinkHandler from "./components/EmailLinkHandler";
@@ -162,7 +162,7 @@ const App = () => {
         }}
       >
         <ProjectProvider user={state.user}>
-          <TimerProvider>
+          <TimerProviderWithOverlay>
             <NavBar user={state.user} />
             <div className="main-container">
               <Routes>
@@ -256,7 +256,7 @@ const App = () => {
                 ) : null}
               </Routes>
             </div>
-          </TimerProvider>
+          </TimerProviderWithOverlay>
         </ProjectProvider>
       </AppContext.Provider>
     </Router>
