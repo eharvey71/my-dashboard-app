@@ -2,3 +2,4 @@
 .env
 .runtimeconfig.json
 node_modules
+/dist
