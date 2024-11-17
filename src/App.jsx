@@ -20,6 +20,7 @@ import DocumentEditor from "./components/DocumentEditor";
 import DocumentList from "./components/DocumentList";
 import FocusTimer from "./components/FocusTimer";
 import ProjectList from "./components/ProjectList";
+import Synapse from "./components/Synapse";
 import { db } from "./services/firebaseConfig";
 import { auth, onAuthStateChanged } from "./services/firebaseAuth";
 import { doc, getDoc } from "firebase/firestore";
@@ -251,6 +252,10 @@ const App = () => {
                     <Route
                       path="/project/:projectId/focus"
                       element={<FocusTimer user={state.user} />}
+                    />
+                    <Route
+                      path="/project/:projectId/synapses"
+                      element={<Synapse user={state.user} />}
                     />
                   </>
                 ) : null}

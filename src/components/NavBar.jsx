@@ -133,6 +133,14 @@ const NavBar = ({ user }) => {
                         AI Assistant
                       </Link>
                     </li>
+                    <li className="nav-item">
+                      <Link
+                        className="nav-link"
+                        to={`/project/${activeProject}/synapses`}
+                      >
+                        Synapses
+                      </Link>
+                    </li>
                   </>
                 )}
                 <li className="nav-item dropdown">

@@ -1,0 +1,315 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 2rem;
+  color: #333;
+  margin: 0;
+}
+
+.newSynapseButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.newSynapseButton:hover {
+  background-color: #45a049;
+}
+
+.createSynapseForm {
+  margin-bottom: 20px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.formInputGroup {
+  display: flex;
+  gap: 10px;
+}
+
+.input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+  color: white;
+}
+
+.saveButton {
+  background-color: #2196f3;
+}
+
+.saveButton:hover {
+  background-color: #1976d2;
+}
+
+.cancelButton {
+  background-color: #f44336;
+}
+
+.cancelButton:hover {
+  background-color: #d32f2f;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+}
+
+.itemsList {
+  background-color: white;
+  border-radius: 5px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.typeSelect {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.draggableItem {
+  padding: 10px;
+  margin-bottom: 8px;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: move;
+  transition: all 0.2s ease;
+}
+
+.draggableItem:hover {
+  background-color: #e9ecef;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.synapseContainer {
+  padding: 20px;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 15px;
+  transition: all 0.2s ease;
+}
+
+.synapseContainer.isDraggingOver {
+  background-color: #e3f2fd;
+  border: 2px dashed #2196f3;
+}
+
+.synapseTitle {
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.connectionsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.connectionItem {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.connectionItem.task {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.connectionItem.note {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.connectionItem.bookmark {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.connectionItem.document {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 15px;
+}
+
+.pageButton {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.pageButton.active {
+  background-color: #2196f3;
+  color: white;
+}
+
+.pageButton:hover:not(.active) {
+  background-color: #e0e0e0;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .formInputGroup {
+    flex-direction: column;
+  }
+
+  .actionButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.connectionItem {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative; /* Added for delete button positioning */
+}
+
+.connectionItem:hover .deleteButton {
+  opacity: 1;
+  visibility: visible;
+}
+
+.deleteButton {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f44336;
+}
+
+.deleteButton:hover {
+  color: #d32f2f;
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* Adjust padding when delete button is shown */
+.connectionItem:hover {
+  padding-right: 40px;
+}
+
+.deleteConfirmation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 4px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.confirmButton,
+.cancelDeleteButton {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: white;
+  font-size: 0.8rem;
+}
+
+.confirmButton {
+  background-color: #4caf50;
+}
+
+.confirmButton:hover {
+  background-color: #45a049;
+}
+
+.cancelDeleteButton {
+  background-color: #f44336;
+}
+
+.cancelDeleteButton:hover {
+  background-color: #d32f2f;
+}
