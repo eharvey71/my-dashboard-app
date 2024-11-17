@@ -8,6 +8,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  getDoc,
   orderBy,
 } from "firebase/firestore";
 import { db } from "./firebaseConfig";
@@ -146,6 +147,46 @@ export const getItemsForSynapse = async (
     };
   } catch (error) {
     console.error(`Error getting ${itemType}s:`, error);
+    throw error;
+  }
+};
+
+export const getSynapseContent = async (userId, projectId, synapseId) => {
+  const synapseRef = doc(db, "synapses", synapseId);
+  try {
+    const synapseDoc = await getDoc(synapseRef);
+    if (!synapseDoc.exists()) {
+      throw new Error("Synapse not found");
+    }
+
+    const synapse = { id: synapseDoc.id, ...synapseDoc.data() };
+    const contentPromises = synapse.connections.map(async (connection) => {
+      const { itemId, itemType } = connection;
+      const itemRef = doc(db, `${itemType}s`, itemId);
+      const itemDoc = await getDoc(itemRef);
+
+      if (!itemDoc.exists()) {
+        return null;
+      }
+
+      const itemData = itemDoc.data();
+      return {
+        type: itemType,
+        id: itemId,
+        content: itemType === "bookmark" ? itemData.url : itemData.content,
+        title: itemData.title || itemData.content,
+        createdAt: itemData.createdAt?.toDate(),
+        ...itemData,
+      };
+    });
+
+    const contents = await Promise.all(contentPromises);
+    return {
+      synapse,
+      contents: contents.filter((content) => content !== null),
+    };
+  } catch (error) {
+    console.error("Error getting synapse content:", error);
     throw error;
   }
 };

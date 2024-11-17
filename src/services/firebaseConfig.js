@@ -1,8 +1,22 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where, setDoc, updateDoc, getDoc, Timestamp, orderBy } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  setDoc,
+  updateDoc,
+  getDoc,
+  Timestamp,
+  orderBy,
+} from "firebase/firestore";
 import { updateVector } from "./pineconeService";
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import formatUrl from '../utils/urlFormatter';
+import { getFunctions, httpsCallable } from "firebase/functions";
+import formatUrl from "../utils/urlFormatter";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
@@ -20,24 +34,35 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-const addAIResponse = async (userId, projectId, content, question) => {
+const addAIResponse = async (
+  userId,
+  projectId,
+  content,
+  synapseId,
+  synapseName,
+  type = "synapse-analysis"
+) => {
   const aiResponsesCollection = collection(db, "aiResponses");
   try {
     const docRef = await addDoc(aiResponsesCollection, {
       content,
-      question,
+      synapseId,
+      synapseName,
       userId,
       projectId,
       createdAt: new Date(),
       included: false,
+      type,
     });
-    console.log(`AI Response added with ID: ${docRef.id}`);
-    return { 
-      id: docRef.id, 
-      content, 
-      question,
-      createdAt: new Date(), 
-      included: false 
+
+    return {
+      id: docRef.id,
+      content,
+      synapseId,
+      synapseName,
+      createdAt: new Date(),
+      included: false,
+      type,
     };
   } catch (error) {
     console.error("Error adding AI Response:", error);
@@ -57,7 +82,7 @@ const getAIResponses = async (userId, projectId) => {
   return aiResponseSnapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
-    createdAt: doc.data().createdAt.toDate()
+    createdAt: doc.data().createdAt.toDate(),
   }));
 };
 
@@ -119,7 +144,13 @@ const getUserProjects = async (userId) => {
 };
 
 // Generic add item function
-const addItem = async (content, userId, projectId, type, additionalData = {}) => {
+const addItem = async (
+  content,
+  userId,
+  projectId,
+  type,
+  additionalData = {}
+) => {
   const collectionRef = collection(db, `${type}s`);
   try {
     const docRef = await addDoc(collectionRef, {
@@ -130,13 +161,15 @@ const addItem = async (content, userId, projectId, type, additionalData = {}) =>
       projectId,
       indexedInPinecone: false,
       ...(type === "task"
-        ? { 
-            completed: false, 
+        ? {
+            completed: false,
             timerSeconds: 1500,
             timerActive: false,
             isRecurring: additionalData.isRecurring || false,
             recurrencePattern: additionalData.recurrencePattern || null,
-            nextDueDate: additionalData.nextDueDate ? new Date(additionalData.nextDueDate).toISOString() : null,
+            nextDueDate: additionalData.nextDueDate
+              ? new Date(additionalData.nextDueDate).toISOString()
+              : null,
           }
         : {}),
       ...additionalData,
@@ -153,7 +186,7 @@ const addItem = async (content, userId, projectId, type, additionalData = {}) =>
       projectId,
       indexedInPinecone: false,
       ...(type === "task"
-        ? { 
+        ? {
             completed: false,
             timerSeconds: 1500,
             timerActive: false,
@@ -172,7 +205,11 @@ const addItem = async (content, userId, projectId, type, additionalData = {}) =>
 // Generic get items function
 const getItems = async (userId, projectId, type) => {
   const itemsCollection = collection(db, `${type}s`);
-  const q = query(itemsCollection, where("userId", "==", userId), where("projectId", "==", projectId));
+  const q = query(
+    itemsCollection,
+    where("userId", "==", userId),
+    where("projectId", "==", projectId)
+  );
   const itemSnapshot = await getDocs(q);
   return itemSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
@@ -188,13 +225,17 @@ const updateItem = async (id, updates, type) => {
     const currentItem = itemSnapshot.data();
 
     if (type === "task") {
-      if ('isRecurring' in updates) {
-        updates.recurrencePattern = updates.isRecurring ? (updates.recurrencePattern || currentItem.recurrencePattern) : null;
-        updates.nextDueDate = updates.isRecurring ? 
-          (updates.nextDueDate ? new Date(updates.nextDueDate).toISOString() : currentItem.nextDueDate) : 
-          null;
+      if ("isRecurring" in updates) {
+        updates.recurrencePattern = updates.isRecurring
+          ? updates.recurrencePattern || currentItem.recurrencePattern
+          : null;
+        updates.nextDueDate = updates.isRecurring
+          ? updates.nextDueDate
+            ? new Date(updates.nextDueDate).toISOString()
+            : currentItem.nextDueDate
+          : null;
       }
-      if ('nextDueDate' in updates && updates.nextDueDate) {
+      if ("nextDueDate" in updates && updates.nextDueDate) {
         updates.nextDueDate = new Date(updates.nextDueDate).toISOString();
       }
     }
@@ -227,7 +268,9 @@ const deleteItem = async (id, type) => {
     }
     const itemData = itemSnapshot.data();
     await deleteDoc(itemDoc);
-    console.log(`${type} ${id} deleted from Firebase for user ${itemData.userId}`);
+    console.log(
+      `${type} ${id} deleted from Firebase for user ${itemData.userId}`
+    );
   } catch (error) {
     console.error(`Error deleting ${type}:`, error);
     throw error;
@@ -237,13 +280,23 @@ const deleteItem = async (id, type) => {
 // Task-specific functions
 const addTask = async (content, userId, projectId, additionalData = {}) => {
   const availableColors = [
-    "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8",
-    "#F7DC6F", "#BB8FCE", "#82E0AA", "#F1948A", "#85C1E9"
+    "#FF6B6B",
+    "#4ECDC4",
+    "#45B7D1",
+    "#FFA07A",
+    "#98D8C8",
+    "#F7DC6F",
+    "#BB8FCE",
+    "#82E0AA",
+    "#F1948A",
+    "#85C1E9",
   ];
-  
+
   const existingTasks = await getTasks(userId, projectId);
-  const usedColors = existingTasks.map(task => task.color).filter(Boolean);
-  const availableColorPool = availableColors.filter(color => !usedColors.includes(color));
+  const usedColors = existingTasks.map((task) => task.color).filter(Boolean);
+  const availableColorPool = availableColors.filter(
+    (color) => !usedColors.includes(color)
+  );
 
   let color = "#CCCCCC"; // Default color if all colors are used
   if (availableColorPool.length > 0) {
@@ -251,20 +304,26 @@ const addTask = async (content, userId, projectId, additionalData = {}) => {
     color = availableColorPool[randomIndex];
   }
 
-  return addItem(content, userId, projectId, "task", { ...additionalData, color });
+  return addItem(content, userId, projectId, "task", {
+    ...additionalData,
+    color,
+  });
 };
 
 const updateTask = async (id, updates) => updateItem(id, updates, "task");
 const deleteTask = (id) => deleteItem(id, "task");
-const getTasks = async (userId, projectId) => getItems(userId, projectId, "task");
+const getTasks = async (userId, projectId) =>
+  getItems(userId, projectId, "task");
 
 // Note-specific functions
-const addNote = (content, userId, projectId) => addItem(content, userId, projectId, "note");
+const addNote = (content, userId, projectId) =>
+  addItem(content, userId, projectId, "note");
 const deleteNote = (id) => deleteItem(id, "note");
 const getNotes = (userId, projectId) => getItems(userId, projectId, "note");
 
 // Bookmark-specific functions
-const getBookmarks = async (userId, projectId) => getItems(userId, projectId, "bookmark");
+const getBookmarks = async (userId, projectId) =>
+  getItems(userId, projectId, "bookmark");
 
 const addBookmark = async (url, title, image, userId, projectId) => {
   const bookmarksCollection = collection(db, "bookmarks");
@@ -291,23 +350,31 @@ const addBookmark = async (url, title, image, userId, projectId) => {
 };
 
 const deleteBookmark = (id) => deleteItem(id, "bookmark");
-const updateBookmark = async (id, updates) => updateItem(id, updates, "bookmark");
+const updateBookmark = async (id, updates) =>
+  updateItem(id, updates, "bookmark");
 
 // Document-specific functions
-const addDocument = async (title, content, userId, projectId, source = 'native', originalId = null) => {
+const addDocument = async (
+  title,
+  content,
+  userId,
+  projectId,
+  source = "native",
+  originalId = null
+) => {
   const timestamp = new Date();
-  return addItem(title, userId, projectId, "document", { 
-    content, 
+  return addItem(title, userId, projectId, "document", {
+    content,
     createdAt: timestamp,
     updatedAt: timestamp,
     source,
-    originalId
+    originalId,
   });
 };
 const updateDocument = async (id, updates) => {
   const updatesWithTimestamp = {
     ...updates,
-    updatedAt: new Date()
+    updatedAt: new Date(),
   };
   await updateItem(id, updatesWithTimestamp, "document");
 };
@@ -316,17 +383,17 @@ const deleteDocument = (id) => deleteItem(id, "document");
 
 const getDocuments = async (userId, projectId) => {
   const documents = await getItems(userId, projectId, "document");
-  return documents.map(doc => ({
+  return documents.map((doc) => ({
     ...doc,
-    source: doc.source || 'native', // Default to 'native' for existing documents
-    originalId: doc.originalId || null
+    source: doc.source || "native", // Default to 'native' for existing documents
+    originalId: doc.originalId || null,
   }));
 };
 
 const addDocumentFromGoogleDrive = async (userId, projectId, driveFileData) => {
   const { name, id, mimeType, content } = driveFileData;
   const timestamp = Timestamp.now();
-  
+
   try {
     const docRef = await addDoc(collection(db, "documents"), {
       title: name,
@@ -335,9 +402,9 @@ const addDocumentFromGoogleDrive = async (userId, projectId, driveFileData) => {
       projectId,
       createdAt: timestamp,
       updatedAt: timestamp,
-      source: 'Google Drive',
+      source: "Google Drive",
       originalId: id,
-      mimeType
+      mimeType,
     });
 
     return {
@@ -348,12 +415,12 @@ const addDocumentFromGoogleDrive = async (userId, projectId, driveFileData) => {
       projectId,
       createdAt: timestamp,
       updatedAt: timestamp,
-      source: 'Google Drive',
+      source: "Google Drive",
       originalId: id,
-      mimeType
+      mimeType,
     };
   } catch (error) {
-    console.error('Error adding document from Google Drive:', error);
+    console.error("Error adding document from Google Drive:", error);
     throw error;
   }
 };
@@ -361,9 +428,14 @@ const addDocumentFromGoogleDrive = async (userId, projectId, driveFileData) => {
 // Analytics functions
 const updateAnalytics = async (userId, projectId, analyticsData) => {
   try {
-    const analyticsRef = doc(db, 'analytics', `${userId}_${projectId}`);
+    const analyticsRef = doc(db, "analytics", `${userId}_${projectId}`);
     await setDoc(analyticsRef, analyticsData, { merge: true });
-    console.log("Analytics updated successfully for user:", userId, "and project:", projectId);
+    console.log(
+      "Analytics updated successfully for user:",
+      userId,
+      "and project:",
+      projectId
+    );
   } catch (error) {
     console.error("Error updating analytics:", error);
     throw error;
@@ -372,12 +444,17 @@ const updateAnalytics = async (userId, projectId, analyticsData) => {
 
 const getAnalytics = async (userId, projectId) => {
   try {
-    const analyticsRef = doc(db, 'analytics', `${userId}_${projectId}`);
+    const analyticsRef = doc(db, "analytics", `${userId}_${projectId}`);
     const docSnap = await getDoc(analyticsRef);
     if (docSnap.exists()) {
       return docSnap.data();
     } else {
-      console.log("No analytics found for user:", userId, "and project:", projectId);
+      console.log(
+        "No analytics found for user:",
+        userId,
+        "and project:",
+        projectId
+      );
       return {};
     }
   } catch (error) {
@@ -412,32 +489,32 @@ const getLastAccessedProject = async (userId) => {
 };
 
 // Cloud functions
-const queryPinecone = httpsCallable(functions, 'queryPinecone');
-const analyzeContent = httpsCallable(functions, 'analyzeContent');
+const queryPinecone = httpsCallable(functions, "queryPinecone");
+const analyzeContent = httpsCallable(functions, "analyzeContent");
 
-export { 
-  db, 
+export {
+  db,
   createProject,
   updateProject,
-  getUserProjects, 
-  getTasks, 
-  addTask, 
-  updateTask, 
-  deleteTask, 
-  getNotes, 
-  addNote, 
-  deleteNote, 
-  getBookmarks, 
-  addBookmark, 
+  getUserProjects,
+  getTasks,
+  addTask,
+  updateTask,
+  deleteTask,
+  getNotes,
+  addNote,
+  deleteNote,
+  getBookmarks,
+  addBookmark,
   deleteBookmark,
-  updateBookmark, 
-  queryPinecone, 
-  analyzeContent, 
-  updateAnalytics, 
+  updateBookmark,
+  queryPinecone,
+  analyzeContent,
+  updateAnalytics,
   getAnalytics,
-  addDocument, 
-  updateDocument, 
-  deleteDocument, 
+  addDocument,
+  updateDocument,
+  deleteDocument,
   getDocuments,
   addDocumentFromGoogleDrive, // New export
   setLastAccessedProject,
@@ -445,5 +522,5 @@ export {
   addAIResponse,
   getAIResponses,
   deleteAIResponse,
-  updateAIResponse
+  updateAIResponse,
 };
