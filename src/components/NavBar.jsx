@@ -1,17 +1,27 @@
-// NavBar.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { logout } from "../services/firebaseAuth";
 import { useProjectContext } from "../contexts/ProjectContext";
 import LogoutButton from "./LogoutButton";
-import styles from "./NavBar.module.css";
 import WeatherWidget from "./WeatherWidget";
 import TimeWidget from "./TimeWidget";
+import {
+  ChevronDown,
+  Layout,
+  Brain,
+  Sparkles,
+  Timer,
+  Menu,
+} from "lucide-react";
+import styles from "./NavBar.module.css";
 
 const NavBar = ({ user }) => {
   const navigate = useNavigate();
   const { projects, activeProject, updateActiveProject, displayName } =
     useProjectContext();
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isNavExpanded, setIsNavExpanded] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -31,49 +41,93 @@ const NavBar = ({ user }) => {
   const appTitle =
     user && displayName ? `${displayName}'s Cognify` : "My Cognify";
 
-  console.log("NavBar user data:", {
-    hasUser: !!user,
-    city: user?.city,
-    timezone: user?.timezone,
-    unit: user?.unit,
-  });
+  const handleToolsClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    setIsToolsOpen(!isToolsOpen);
+    if (window.innerWidth <= 991.98) {
+      // On mobile, close account menu when opening tools
+      setIsAccountOpen(false);
+    }
+  };
+
+  const handleAccountClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    setIsAccountOpen(!isAccountOpen);
+    if (window.innerWidth <= 991.98) {
+      // On mobile, close tools menu when opening account
+      setIsToolsOpen(false);
+    }
+  };
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Only handle desktop click-outside behavior
+      if (window.innerWidth > 991.98) {
+        if (!event.target.closest(`.${styles.toolsDropdown}`)) {
+          setIsToolsOpen(false);
+        }
+        if (!event.target.closest(`.${styles.accountDropdown}`)) {
+          setIsAccountOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
+
+  // Add a handler for the mobile menu to close dropdowns when collapsing
+  useEffect(() => {
+    if (!isNavExpanded) {
+      setIsToolsOpen(false);
+      setIsAccountOpen(false);
+    }
+  }, [isNavExpanded]);
 
   return (
     <nav className={`navbar navbar-expand-lg ${styles.customNavbar}`}>
       <div className="container-fluid">
-        <Link
-          className={`navbar-brand ${styles.navBrand}`}
-          to={user ? "/projects" : "/login"}
-        >
+        <Link className={styles.navBrand} to={user ? "/projects" : "/login"}>
+          <Layout className={styles.brandIcon} />
           {appTitle}
         </Link>
+
         <button
           className={`navbar-toggler ${styles.navToggler}`}
           type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
+          onClick={() => setIsNavExpanded(!isNavExpanded)}
+          aria-expanded={isNavExpanded}
           aria-label="Toggle navigation"
         >
-          <span className="navbar-toggler-icon"></span>
+          <Menu size={24} />
         </button>
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav ms-auto">
+
+        <div
+          className={`collapse navbar-collapse ${isNavExpanded ? "show" : ""}`}
+        >
+          <ul className={`navbar-nav ms-auto ${styles.navList}`}>
             {user && (
               <>
-                <li className="nav-item d-flex align-items-center">
+                <li
+                  className={`nav-item ${styles.navItem} ${styles.widgetItem}`}
+                >
                   <TimeWidget timezone={user.timezone || "UTC"} />
                 </li>
-                <li className="nav-item d-flex align-items-center">
+                <li
+                  className={`nav-item ${styles.navItem} ${styles.widgetItem}`}
+                >
                   {user.city ? (
                     <WeatherWidget
-                      key={`${user.city}-${user.unit}`} // Add this key prop
+                      key={`${user.city}-${user.unit}`}
                       city={user.city}
                       unit={user.unit || "metric"}
                     />
                   ) : (
-                    <Link to="/account" className="nav-link">
+                    <Link to="/account" className={styles.navLink}>
                       Set location
                     </Link>
                   )}
@@ -82,9 +136,9 @@ const NavBar = ({ user }) => {
             )}
             {user ? (
               <>
-                <li className="nav-item">
+                <li className={`nav-item ${styles.navItem}`}>
                   <select
-                    className={`form-select ${styles.projectSelect}`}
+                    className={styles.projectSelect}
                     value={activeProject || ""}
                     onChange={handleProjectChange}
                   >
@@ -101,81 +155,118 @@ const NavBar = ({ user }) => {
                 </li>
                 {activeProject && projects.length > 0 && (
                   <>
-                    <li className="nav-item">
+                    <li className={`nav-item ${styles.navItem}`}>
                       <Link
-                        className="nav-link"
+                        className={styles.navLink}
                         to={`/project/${activeProject}`}
                       >
                         Dashboard
                       </Link>
                     </li>
-                    <li className="nav-item">
+                    <li className={`nav-item ${styles.navItem}`}>
                       <Link
-                        className="nav-link"
+                        className={styles.navLink}
                         to={`/project/${activeProject}/documents`}
                       >
                         Documents
                       </Link>
                     </li>
-                    <li className="nav-item">
-                      <Link
-                        className="nav-link"
-                        to={`/project/${activeProject}/focus`}
+                    <li
+                      className={`nav-item ${styles.navItem} ${styles.toolsDropdown}`}
+                    >
+                      <button
+                        className={`${styles.navLink} ${styles.dropdownToggle}`}
+                        onClick={handleToolsClick}
                       >
-                        Focus
-                      </Link>
+                        Tools{" "}
+                        <ChevronDown
+                          size={16}
+                          className={styles.dropdownIcon}
+                        />
+                      </button>
+                      <ul
+                        className={`${styles.dropdownMenu} ${
+                          isToolsOpen ? styles.show : ""
+                        }`}
+                      >
+                        <li>
+                          <Link
+                            to={`/project/${activeProject}/focus`}
+                            className={styles.dropdownItem}
+                          >
+                            <Timer size={16} /> Focus Timer
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to={`/project/${activeProject}/ai-assistant`}
+                            className={styles.dropdownItem}
+                          >
+                            <Sparkles size={16} /> AI Assistant
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to={`/project/${activeProject}/synapses`}
+                            className={styles.dropdownItem}
+                          >
+                            <Brain size={16} /> Synapses
+                          </Link>
+                        </li>
+                      </ul>
                     </li>
-                    <li className="nav-item">
-                      <Link
-                        className="nav-link"
-                        to={`/project/${activeProject}/ai-assistant`}
+                    <li
+                      className={`nav-item ${styles.navItem} ${styles.accountDropdown}`}
+                    >
+                      <button
+                        className={`${styles.navLink} ${styles.dropdownToggle}`}
+                        onClick={handleAccountClick}
                       >
-                        AI Assistant
-                      </Link>
-                    </li>
-                    <li className="nav-item">
-                      <Link
-                        className="nav-link"
-                        to={`/project/${activeProject}/synapses`}
+                        Account{" "}
+                        <ChevronDown
+                          size={16}
+                          className={styles.dropdownIcon}
+                        />
+                      </button>
+                      <ul
+                        className={`${styles.dropdownMenu} ${
+                          isAccountOpen ? styles.show : ""
+                        }`}
                       >
-                        Synapses
-                      </Link>
+                        <li>
+                          <Link
+                            className={styles.dropdownItem}
+                            to="/account"
+                            onClick={() => setIsAccountOpen(false)}
+                          >
+                            Profile Settings
+                          </Link>
+                        </li>
+                        <li>
+                          <hr className={styles.dropdownDivider} />
+                        </li>
+                        <li>
+                          <button
+                            className={styles.dropdownItem}
+                            onClick={() => {
+                              setIsAccountOpen(false);
+                              handleLogout();
+                            }}
+                          >
+                            Logout
+                          </button>
+                        </li>
+                      </ul>
                     </li>
                   </>
                 )}
-                <li className="nav-item dropdown">
-                  <button
-                    className={`nav-link dropdown-toggle ${styles.accountDropdown}`}
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                  >
-                    Account
-                  </button>
-                  <ul
-                    className={`dropdown-menu dropdown-menu-end ${styles.accountMenu}`}
-                  >
-                    <li>
-                      <Link className="dropdown-item" to="/account">
-                        Profile Settings
-                      </Link>
-                    </li>
-                    <li>
-                      <hr className="dropdown-divider" />
-                    </li>
-                    <li>
-                      <LogoutButton />
-                    </li>
-                  </ul>
-                </li>
               </>
             ) : (
-              <>
-                <li className="nav-item">
-                  <Link className="nav-link" to="/login">
-                    Sign In
-                  </Link>
-                </li>
-              </>
+              <li className={`nav-item ${styles.navItem}`}>
+                <Link className={styles.navLink} to="/login">
+                  Sign In
+                </Link>
+              </li>
             )}
           </ul>
         </div>
