@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createProject, updateProject } from "../services/firebaseConfig";
+import { createProject, updateProject, getTasks } from "../services/firebaseConfig";
 import { useProjectContext } from "../contexts/ProjectContext";
+import ProjectTaskItem from "./ProjectTaskItem";
+import styles from './FullPageTasks.module.css';
 
 const ProjectList = ({ user }) => {
   const [newProjectName, setNewProjectName] = useState("");
@@ -9,18 +11,70 @@ const ProjectList = ({ user }) => {
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [editingProjectName, setEditingProjectName] = useState("");
   const [isReady, setIsReady] = useState(false);
-  const { projects, addProject, updateActiveProject, updateProjectName } =
-    useProjectContext();
+  const [allTasks, setAllTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { projects, addProject, updateActiveProject, updateProjectName } = useProjectContext();
+  const [sortBy, setSortBy] = useState('priority');
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Wait for context to be ready
     const checkReady = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Give context time to initialize
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       setIsReady(true);
     };
     checkReady();
   }, []);
+
+  const sortTasks = (tasks, sortMethod) => {
+    return [...tasks].sort((a, b) => {
+      if (sortMethod === 'project') {
+        // Sort by project name first, then by priority
+        if (a.projectName !== b.projectName) {
+          return a.projectName.localeCompare(b.projectName);
+        }
+      }
+      
+      // Default priority sorting
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1;
+      }
+      if (a.priority === undefined && b.priority === undefined) return 0;
+      if (a.priority === undefined) return 1;
+      if (b.priority === undefined) return -1;
+      return a.priority - b.priority;
+    });
+  };
+
+  useEffect(() => {
+    const fetchAllTasks = async () => {
+      if (!user || !projects.length) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const taskPromises = projects.map(project => 
+          getTasks(user.uid, project.id)
+            .then(tasks => tasks.map(task => ({
+              ...task,
+              projectName: project.name,
+              projectId: project.id
+            })))
+        );
+
+        const projectTasks = await Promise.all(taskPromises);
+        const flattenedTasks = projectTasks.flat();
+        const sortedTasks = sortTasks(flattenedTasks, sortBy);
+        setAllTasks(sortedTasks);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchAllTasks();
+  }, [user, projects, sortBy]); 
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
@@ -41,18 +95,10 @@ const ProjectList = ({ user }) => {
       const newProject = await createProject(user.uid, newProjectName.trim());
       console.log("Project created:", newProject);
 
-      // Add to context first
-      console.log("Adding project to context...");
       addProject(newProject);
-
-      // Clear input
       setNewProjectName("");
-
-      // Update active project in context
-      console.log("Setting active project:", newProject.id);
       await updateActiveProject(newProject.id);
 
-      // Force a state update cycle to complete
       await new Promise((resolve) => {
         setTimeout(() => {
           console.log("State update cycle completed");
@@ -60,8 +106,6 @@ const ProjectList = ({ user }) => {
         }, 0);
       });
 
-      // Navigate after state is updated
-      console.log("Navigating to new project...");
       window.location.href = `/project/${newProject.id}`;
     } catch (error) {
       console.error("Error in project creation:", error);
@@ -108,13 +152,30 @@ const ProjectList = ({ user }) => {
     setError("");
   };
 
-  // Disable the form until ready
+  const handleTaskUpdate = async () => {
+    const taskPromises = projects.map(project => 
+      getTasks(user.uid, project.id)
+        .then(tasks => tasks.map(task => ({
+          ...task,
+          projectName: project.name,
+          projectId: project.id
+        })))
+    );
+
+    const projectTasks = await Promise.all(taskPromises);
+    setAllTasks(projectTasks.flat());
+  };
+
+  const handleSortChange = (e) => {
+    setSortBy(e.target.value);
+  };
+
   const formDisabled = !isReady;
 
   return (
     <div className="container mt-5">
       <h2 className="mb-4">My Projects</h2>
-      <div className="row">
+      <div className="row mb-5">
         {/* Left column: New Project Form */}
         <div className="col-md-5">
           <div className="card">
@@ -216,6 +277,43 @@ const ProjectList = ({ user }) => {
                   the left!
                 </p>
               </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tasks Overview Section */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h3 className="mb-0">Tasks Across All Projects</h3>
+        <select 
+          className="form-select w-auto" 
+          value={sortBy}
+          onChange={handleSortChange}
+        >
+          <option value="priority">Sort by Priority</option>
+          <option value="project">Sort by Project</option>
+        </select>
+      </div>
+      
+      <div className="card">
+        <div className="card-body">
+          {loading ? (
+            <div>Loading tasks...</div>
+          ) : allTasks.length > 0 ? (
+            <ul className={`list-group ${styles.taskList} ${styles.fullPageTaskGrid}`}>
+              {allTasks.map((task) => (
+                <ProjectTaskItem
+                  key={task.id}
+                  task={task}
+                  projectName={task.projectName}
+                  onTaskUpdate={handleTaskUpdate}
+                  onTaskDelete={handleTaskUpdate}
+                />
+              ))}
+            </ul>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-muted mb-0">No tasks added yet. Create a project and add some tasks to get started!</p>
             </div>
           )}
         </div>
