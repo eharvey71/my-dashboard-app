@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createProject, updateProject, getTasks } from "../services/firebaseConfig";
+import {
+  createProject,
+  updateProject,
+  getTasks,
+} from "../services/firebaseConfig";
 import { useProjectContext } from "../contexts/ProjectContext";
 import ProjectTaskItem from "./ProjectTaskItem";
-import styles from './FullPageTasks.module.css';
+import styles from "./FullPageTasks.module.css";
 
 const ProjectList = ({ user }) => {
   const [newProjectName, setNewProjectName] = useState("");
@@ -13,8 +17,9 @@ const ProjectList = ({ user }) => {
   const [isReady, setIsReady] = useState(false);
   const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { projects, addProject, updateActiveProject, updateProjectName } = useProjectContext();
-  const [sortBy, setSortBy] = useState('priority');
+  const { projects, addProject, updateActiveProject, updateProjectName } =
+    useProjectContext();
+  const [sortBy, setSortBy] = useState("priority");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,13 +32,13 @@ const ProjectList = ({ user }) => {
 
   const sortTasks = (tasks, sortMethod) => {
     return [...tasks].sort((a, b) => {
-      if (sortMethod === 'project') {
+      if (sortMethod === "project") {
         // Sort by project name first, then by priority
         if (a.projectName !== b.projectName) {
           return a.projectName.localeCompare(b.projectName);
         }
       }
-      
+
       // Default priority sorting
       if (a.completed !== b.completed) {
         return a.completed ? 1 : -1;
@@ -53,13 +58,14 @@ const ProjectList = ({ user }) => {
       }
 
       try {
-        const taskPromises = projects.map(project => 
-          getTasks(user.uid, project.id)
-            .then(tasks => tasks.map(task => ({
+        const taskPromises = projects.map((project) =>
+          getTasks(user.uid, project.id).then((tasks) =>
+            tasks.map((task) => ({
               ...task,
               projectName: project.name,
-              projectId: project.id
-            })))
+              projectId: project.id,
+            }))
+          )
         );
 
         const projectTasks = await Promise.all(taskPromises);
@@ -74,7 +80,7 @@ const ProjectList = ({ user }) => {
     };
 
     fetchAllTasks();
-  }, [user, projects, sortBy]); 
+  }, [user, projects, sortBy]);
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
@@ -153,17 +159,20 @@ const ProjectList = ({ user }) => {
   };
 
   const handleTaskUpdate = async () => {
-    const taskPromises = projects.map(project => 
-      getTasks(user.uid, project.id)
-        .then(tasks => tasks.map(task => ({
+    const taskPromises = projects.map((project) =>
+      getTasks(user.uid, project.id).then((tasks) =>
+        tasks.map((task) => ({
           ...task,
           projectName: project.name,
-          projectId: project.id
-        })))
+          projectId: project.id,
+        }))
+      )
     );
 
     const projectTasks = await Promise.all(taskPromises);
-    setAllTasks(projectTasks.flat());
+    const flattenedTasks = projectTasks.flat();
+    const sortedTasks = sortTasks(flattenedTasks, sortBy); // Use current sortBy value
+    setAllTasks(sortedTasks);
   };
 
   const handleSortChange = (e) => {
@@ -285,8 +294,8 @@ const ProjectList = ({ user }) => {
       {/* Tasks Overview Section */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3 className="mb-0">Tasks Across All Projects</h3>
-        <select 
-          className="form-select w-auto" 
+        <select
+          className="form-select w-auto"
           value={sortBy}
           onChange={handleSortChange}
         >
@@ -294,13 +303,15 @@ const ProjectList = ({ user }) => {
           <option value="project">Sort by Project</option>
         </select>
       </div>
-      
+
       <div className="card">
         <div className="card-body">
           {loading ? (
             <div>Loading tasks...</div>
           ) : allTasks.length > 0 ? (
-            <ul className={`list-group ${styles.taskList} ${styles.fullPageTaskGrid}`}>
+            <ul
+              className={`list-group ${styles.taskList} ${styles.fullPageTaskGrid}`}
+            >
               {allTasks.map((task) => (
                 <ProjectTaskItem
                   key={task.id}
@@ -313,7 +324,10 @@ const ProjectList = ({ user }) => {
             </ul>
           ) : (
             <div className="text-center py-4">
-              <p className="text-muted mb-0">No tasks added yet. Create a project and add some tasks to get started!</p>
+              <p className="text-muted mb-0">
+                No tasks added yet. Create a project and add some tasks to get
+                started!
+              </p>
             </div>
           )}
         </div>
