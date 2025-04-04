@@ -149,9 +149,24 @@ const Notes = ({ user, projectId, limit }) => {
 
   const handleExpandNote = async (note) => {
     try {
+      console.log('Expanding note to document with content:', note.content); // Debug log
       const title = note.content.substring(0, 50) + (note.content.length > 50 ? "..." : "");
+      
+      // First create the document
       const newDoc = await addDocument(title, note.content, user.uid, projectId);
-      navigate(`/project/${projectId}/documents/${newDoc.id}`, { state: { initialContent: note.content, initialTitle: title } });
+      
+      // Then navigate with state and initialContent explicitly set
+      const navigationState = { 
+        initialContent: note.content, 
+        initialTitle: title,
+        createdAt: new Date().toISOString() // Add a timestamp to ensure state is always unique
+      };
+      
+      console.log('Navigating to document with state:', navigationState); // Debug log
+      navigate(`/project/${projectId}/documents/${newDoc.id}`, { 
+        state: navigationState,
+        replace: true // Use replace to ensure history is clean
+      });
     } catch (error) {
       console.error("Error expanding note to document:", error);
       setError("Failed to expand note to document");

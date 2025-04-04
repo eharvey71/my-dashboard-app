@@ -21,12 +21,24 @@ const DocumentEditor = ({ user }) => {
       } else if (location.state && location.state.initialContent) {
         const initialTitle = location.state.initialTitle || '';
         const content = location.state.initialContent;
+        console.log('Setting initial content from location state:', content); // Debug log
+        
         setTitle(initialTitle);
         setInitialContent(content);
+        
         // Create a new document immediately
         const newDoc = await addDocument(initialTitle, content, user.uid, projectId);
         setDocumentId(newDoc.id);
-        navigate(`/project/${projectId}/documents/${newDoc.id}`, { replace: true });
+        
+        // Use setTimeout to ensure the content is set after navigation
+        setTimeout(() => {
+          if (editorRef.current) {
+            console.log('Setting editor content after timeout');
+            editorRef.current.setContent(content);
+          }
+        }, 100);
+        
+        navigate(`/project/${projectId}/documents/${newDoc.id}`, { replace: true, state: { initialContent: content, initialTitle: initialTitle } });
       }
     };
 
@@ -35,7 +47,16 @@ const DocumentEditor = ({ user }) => {
 
   useEffect(() => {
     if (editorRef.current && initialContent) {
-      editorRef.current.setContent(initialContent);
+      console.log('useEffect: Setting editor content from initialContent change');
+      
+      // Use a small delay to ensure the editor is ready
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.setContent(initialContent);
+          // Force a re-render of the editor content
+          editorRef.current.execCommand('mceRepaint');
+        }
+      }, 100);
     }
   }, [initialContent]);
 
@@ -113,10 +134,17 @@ const DocumentEditor = ({ user }) => {
       />
       <Editor
         apiKey="g4hs9khfgw1uugaf6xwxnbr465wiilodw9q7ztifembowdp5"
+        initialValue={initialContent} // Set initial value directly
         onInit={(evt, editor) => {
           editorRef.current = editor;
+          console.log('Editor initialized, initialContent:', initialContent); // Debug log
+          
+          // Double-check to ensure content is set
           if (initialContent) {
-            editor.setContent(initialContent);
+            console.log('Setting content on editor init');
+            setTimeout(() => {
+              editor.setContent(initialContent);
+            }, 50);
           }
         }}
         init={{
@@ -124,7 +152,16 @@ const DocumentEditor = ({ user }) => {
           menubar: false,
           plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount linkchecker',
           toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
-          content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+          content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+          setup: (editor) => {
+            editor.on('init', () => {
+              // One more check to ensure content is set after editor is fully initialized
+              if (initialContent) {
+                console.log('Setting content on editor fully initialized');
+                editor.setContent(initialContent);
+              }
+            });
+          }
         }}
       />
       <div className={styles.editorActions}>

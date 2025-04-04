@@ -32,9 +32,25 @@ const QuickNoteSelector = ({ user, projectId, onClose }) => {
 
   const handleCreateDocument = async (note) => {
     try {
+      console.log('Creating document from note with content:', note.content); // Debug log
       const title = note.content.substring(0, 50) + (note.content.length > 50 ? "..." : "");
+      
+      // First create the document
       const newDoc = await addDocument(title, note.content, user.uid, projectId);
-      navigate(`/project/${projectId}/documents/${newDoc.id}`, { state: { initialContent: note.content, initialTitle: title } });
+      
+      // Then navigate with state and initialContent explicitly set
+      const navigationState = { 
+        initialContent: note.content, 
+        initialTitle: title,
+        createdAt: new Date().toISOString() // Add a timestamp to ensure state is always unique
+      };
+      
+      console.log('Navigating with state:', navigationState); // Debug log
+      navigate(`/project/${projectId}/documents/${newDoc.id}`, { 
+        state: navigationState,
+        replace: true // Use replace to ensure history is clean
+      });
+      
       if (onClose) onClose();
     } catch (error) {
       console.error("Error creating document from note:", error);
