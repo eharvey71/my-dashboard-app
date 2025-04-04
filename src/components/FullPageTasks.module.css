@@ -98,6 +98,7 @@
   align-items: center;
   justify-content: center;
   z-index: 10;
+  cursor: default; /* Prevents cursor from changing */
 }
 
 .deleteConfirmation {
@@ -106,6 +107,7 @@
   border: 1px solid #f5c6cb;
   border-radius: 4px;
   padding: 5px 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .taskTimer {
@@ -211,5 +213,28 @@
     position: absolute;
     top: 10px;
     right: 15px;
+  }
+}
+
+/* Desktop enhancements */
+@media (min-width: 768px) {
+  .deleteConfirmation {
+    padding: 8px 15px;
+    font-size: 1rem;
+  }
+  
+  .deleteConfirmation button {
+    padding: 6px 10px;
+    margin: 0 5px;
+  }
+  
+  .deleteConfirmation button svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  /* Adjust task grid for desktop */
+  .fullPageTaskGrid {
+    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
   }
 }

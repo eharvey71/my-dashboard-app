@@ -12,6 +12,10 @@ import {
   Sparkles,
   Timer,
   Menu,
+  FileText,
+  CheckSquare,
+  StickyNote,
+  Bookmark,
 } from "lucide-react";
 import styles from "./NavBar.module.css";
 
@@ -20,6 +24,7 @@ const NavBar = ({ user }) => {
   const { projects, activeProject, updateActiveProject, displayName } =
     useProjectContext();
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isNavExpanded, setIsNavExpanded] = useState(false);
 
@@ -46,8 +51,20 @@ const NavBar = ({ user }) => {
     e.stopPropagation(); // Prevent event bubbling
     setIsToolsOpen(!isToolsOpen);
     if (window.innerWidth <= 991.98) {
-      // On mobile, close account menu when opening tools
+      // On mobile, close other menus when opening tools
       setIsAccountOpen(false);
+      setIsCollectionsOpen(false);
+    }
+  };
+
+  const handleCollectionsClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    setIsCollectionsOpen(!isCollectionsOpen);
+    if (window.innerWidth <= 991.98) {
+      // On mobile, close other menus when opening collections
+      setIsAccountOpen(false);
+      setIsToolsOpen(false);
     }
   };
 
@@ -56,8 +73,9 @@ const NavBar = ({ user }) => {
     e.stopPropagation(); // Prevent event bubbling
     setIsAccountOpen(!isAccountOpen);
     if (window.innerWidth <= 991.98) {
-      // On mobile, close tools menu when opening account
+      // On mobile, close other menus when opening account
       setIsToolsOpen(false);
+      setIsCollectionsOpen(false);
     }
   };
 
@@ -67,6 +85,9 @@ const NavBar = ({ user }) => {
       if (window.innerWidth > 991.98) {
         if (!event.target.closest(`.${styles.toolsDropdown}`)) {
           setIsToolsOpen(false);
+        }
+        if (!event.target.closest(`.${styles.collectionsDropdown}`)) {
+          setIsCollectionsOpen(false);
         }
         if (!event.target.closest(`.${styles.accountDropdown}`)) {
           setIsAccountOpen(false);
@@ -84,6 +105,7 @@ const NavBar = ({ user }) => {
   useEffect(() => {
     if (!isNavExpanded) {
       setIsToolsOpen(false);
+      setIsCollectionsOpen(false);
       setIsAccountOpen(false);
     }
   }, [isNavExpanded]);
@@ -163,13 +185,57 @@ const NavBar = ({ user }) => {
                         Dashboard
                       </Link>
                     </li>
-                    <li className={`nav-item ${styles.navItem}`}>
-                      <Link
-                        className={styles.navLink}
-                        to={`/project/${activeProject}/documents`}
+                    <li
+                      className={`nav-item ${styles.navItem} ${styles.collectionsDropdown}`}
+                    >
+                      <button
+                        className={`${styles.navLink} ${styles.dropdownToggle}`}
+                        onClick={handleCollectionsClick}
                       >
-                        Documents
-                      </Link>
+                        Collections{" "}
+                        <ChevronDown
+                          size={16}
+                          className={styles.dropdownIcon}
+                        />
+                      </button>
+                      <ul
+                        className={`${styles.dropdownMenu} ${
+                          isCollectionsOpen ? styles.show : ""
+                        }`}
+                      >
+                        <li>
+                          <Link
+                            to={`/project/${activeProject}/documents`}
+                            className={styles.dropdownItem}
+                          >
+                            <FileText size={16} /> Documents
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to={`/project/${activeProject}/tasks`}
+                            className={styles.dropdownItem}
+                          >
+                            <CheckSquare size={16} /> Tasks
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to={`/project/${activeProject}/notes`}
+                            className={styles.dropdownItem}
+                          >
+                            <StickyNote size={16} /> Notes
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to={`/project/${activeProject}/bookmarks`}
+                            className={styles.dropdownItem}
+                          >
+                            <Bookmark size={16} /> Bookmarks
+                          </Link>
+                        </li>
+                      </ul>
                     </li>
                     <li
                       className={`nav-item ${styles.navItem} ${styles.toolsDropdown}`}

@@ -4,6 +4,7 @@ import {
   createProject,
   updateProject,
   getTasks,
+  deleteTask,
 } from "../services/firebaseConfig";
 import { useProjectContext } from "../contexts/ProjectContext";
 import ProjectTaskItem from "./ProjectTaskItem";
@@ -174,6 +175,18 @@ const ProjectList = ({ user }) => {
     const sortedTasks = sortTasks(flattenedTasks, sortBy); // Use current sortBy value
     setAllTasks(sortedTasks);
   };
+  
+  const handleTaskDelete = async (taskId) => {
+    try {
+      // First delete the task from the database
+      await deleteTask(taskId);
+      
+      // Then update the UI by removing the task from allTasks
+      setAllTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+    } catch (error) {
+      console.error("Error deleting task:", error);
+    }
+  };
 
   const handleSortChange = (e) => {
     setSortBy(e.target.value);
@@ -318,7 +331,7 @@ const ProjectList = ({ user }) => {
                   task={task}
                   projectName={task.projectName}
                   onTaskUpdate={handleTaskUpdate}
-                  onTaskDelete={handleTaskUpdate}
+                  onTaskDelete={handleTaskDelete}
                 />
               ))}
             </ul>

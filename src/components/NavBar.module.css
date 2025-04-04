@@ -100,10 +100,12 @@
 }
 
 .dropdownToggle[aria-expanded="true"] .dropdownIcon,
-.toolsDropdown:hover .dropdownIcon {
+.toolsDropdown:hover .dropdownIcon,
+.collectionsDropdown:hover .dropdownIcon {
   transform: rotate(180deg);
 }
 
+.collectionsDropdown,
 .accountDropdown {
   position: relative;
 }
@@ -127,7 +129,8 @@
 }
 
 .dropdownMenu.show,
-.toolsDropdown:hover .dropdownMenu {
+.toolsDropdown:hover .dropdownMenu,
+.collectionsDropdown:hover .dropdownMenu {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
@@ -238,7 +241,8 @@
     display: flex;
   }
 
-  .toolsDropdown .dropdownMenu {
+  .toolsDropdown .dropdownMenu,
+  .collectionsDropdown .dropdownMenu {
     width: 100%;
     position: static;
     transform: none;
@@ -254,6 +258,7 @@
 
   /* Only show dropdown when explicitly toggled */
   .toolsDropdown .dropdownMenu.show,
+  .collectionsDropdown .dropdownMenu.show,
   .accountDropdown .dropdownMenu.show {
     display: block !important;
     visibility: visible !important;

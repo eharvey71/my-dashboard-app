@@ -167,7 +167,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
-        setIsConfirmingDelete(false);
+        // Only close dropdowns, but keep delete confirmation open if active
         setShowPriorityDropdown(false);
         setShowRecurrenceDropdown(false);
       }}
