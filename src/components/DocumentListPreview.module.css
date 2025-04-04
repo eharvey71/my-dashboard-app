@@ -52,3 +52,28 @@
 .viewMoreLink:hover {
   text-decoration: underline;
 }
+
+.documentButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.documentButton {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .documentButtons {
+    margin-top: 10px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .documentTitle {
+    font-size: 0.95rem;
+  }
+}

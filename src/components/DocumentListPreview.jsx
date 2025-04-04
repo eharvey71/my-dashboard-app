@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getDocuments } from '../services/firebaseConfig';
 import styles from './DocumentListPreview.module.css';
-import { FileText, ExternalLink } from 'lucide-react';
+import { FileText, ExternalLink, Plus, FileUp } from 'lucide-react';
+import QuickNoteSelector from './QuickNoteSelector';
 
 const DocumentListPreview = ({ user, projectId, limit = 5, onDocumentClick }) => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isQuickNoteModalOpen, setIsQuickNoteModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -49,7 +51,24 @@ const DocumentListPreview = ({ user, projectId, limit = 5, onDocumentClick }) =>
   return (
     <div className="card">
       <div className="card-body">
-        <h2 className="card-title">Recent Documents</h2>
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+          <h2 className="card-title mb-md-0">Recent Documents</h2>
+          <div className={styles.documentButtons}>
+            <Link 
+              to={`/project/${projectId}/documents/new`} 
+              className={`btn btn-sm btn-outline-primary me-2 ${styles.documentButton}`}
+            >
+              <Plus size={16} className="me-1" /> New Document
+            </Link>
+            <button 
+              className={`btn btn-sm btn-outline-secondary ${styles.documentButton}`}
+              onClick={() => setIsQuickNoteModalOpen(true)}
+            >
+              <FileUp size={16} className="me-1" /> Create from Quick Note
+            </button>
+          </div>
+        </div>
+
         <ul className={`list-group ${styles.documentList}`}>
           {documents.map((document) => (
             <li key={document.id} className={`list-group-item ${styles.documentItem}`}>
@@ -72,10 +91,20 @@ const DocumentListPreview = ({ user, projectId, limit = 5, onDocumentClick }) =>
             </li>
           ))}
         </ul>
+        
         {documents.length === limit && (
           <div className={`${styles.viewMoreContainer} mt-3`}>
             <Link to={`/project/${projectId}/documents`} className={`btn btn-link ${styles.viewMoreLink}`}>View More</Link>
           </div>
+        )}
+
+        {/* Quick Note Selector Modal */}
+        {isQuickNoteModalOpen && (
+          <QuickNoteSelector
+            user={user}
+            projectId={projectId}
+            onClose={() => setIsQuickNoteModalOpen(false)}
+          />
         )}
       </div>
     </div>

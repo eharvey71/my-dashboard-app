@@ -4,8 +4,9 @@ import { setLastAccessedProject } from '../services/firebaseConfig';
 import TaskList from './TaskList';
 import Notes from './Notes';
 import BookmarkList from './BookmarkList';
-import AIAssistant from './AIAssistant';
-import CustomAPIModule from './CustomAPIModule';
+// These components are temporarily removed from the dashboard but code is retained
+// import AIAssistant from './AIAssistant';
+// import CustomAPIModule from './CustomAPIModule';
 import DocumentListPreview from './DocumentListPreview';
 import { openGoogleDriveDocument } from '../services/googleDriveService';
 
@@ -66,12 +67,7 @@ const Dashboard = ({ user }) => {
               showAddBookmark={true} 
             />
           </div>
-          <div className="mb-4">
-            <AIAssistant user={user} projectId={projectId} />
-          </div>
-          <div className="mb-4">
-            <CustomAPIModule projectId={projectId} />
-          </div>
+          {/* AIAssistant and CustomAPIModule removed from the dashboard but code retained */}
         </div>
       </div>
     </div>
