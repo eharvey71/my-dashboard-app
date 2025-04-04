@@ -1,0 +1,66 @@
+.taskContentWrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.projectBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.folderIcon {
+  margin-right: 4px;
+}
+
+/* Project section container */
+.projectSection {
+  margin-bottom: 30px;
+  padding-bottom: 10px;
+}
+
+/* Section headers for project grouping when sorted by project */
+.projectHeader {
+  display: block;
+  margin-top: 32px;
+  margin-bottom: 16px;
+  font-weight: 500;
+  color: #495057;
+  padding: 10px 16px;
+  border-bottom: 1px solid #63b3ed;
+  background: linear-gradient(to right, #f8f9fa, transparent);
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.projectHeaderName {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+/* Make first header have less top margin */
+.projectHeader:first-of-type {
+  margin-top: 8px;
+}
+
+/* Responsive styling */
+@media (min-width: 768px) {
+  .taskContentWrapper {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .projectBadge {
+    margin-top: 0;
+    margin-left: 16px;
+    background-color: #f8f9fa;
+    padding: 2px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+  }
+}

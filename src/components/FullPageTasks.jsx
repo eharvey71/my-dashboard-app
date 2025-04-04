@@ -32,8 +32,8 @@ const FullPageTasks = ({ user }) => {
     if (newTask.trim() === "") return;
     try {
       const addedTask = await addTask(newTask, user.uid, projectId);
-      setTasks(prevTasks => [addedTask, ...prevTasks]);
-      setNewTask('');
+      setTasks((prevTasks) => [addedTask, ...prevTasks]);
+      setNewTask("");
     } catch (error) {
       console.error("Error adding task:", error);
       setError("Failed to add task");
@@ -47,7 +47,7 @@ const FullPageTasks = ({ user }) => {
   const handleTaskDelete = useCallback(async (taskId) => {
     try {
       await deleteTask(taskId);
-      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
     } catch (error) {
       console.error("Error deleting task:", error);
       setError("Failed to delete task");
@@ -70,7 +70,7 @@ const FullPageTasks = ({ user }) => {
 
   return (
     <div className="container mt-4">
-      <h1>All Tasks</h1>
+      <h1>All Project Tasks</h1>
       <div className={`card ${styles.taskListCard}`}>
         <div className="card-body">
           <div className={`input-group ${styles.inputGroup}`}>
@@ -86,12 +86,17 @@ const FullPageTasks = ({ user }) => {
                 }
               }}
             />
-            <button className={`btn ${styles.btnOutlineSecondary}`} onClick={handleAddTask}>
+            <button
+              className={`btn ${styles.btnOutlineSecondary}`}
+              onClick={handleAddTask}
+            >
               Add Task
             </button>
           </div>
           {error && <p className="text-danger">{error}</p>}
-          <ul className={`list-group ${styles.taskList} ${styles.fullPageTaskGrid}`}>
+          <ul
+            className={`list-group ${styles.taskList} ${styles.fullPageTaskGrid}`}
+          >
             {sortedTasks.map((task) => (
               <Task
                 key={task.id}

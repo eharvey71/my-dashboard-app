@@ -9,6 +9,7 @@ import {
 import { useProjectContext } from "../contexts/ProjectContext";
 import ProjectTaskItem from "./ProjectTaskItem";
 import styles from "./FullPageTasks.module.css";
+import projectStyles from "./ProjectTaskItem.module.css";
 
 const ProjectList = ({ user }) => {
   const [newProjectName, setNewProjectName] = useState("");
@@ -307,14 +308,26 @@ const ProjectList = ({ user }) => {
       {/* Tasks Overview Section */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3 className="mb-0">Tasks Across All Projects</h3>
-        <select
-          className="form-select w-auto"
-          value={sortBy}
-          onChange={handleSortChange}
-        >
-          <option value="priority">Sort by Priority</option>
-          <option value="project">Sort by Project</option>
-        </select>
+        <div className="d-flex align-items-center">
+          <label htmlFor="sortTasks" className="me-2 text-muted d-none d-sm-block">
+            View:
+          </label>
+          <select
+            id="sortTasks"
+            className="form-select w-auto"
+            value={sortBy}
+            onChange={handleSortChange}
+            style={{ 
+              borderColor: "#63b3ed", 
+              borderRadius: "6px",
+              background: "linear-gradient(to bottom, #ffffff, #f8f9fa)",
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)"
+            }}
+          >
+            <option value="priority">Sort by Priority</option>
+            <option value="project">Group by Project</option>
+          </select>
+        </div>
       </div>
 
       <div className="card">
@@ -322,19 +335,48 @@ const ProjectList = ({ user }) => {
           {loading ? (
             <div>Loading tasks...</div>
           ) : allTasks.length > 0 ? (
-            <ul
-              className={`list-group ${styles.taskList} ${styles.fullPageTaskGrid}`}
-            >
-              {allTasks.map((task) => (
-                <ProjectTaskItem
-                  key={task.id}
-                  task={task}
-                  projectName={task.projectName}
-                  onTaskUpdate={handleTaskUpdate}
-                  onTaskDelete={handleTaskDelete}
-                />
-              ))}
-            </ul>
+            <>
+              {sortBy === "project" ? (
+                // When sorted by project, group tasks with project headers
+                <div>
+                  {/* Get unique projects and sort them alphabetically */}
+                  {[...new Set(allTasks.map(task => task.projectName))].sort().map(projectName => (
+                    <div key={projectName} className={projectStyles.projectSection}>
+                      <h4 className={projectStyles.projectHeader}>
+                        <span className={projectStyles.projectHeaderName}>{projectName}</span>
+                      </h4>
+                      <ul className={`list-group ${styles.taskList} ${styles.fullPageTaskGrid}`}>
+                        {allTasks
+                          .filter(task => task.projectName === projectName)
+                          .map(task => (
+                            <ProjectTaskItem
+                              key={task.id}
+                              task={task}
+                              projectName={task.projectName}
+                              onTaskUpdate={handleTaskUpdate}
+                              onTaskDelete={handleTaskDelete}
+                            />
+                          ))
+                        }
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // When sorted by priority, show all tasks with inline project badges
+                <ul className={`list-group ${styles.taskList} ${styles.fullPageTaskGrid}`}>
+                  {allTasks.map((task) => (
+                    <ProjectTaskItem
+                      key={task.id}
+                      task={task}
+                      projectName={task.projectName}
+                      onTaskUpdate={handleTaskUpdate}
+                      onTaskDelete={handleTaskDelete}
+                    />
+                  ))}
+                </ul>
+              )}
+            </>
           ) : (
             <div className="text-center py-4">
               <p className="text-muted mb-0">
