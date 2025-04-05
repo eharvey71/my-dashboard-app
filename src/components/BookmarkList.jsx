@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getBookmarks, deleteBookmark, updateBookmark, addBookmark } from '../services/firebaseConfig';
 import { fetchLinkMetadata } from "../services/externalServices";
-import { Trash2, ArrowUpRight, Check, X } from 'lucide-react';
+import { Trash2, ArrowUpRight, Check, X, Globe } from 'lucide-react';
 import styles from './BookmarkList.module.css';
 import formatUrl from '../utils/urlFormatter';
 
@@ -14,6 +14,7 @@ const BookmarkList = ({ user, projectId, bookmarks, setBookmarks, limit = 5 }) =
   const [newBookmarkUrl, setNewBookmarkUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [brokenImages, setBrokenImages] = useState({});
 
   useEffect(() => {
     if (user && projectId) {
@@ -106,7 +107,21 @@ const BookmarkList = ({ user, projectId, bookmarks, setBookmarks, limit = 5 }) =
                 setDeletingId(null);
               }}
             >
-              <img src={bookmark.image} alt={bookmark.title} className={styles.bookmarkImage} />
+              {brokenImages[bookmark.id] ? (
+                <div className={styles.fallbackImage}>
+                  <Globe size={24} />
+                  <span className={styles.domainInitial}>
+                    {(bookmark.title || bookmark.url || 'B').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              ) : (
+                <img 
+                  src={bookmark.image} 
+                  alt={bookmark.title} 
+                  className={styles.bookmarkImage} 
+                  onError={() => setBrokenImages(prev => ({ ...prev, [bookmark.id]: true }))}
+                />
+              )}
               <div className={styles.bookmarkContent}>
                 {editingId === bookmark.id ? (
                   <input

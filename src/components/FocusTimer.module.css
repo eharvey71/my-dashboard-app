@@ -201,6 +201,17 @@
   margin-bottom: 0;
 }
 
+.deletedTask {
+  opacity: 0.7;
+}
+
+.deletedTag {
+  margin-left: 6px;
+  font-size: 0.8rem;
+  color: #dc3545;
+  font-style: italic;
+}
+
 @media (max-width: 768px) {
   .taskGrid {
     grid-template-columns: repeat(3, 1fr);

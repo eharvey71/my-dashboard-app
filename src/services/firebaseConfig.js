@@ -259,18 +259,56 @@ const updateItem = async (id, updates, type) => {
 };
 
 // Generic delete item function
-const deleteItem = async (id, type) => {
+const deleteItem = async (id, type, preserveInfo = false) => {
   const itemDoc = doc(db, `${type}s`, id);
   try {
     const itemSnapshot = await getDoc(itemDoc);
     if (!itemSnapshot.exists()) {
       throw new Error(`${type} not found`);
     }
+    
     const itemData = itemSnapshot.data();
+    
+    // For tasks, preserve information in the analytics record if requested
+    if (type === 'task' && preserveInfo) {
+      const { userId, projectId, title } = itemData;
+      if (userId && projectId && title) {
+        // Get current analytics
+        const analyticsRef = doc(db, "analytics", `${userId}_${projectId}`);
+        const analyticsSnapshot = await getDoc(analyticsRef);
+        
+        if (analyticsSnapshot.exists()) {
+          const analyticsData = analyticsSnapshot.data();
+          
+          // Only update if this task ID exists in analytics
+          if (analyticsData[id]) {
+            // Add task info to deletedTaskInfo object
+            const updatedAnalytics = {
+              ...analyticsData,
+              deletedTaskInfo: {
+                ...(analyticsData.deletedTaskInfo || {}),
+                [id]: {
+                  title: title,
+                  deleteDate: new Date(),
+                  color: itemData.color || '#CCCCCC'
+                }
+              }
+            };
+            
+            // Update analytics
+            await setDoc(analyticsRef, updatedAnalytics, { merge: true });
+            console.log(`Task info preserved for deleted task ${id}`);
+          }
+        }
+      }
+    }
+    
     await deleteDoc(itemDoc);
     console.log(
       `${type} ${id} deleted from Firebase for user ${itemData.userId}`
     );
+    
+    return itemData;
   } catch (error) {
     console.error(`Error deleting ${type}:`, error);
     throw error;
@@ -311,7 +349,7 @@ const addTask = async (content, userId, projectId, additionalData = {}) => {
 };
 
 const updateTask = async (id, updates) => updateItem(id, updates, "task");
-const deleteTask = (id) => deleteItem(id, "task");
+const deleteTask = (id) => deleteItem(id, "task", true);
 const getTasks = async (userId, projectId) =>
   getItems(userId, projectId, "task");
 

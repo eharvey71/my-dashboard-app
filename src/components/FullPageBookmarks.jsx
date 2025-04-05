@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { getBookmarks, deleteBookmark } from '../services/firebaseConfig';
-import { Trash2, Check, X } from 'lucide-react';
+import { Trash2, Check, X, Globe } from 'lucide-react';
 import './FullPageBookmarks.css';
 
 const BookmarkCard = ({ bookmark, onDelete }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleDeleteClick = () => {
     setIsConfirmingDelete(true);
@@ -31,7 +32,21 @@ const BookmarkCard = ({ bookmark, onDelete }) => {
       }}
     >
       <a href={bookmark.url} target="_blank" rel="noopener noreferrer" className="bookmark-link">
-        <img src={bookmark.image} alt={bookmark.title} className="bookmark-image-large" />
+        {imageError ? (
+          <div className="bookmark-image-fallback">
+            <Globe size={40} />
+            <span className="bookmark-initial">
+              {(bookmark.title || bookmark.url || 'B').charAt(0).toUpperCase()}
+            </span>
+          </div>
+        ) : (
+          <img 
+            src={bookmark.image} 
+            alt={bookmark.title} 
+            className="bookmark-image-large" 
+            onError={() => setImageError(true)}
+          />
+        )}
         <h3 className="bookmark-title">{bookmark.title}</h3>
       </a>
       <div className="bookmark-actions">

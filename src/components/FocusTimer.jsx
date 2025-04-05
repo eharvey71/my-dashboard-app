@@ -46,6 +46,7 @@ const FocusTimer = ({ user }) => {
   const [selectedTime, setSelectedTime] = useState(25);
   const [analytics, setAnalytics] = useState({});
   const [lastUpdateTime, setLastUpdateTime] = useState(0);
+  const [showDeletedTasks, setShowDeletedTasks] = useState(true);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -124,15 +125,46 @@ const FocusTimer = ({ user }) => {
   };
 
   const sortedAnalytics = Object.entries(analytics)
+    // Filter out the deletedTaskInfo property, it's not a task entry
+    .filter(([key]) => key !== 'deletedTaskInfo')
     .map(([taskId, seconds]) => {
+      // Try to find the task in active tasks
       const task = tasks.find((t) => t.id === taskId);
+      
+      // If task exists, use its data
+      if (task) {
+        return {
+          taskId,
+          taskTitle: task.title,
+          time: seconds,
+          color: task.color || "#CCCCCC",
+          isDeleted: false
+        };
+      }
+      
+      // If task doesn't exist but we have info in deletedTaskInfo, use that
+      const deletedTaskInfo = analytics.deletedTaskInfo?.[taskId];
+      if (deletedTaskInfo) {
+        return {
+          taskId,
+          taskTitle: deletedTaskInfo.title || "Unknown Task",
+          time: seconds,
+          color: deletedTaskInfo.color || "#CCCCCC",
+          isDeleted: true
+        };
+      }
+      
+      // Fall back to Unknown Task if no data found
       return {
         taskId,
-        taskTitle: task?.title || "Unknown Task",
+        taskTitle: "Unknown Task",
         time: seconds,
-        color: task?.color || "#CCCCCC",
+        color: "#CCCCCC",
+        isDeleted: true
       };
     })
+    // If showDeletedTasks is false, filter out deleted tasks
+    .filter(task => showDeletedTasks || !task.isDeleted)
     .sort((a, b) => b.time - a.time);
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -229,7 +261,21 @@ const FocusTimer = ({ user }) => {
         <div className="col-md-4">
           <div className="card">
             <div className="card-body">
-              <h4 className="card-title mb-4">Analytics Dashboard</h4>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4 className="card-title mb-0">Analytics Dashboard</h4>
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="showDeletedTasksSwitch"
+                    checked={showDeletedTasks}
+                    onChange={() => setShowDeletedTasks(!showDeletedTasks)}
+                  />
+                  <label className="form-check-label" htmlFor="showDeletedTasksSwitch">
+                    Show Deleted Tasks
+                  </label>
+                </div>
+              </div>
               <div className={styles.chartContainer}>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={sortedAnalytics}>
@@ -253,14 +299,15 @@ const FocusTimer = ({ user }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedAnalytics.map(({ taskId, taskTitle, time, color }) => (
-                    <tr key={taskId}>
+                  {sortedAnalytics.map(({ taskId, taskTitle, time, color, isDeleted }) => (
+                    <tr key={taskId} className={isDeleted ? styles.deletedTask : ''}>
                       <td>
                         <span
                           className={styles.colorIndicator}
                           style={{ backgroundColor: color }}
                         />
                         {taskTitle}
+                        {isDeleted && <span className={styles.deletedTag}>(deleted)</span>}
                       </td>
                       <td>{formatTime(time)}</td>
                     </tr>
