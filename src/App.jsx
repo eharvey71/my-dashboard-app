@@ -242,6 +242,10 @@ const App = () => {
                       element={<FullPageAIAssistant user={state.user} />}
                     />
                     <Route
+                      path="/project/:projectId/ai-assistant/:synapseId"
+                      element={<FullPageAIAssistant user={state.user} />}
+                    />
+                    <Route
                       path="/project/:projectId/documents/new"
                       element={<DocumentEditor user={state.user} />}
                     />

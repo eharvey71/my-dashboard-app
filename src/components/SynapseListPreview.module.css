@@ -1,0 +1,116 @@
+.container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.viewAllButton {
+  font-size: 0.875rem;
+  color: #3b82f6;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.viewAllButton:hover {
+  background-color: #eff6ff;
+}
+
+.synapsesList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.synapseWrapper {
+  position: relative;
+}
+
+.clickableContainer {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.clickableContainer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.analyzeButton {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  background-color: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  z-index: 10;
+}
+
+.analyzeButton:hover {
+  background-color: #7c3aed;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #6b7280;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem auto 0;
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
+  border: 1px dashed #d1d5db;
+  border-radius: 4px;
+  color: #4b5563;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.addButton:hover {
+  background-color: #e5e7eb;
+}
+
+.loading {
+  text-align: center;
+  padding: 1rem;
+  color: #6b7280;
+}
+
+.error {
+  text-align: center;
+  padding: 1rem;
+  color: #ef4444;
+}
