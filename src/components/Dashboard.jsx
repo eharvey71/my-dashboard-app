@@ -8,6 +8,7 @@ import BookmarkList from './BookmarkList';
 // import AIAssistant from './AIAssistant';
 // import CustomAPIModule from './CustomAPIModule';
 import DocumentListPreview from './DocumentListPreview';
+import SynapseListPreview from './SynapseListPreview';
 import { openGoogleDriveDocument } from '../services/googleDriveService';
 
 const Dashboard = ({ user }) => {
@@ -65,6 +66,13 @@ const Dashboard = ({ user }) => {
               setBookmarks={setBookmarks} 
               limit={5} 
               showAddBookmark={true} 
+            />
+          </div>
+          <div className="mb-4">
+            <SynapseListPreview
+              user={user}
+              projectId={projectId}
+              limit={3}
             />
           </div>
           {/* AIAssistant and CustomAPIModule removed from the dashboard but code retained */}

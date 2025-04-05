@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import {
   addAIResponse,
   getAIResponses,
   deleteAIResponse,
 } from "../services/firebaseConfig";
-import { getSynapses, getSynapseContent } from "../services/synapseService"; // Added getSynapseContent
+import { getSynapses, getSynapseContent } from "../services/synapseService";
 import styles from "./FullPageAIAssistant.module.css";
 import {
   Trash2,
@@ -110,14 +109,21 @@ const AIResponse = ({ response, onDeleteResponse, onToggleInclude }) => {
 const FullPageAIAssistant = ({ user }) => {
   const navigate = useNavigate();
   const { projectId } = useParams();
+  const location = useLocation();
   const responseContainerRef = useRef(null);
 
-  const [selectedSynapse, setSelectedSynapse] = useState("");
+  // Get synapse ID from URL query parameter
+  const searchParams = new URLSearchParams(location.search);
+  const urlSynapseId = searchParams.get('synapse') || "";
+
+  // States
+  const [selectedSynapse, setSelectedSynapse] = useState(urlSynapseId);
   const [synapses, setSynapses] = useState([]);
   const [response, setResponse] = useState("");
   const [savedResponses, setSavedResponses] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
+  const [hasAutoAnalyzed, setHasAutoAnalyzed] = useState(false);
 
   const functions = getFunctions();
   const analyzeSynapseContent = httpsCallable(
@@ -125,6 +131,7 @@ const FullPageAIAssistant = ({ user }) => {
     "analyzeSynapseContent"
   );
 
+  // Load synapses and responses when component mounts
   useEffect(() => {
     if (user && projectId) {
       loadSynapses();
@@ -132,6 +139,119 @@ const FullPageAIAssistant = ({ user }) => {
     }
   }, [user, projectId]);
 
+  // Auto-analyze when synapse ID is in URL and synapses are loaded
+  useEffect(() => {
+    // Log the initial state for debugging 
+    console.log("Auto-analyze effect running with:", {
+      urlSynapseId,
+      "synapses.length": synapses.length,
+      hasAutoAnalyzed,
+      selectedSynapse
+    });
+    
+    // Only proceed if we have what we need
+    if (urlSynapseId && synapses.length > 0 && !hasAutoAnalyzed) {
+      console.log('URL contains synapse ID:', urlSynapseId);
+      
+      // Log all available synapses for debugging
+      console.log('Available synapses:');
+      synapses.forEach(s => {
+        console.log(`- Synapse ID: '${s.id}', Name: '${s.name || "unknown"}', Type: ${typeof s.id}`);
+      });
+      
+      // Check for exact synapse ID match
+      let exactMatch = false;
+      let matchedSynapse = null;
+      
+      // Try direct comparison first
+      for (const s of synapses) {
+        if (s.id === urlSynapseId) {
+          exactMatch = true;
+          matchedSynapse = s;
+          console.log("Found exact match:", s);
+          break;
+        }
+      }
+      
+      if (matchedSynapse) {
+        console.log('Found matching synapse:', matchedSynapse.name || "unnamed");
+        
+        // Set flag immediately to prevent repeated triggers
+        setHasAutoAnalyzed(true);
+        
+        // Update the selectedSynapse state
+        setSelectedSynapse(urlSynapseId);
+        
+        // Use a longer delay to ensure state has fully updated
+        setTimeout(() => {
+          console.log('Triggering analysis now');
+          
+          // Set the selected synapse again right before analyzing (extra safety)
+          setSelectedSynapse(urlSynapseId);
+          
+          // Create a direct function to avoid stale closures
+          setTimeout(() => {
+            // Define what to do in the scope of this timeout
+            console.log("Running actual analysis with selectedSynapse=", selectedSynapse);
+            
+            // Call analyze directly to avoid React's event loop issues
+            (async () => {
+              try {
+                // Find the synapse again in this scope
+                const currentSynapse = synapses.find(s => s.id === urlSynapseId);
+                if (!currentSynapse) {
+                  console.error("Synapse disappeared from list?");
+                  setError("Synapse could not be found");
+                  return;
+                }
+                
+                setIsAnalyzing(true);
+                
+                const synapseData = await getSynapseContent(
+                  user.uid,
+                  projectId,
+                  urlSynapseId
+                );
+                
+                if (!synapseData || !synapseData.contents) {
+                  throw new Error("Failed to retrieve synapse content");
+                }
+                
+                const result = await analyzeSynapseContent({
+                  synapseContent: synapseData.contents || [],
+                  synapseName: currentSynapse.name || "Unnamed Synapse",
+                });
+                
+                let displayedResponse = "";
+                for (let i = 0; i < result.data.content.length; i++) {
+                  displayedResponse += result.data.content[i];
+                  setResponse(displayedResponse);
+                  await new Promise(resolve => setTimeout(resolve, 5));
+                }
+              } catch (error) {
+                console.error("Error in auto-analysis:", error);
+                setError("Error analyzing synapse: " + error.message);
+              } finally {
+                setIsAnalyzing(false);
+                
+                // Remove URL parameter after analysis is done (success or failure)
+                navigate(`/project/${projectId}/ai-assistant`, { replace: true });
+              }
+            })();
+          }, 300);
+        }, 800);
+      } else {
+        console.error('Synapse ID from URL not found in loaded synapses after checking all items');
+        console.error('URL synapse ID:', urlSynapseId, 'Type:', typeof urlSynapseId);
+        console.error('First synapse ID for comparison:', synapses[0]?.id, 'Type:', typeof synapses[0]?.id);
+        setError("The requested synapse could not be found. Please select one from the dropdown.");
+      }
+    }
+  // We can't include handleAnalyze in deps as it's defined later
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [synapses, urlSynapseId, hasAutoAnalyzed, projectId, navigate]);
+
+  // Load synapses from Firebase
   const loadSynapses = async () => {
     try {
       const fetchedSynapses = await getSynapses(user.uid, projectId);
@@ -142,10 +262,10 @@ const FullPageAIAssistant = ({ user }) => {
     }
   };
 
+  // Fetch saved AI responses
   const fetchSavedResponses = async () => {
     try {
       const fetchedResponses = await getAIResponses(user.uid, projectId);
-      // Filter to only show synapse-related responses
       const synapseResponses = fetchedResponses.filter(
         (r) => r.type === "synapse-analysis"
       );
@@ -156,13 +276,18 @@ const FullPageAIAssistant = ({ user }) => {
     }
   };
 
+  // Handle synapse click to navigate to synapse page
   const handleSynapseClick = () => {
     if (selectedSynapse) {
       navigate(`/project/${projectId}/synapses`);
     }
   };
 
+  // Main analyze function with extra safeguards
   const handleAnalyze = async () => {
+    console.log("handleAnalyze called with selectedSynapse:", selectedSynapse);
+    console.log("Current synapses:", synapses);
+    
     if (!selectedSynapse) {
       setError("Please select a synapse to analyze");
       return;
@@ -172,16 +297,40 @@ const FullPageAIAssistant = ({ user }) => {
     setError(null);
 
     try {
+      // Extra debug to see what we're looking for
+      console.log(`Looking for synapse with ID '${selectedSynapse}' in ${synapses.length} synapses`);
+      
+      // Find the synapse with safeguards
       const synapse = synapses.find((s) => s.id === selectedSynapse);
+      console.log("Found synapse?", synapse);
+      
+      if (!synapse) {
+        console.error("Selected synapse not found:", selectedSynapse);
+        setError("Selected synapse not found");
+        setIsAnalyzing(false);
+        return;
+      }
+
+      // Defensive coding - ensure name property exists
+      const synapseName = synapse.name || "Unnamed Synapse";
+      console.log("Analyzing synapse:", synapseName);
+      
       const synapseData = await getSynapseContent(
         user.uid,
         projectId,
         selectedSynapse
       );
+      
+      console.log("Got synapse content:", synapseData);
+      
+      // Check if synapseData and its contents exist
+      if (!synapseData || !synapseData.contents) {
+        throw new Error("Failed to retrieve synapse content");
+      }
 
       const result = await analyzeSynapseContent({
-        synapseContent: synapseData.contents,
-        synapseName: synapse.name,
+        synapseContent: synapseData.contents || [],
+        synapseName: synapseName,
       });
 
       let displayedResponse = "";
@@ -200,6 +349,7 @@ const FullPageAIAssistant = ({ user }) => {
     }
   };
 
+  // Save response to Firebase
   const handleSaveResponse = async () => {
     if (response.trim() === "") return;
 
@@ -209,14 +359,14 @@ const FullPageAIAssistant = ({ user }) => {
         user.uid,
         projectId,
         response,
-        synapse.id, // Add synapse ID
+        synapse.id,
         synapse.name,
-        "synapse-analysis" // Add type
+        "synapse-analysis"
       );
       setSavedResponses((prevResponses) => [savedResponse, ...prevResponses]);
       setError(null);
       setResponse("");
-      setSelectedSynapse(""); // Reset selection after saving
+      setSelectedSynapse("");
     } catch (error) {
       console.error("Error saving idea:", error);
       setError("Failed to save idea");
@@ -284,7 +434,7 @@ const FullPageAIAssistant = ({ user }) => {
             title="Click to view in Synapses"
           >
             <SynapseTile
-              synapse={synapses.find((s) => s.id === selectedSynapse)}
+              synapse={synapses.find((s) => s.id === selectedSynapse) || null}
             />
           </div>
         </div>

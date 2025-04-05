@@ -39,6 +39,31 @@
   transition: opacity 0.2s ease;
 }
 
+/* Error and empty states */
+.errorState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: #e53e3e;
+  font-size: 0.875rem;
+  text-align: center;
+  border: 1px dashed #e53e3e;
+  border-radius: 0.375rem;
+  background-color: #fff5f5;
+}
+
+.emptyState {
+  padding: 0.75rem;
+  color: #718096;
+  font-size: 0.875rem;
+  text-align: center;
+  border: 1px dashed #e2e8f0;
+  border-radius: 0.375rem;
+  background-color: #f7fafc;
+}
+
 /* Connection type-specific styles */
 .task {
   background-color: #edf2f7;
@@ -58,4 +83,9 @@
 .document {
   background-color: #f7fafc;
   border-left: 3px solid #9f7aea;
+}
+
+.unknown {
+  background-color: #f7fafc;
+  border-left: 3px solid #a0aec0;
 }
