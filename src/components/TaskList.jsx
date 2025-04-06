@@ -255,11 +255,9 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
             Show Completed
           </label>
           
-          {hasMoreTasks && (
-            <Link to={`/project/${projectId}/tasks`} className={moduleStyles.viewAllButton}>
-              View All
-            </Link>
-          )}
+          <Link to={`/project/${projectId}/tasks`} className={moduleStyles.viewAllButton}>
+            View All Tasks
+          </Link>
         </div>
       </div>
 

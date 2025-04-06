@@ -83,11 +83,9 @@ const BookmarkList = ({ user, projectId, bookmarks, setBookmarks, limit = 5 }) =
           <Bookmark size={20} />
           <span>My Bookmarks</span>
         </h2>
-        {hasMoreBookmarks && (
-          <Link to={`/project/${projectId}/bookmarks`} className={moduleStyles.viewAllButton}>
-            View All
-          </Link>
-        )}
+        <Link to={`/project/${projectId}/bookmarks`} className={moduleStyles.viewAllButton}>
+          View All Bookmarks
+        </Link>
       </div>
 
       <div className={moduleStyles.inputGroup}>

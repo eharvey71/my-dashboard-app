@@ -58,11 +58,9 @@ const DocumentListPreview = ({ user, projectId, limit = 5, onDocumentClick }) =>
           <File size={20} />
           <span>Recent Documents</span>
         </h2>
-        {hasMoreDocuments && (
-          <Link to={`/project/${projectId}/documents`} className={moduleStyles.viewAllButton}>
-            View All
-          </Link>
-        )}
+        <Link to={`/project/${projectId}/documents`} className={moduleStyles.viewAllButton}>
+          View All Documents
+        </Link>
       </div>
 
       <div className={styles.documentButtons}>

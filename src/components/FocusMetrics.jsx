@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { getAnalytics } from '../services/firebaseConfig';
 import { getTasks } from '../services/firebaseConfig';
 import {
@@ -113,17 +114,22 @@ const FocusMetrics = ({ user, projectId, limit = 5 }) => {
           <BarChart3 size={20} />
           <span>Focus Metrics</span>
         </h2>
-        <div className="form-check form-switch" style={{ fontSize: '0.875rem' }}>
-          <input
-            className="form-check-input"
-            type="checkbox"
-            id="dashboardShowDeletedTasksSwitch"
-            checked={showDeletedTasks}
-            onChange={() => setShowDeletedTasks(!showDeletedTasks)}
-          />
-          <label className="form-check-label" htmlFor="dashboardShowDeletedTasksSwitch">
-            Show Deleted Tasks
-          </label>
+        <div className="d-flex align-items-center gap-2">
+          <div className="form-check form-switch" style={{ fontSize: '0.875rem' }}>
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="dashboardShowDeletedTasksSwitch"
+              checked={showDeletedTasks}
+              onChange={() => setShowDeletedTasks(!showDeletedTasks)}
+            />
+            <label className="form-check-label" htmlFor="dashboardShowDeletedTasksSwitch">
+              Show Deleted Tasks
+            </label>
+          </div>
+          <Link to={`/project/${projectId}/focus`} className={moduleStyles.viewAllButton}>
+            View Timer
+          </Link>
         </div>
       </div>
 

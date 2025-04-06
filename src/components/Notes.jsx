@@ -121,11 +121,9 @@ const Notes = ({ user, projectId, limit = 5 }) => {
           <Clipboard size={20} />
           <span>Quick Notes</span>
         </h2>
-        {hasMoreNotes && (
-          <Link to={`/project/${projectId}/notes`} className={moduleStyles.viewAllButton}>
-            View All
-          </Link>
-        )}
+        <Link to={`/project/${projectId}/notes`} className={moduleStyles.viewAllButton}>
+          View All Notes
+        </Link>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '1rem' }}>
