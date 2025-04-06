@@ -2,82 +2,16 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from 'react-router-dom';
 import { getNotes, addNote, deleteNote, addDocument } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
-import { Trash2, Check, X, ArrowUpRight } from 'lucide-react';
+import { Trash2, Check, X, ArrowUpRight, FileText, Clipboard, Clock } from 'lucide-react';
 import styles from "./Notes.module.css";
+import moduleStyles from "./DashboardModule.module.css";
 
-const Note = ({ note, onDeleteNote, onExpandNote }) => {
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-
-  const handleDeleteClick = () => {
-    setIsConfirmingDelete(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    await onDeleteNote(note.id);
-    setIsConfirmingDelete(false);
-  };
-
-  const handleCancelDelete = () => {
-    setIsConfirmingDelete(false);
-  };
-
-  return (
-    <li className={`${styles.listGroupItem} list-group-item position-relative`}>
-      <div className={styles.noteContent}>
-        <div className={styles.noteText}>
-          {note.content.trim()}
-          {!note.indexedInPinecone && <span className={styles.warningText}> (Indexing for AI might be delayed)</span>}
-        </div>
-        <div className={styles.noteActions}>
-          <small className={styles.timestamp}>
-            {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
-          </small>
-          <button
-            className={`${styles.expandButton} ${styles.buttonSmall} btn btn-link`}
-            onClick={() => onExpandNote(note)}
-            title="Expand to document"
-          >
-            <ArrowUpRight size={18} />
-          </button>
-          <button
-            className={`${styles.deleteButton} ${styles.buttonSmall} btn btn-link text-danger`}
-            onClick={handleDeleteClick}
-            title="Delete note"
-          >
-            <Trash2 size={18} />
-          </button>
-        </div>
-      </div>
-      {isConfirmingDelete && (
-        <div className={styles.deleteConfirmationOverlay}>
-          <div className={`${styles.deleteConfirmation} d-flex align-items-center justify-content-center`}>
-            <span className="me-2">Confirm delete?</span>
-            <button
-              className={`${styles.buttonSmall} btn btn-success me-1`}
-              onClick={handleConfirmDelete}
-              title="Confirm delete"
-            >
-              <Check size={14} />
-            </button>
-            <button
-              className={`${styles.buttonSmall} btn btn-danger`}
-              onClick={handleCancelDelete}
-              title="Cancel delete"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-    </li>
-  );
-};
-
-const Notes = ({ user, projectId, limit }) => {
+const Notes = ({ user, projectId, limit = 5 }) => {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState("");
   const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const maxChars = 200;
   const navigate = useNavigate();
 
@@ -92,9 +26,12 @@ const Notes = ({ user, projectId, limit }) => {
       const fetchedNotes = await getNotes(user.uid, projectId);
       const notesWithValidDates = fetchedNotes.map(note => ({
         ...note,
-        createdAt: note.createdAt instanceof Date ? note.createdAt : new Date(note.createdAt.seconds * 1000)
+        createdAt: note.createdAt instanceof Date ? note.createdAt : 
+                   note.createdAt?.seconds ? new Date(note.createdAt.seconds * 1000) : 
+                   new Date()
       }));
-      setNotes(notesWithValidDates);
+      const sortedNotes = notesWithValidDates.sort((a, b) => b.createdAt - a.createdAt);
+      setNotes(sortedNotes);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching notes:", error);
@@ -111,23 +48,22 @@ const Notes = ({ user, projectId, limit }) => {
 
       const noteWithValidDate = {
         ...addedNote,
-        createdAt: addedNote.createdAt instanceof Date ? addedNote.createdAt : new Date(addedNote.createdAt.seconds * 1000)
+        createdAt: addedNote.createdAt instanceof Date ? addedNote.createdAt : 
+                   addedNote.createdAt?.seconds ? new Date(addedNote.createdAt.seconds * 1000) : 
+                   new Date()
       };
 
       setNotes((prevNotes) => [noteWithValidDate, ...prevNotes]);
       setNewNote('');
 
       if (!noteWithValidDate.indexedInPinecone) {
-        setError('Note added, but not indexed in Pinecone. Retrying...');
-  
         try {
           await indexContent(user.uid, projectId, noteWithValidDate.content, 'note', noteWithValidDate.id);
           setNotes(prevNotes => prevNotes.map(note =>
             note.id === noteWithValidDate.id ? { ...note, indexedInPinecone: true } : note
           ));
-          setError(null);
         } catch (pineconeError) {
-          console.error("Error re-indexing note in Pinecone:", pineconeError);
+          console.error("Error indexing note in Pinecone:", pineconeError);
         }
       }
     } catch (error) {
@@ -137,10 +73,10 @@ const Notes = ({ user, projectId, limit }) => {
   };
 
   const handleDeleteNote = async (id) => {
-    setError(null);
     try {
       await deleteNote(id);
       setNotes((prevNotes) => prevNotes.filter((note) => note.id !== id));
+      setDeletingId(null);
     } catch (error) {
       console.error("Error deleting note:", error);
       setError("Failed to delete note");
@@ -149,7 +85,6 @@ const Notes = ({ user, projectId, limit }) => {
 
   const handleExpandNote = async (note) => {
     try {
-      console.log('Expanding note to document with content:', note.content); // Debug log
       const title = note.content.substring(0, 50) + (note.content.length > 50 ? "..." : "");
       
       // First create the document
@@ -162,7 +97,6 @@ const Notes = ({ user, projectId, limit }) => {
         createdAt: new Date().toISOString() // Add a timestamp to ensure state is always unique
       };
       
-      console.log('Navigating to document with state:', navigationState); // Debug log
       navigate(`/project/${projectId}/documents/${newDoc.id}`, { 
         state: navigationState,
         replace: true // Use replace to ensure history is clean
@@ -174,47 +108,119 @@ const Notes = ({ user, projectId, limit }) => {
   };
 
   if (loading) {
-    return <div>Loading notes...</div>;
+    return <div className={moduleStyles.loading}>Loading notes...</div>;
   }
 
   const displayedNotes = limit ? notes.slice(0, limit) : notes;
   const hasMoreNotes = limit && notes.length > limit;
 
   return (
-    <div className="card">
-      <div className="card-body">
-        <h2 className="card-title">Quick Notes</h2>
-        <div className={styles.inputGroup}>
-          <textarea
-            className={`${styles.formControl} form-control`}
-            placeholder="New Note"
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            maxLength={maxChars}
-            rows="3"
-          />
-          <div className={styles.charCounter}>
-            {maxChars - newNote.length} characters remaining
-          </div>
-        </div>
-        <button
-          className={`${styles.addButton} btn btn-outline-secondary mb-3`}
-          onClick={handleAddNote}
-        >
-          Add Note
-        </button>
-        <ul className={`${styles.listGroup} list-group`}>
-          {displayedNotes.map((note) => (
-            <Note key={note.id} note={note} onDeleteNote={handleDeleteNote} onExpandNote={handleExpandNote} />
-          ))}
-        </ul>
+    <div className={moduleStyles.container}>
+      <div className={moduleStyles.header}>
+        <h2 className={moduleStyles.title}>
+          <Clipboard size={20} />
+          <span>Quick Notes</span>
+        </h2>
         {hasMoreNotes && (
-          <div className="text-center mt-3">
-            <Link to={`/project/${projectId}/notes`} className="btn btn-link">View More</Link>
+          <Link to={`/project/${projectId}/notes`} className={moduleStyles.viewAllButton}>
+            View All
+          </Link>
+        )}
+      </div>
+
+      <div className={moduleStyles.inputGroup}>
+        <textarea
+          className={moduleStyles.input}
+          placeholder="New Note"
+          value={newNote}
+          onChange={(e) => setNewNote(e.target.value)}
+          maxLength={maxChars}
+          rows="3"
+        />
+        <div className={moduleStyles.charCounter}>
+          {maxChars - newNote.length} characters remaining
+        </div>
+      </div>
+      
+      <button
+        className={`${moduleStyles.actionButton} ${moduleStyles.primaryButton}`}
+        style={{ marginBottom: '1rem' }}
+        onClick={handleAddNote}
+      >
+        Add Note
+      </button>
+
+      <ul className={moduleStyles.list}>
+        {displayedNotes.length > 0 ? (
+          displayedNotes.map((note) => (
+            <li 
+              key={note.id} 
+              className={`${moduleStyles.listItem} ${moduleStyles.noteItem}`}
+            >
+              <div className={moduleStyles.listItemContent}>
+                <div style={{ flex: 1 }}>
+                  <div>{note.content.trim()}</div>
+                  {!note.indexedInPinecone && (
+                    <small style={{ color: '#f59e0b', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}>
+                      <Clock size={12} /> Indexing for AI might be delayed
+                    </small>
+                  )}
+                </div>
+              </div>
+              
+              <div className={moduleStyles.listItemActions}>
+                <span className={moduleStyles.timestamp}>
+                  {note.createdAt.toLocaleString()}
+                </span>
+                
+                <button
+                  className={`${moduleStyles.iconButton} ${moduleStyles.editButton}`}
+                  onClick={() => handleExpandNote(note)}
+                  title="Expand to document"
+                >
+                  <ArrowUpRight size={18} />
+                </button>
+                
+                <button
+                  className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
+                  onClick={() => setDeletingId(note.id)}
+                  title="Delete note"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+              
+              {deletingId === note.id && (
+                <div className={moduleStyles.deleteConfirmationOverlay}>
+                  <div className={moduleStyles.deleteConfirmation}>
+                    <span>Confirm delete?</span>
+                    <button
+                      className={`${moduleStyles.iconButton} ${moduleStyles.primaryButton}`}
+                      onClick={() => handleDeleteNote(note.id)}
+                      title="Confirm delete"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      className={`${moduleStyles.iconButton} ${moduleStyles.dangerButton}`}
+                      onClick={() => setDeletingId(null)}
+                      title="Cancel delete"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </li>
+          ))
+        ) : (
+          <div className={moduleStyles.emptyState}>
+            No notes yet. Add one above!
           </div>
         )}
-        {error && <p className="text-danger">{error}</p>}
-      </div>
+      </ul>
+      
+      {error && <p className={moduleStyles.error}>{error}</p>}
     </div>
   );
 };

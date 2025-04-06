@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getDocuments } from '../services/firebaseConfig';
+import moduleStyles from './DashboardModule.module.css';
 import styles from './DocumentListPreview.module.css';
-import { FileText, ExternalLink, Plus, FileUp } from 'lucide-react';
+import { FileText, ExternalLink, Plus, FileUp, File } from 'lucide-react';
 import QuickNoteSelector from './QuickNoteSelector';
 
 const DocumentListPreview = ({ user, projectId, limit = 5, onDocumentClick }) => {
@@ -33,10 +34,6 @@ const DocumentListPreview = ({ user, projectId, limit = 5, onDocumentClick }) =>
     fetchDocuments();
   }, [user, projectId, limit]);
 
-  if (loading) {
-    return <div>Loading documents...</div>;
-  }
-
   const formatDate = (timestamp) => {
     if (!timestamp) return 'Unknown date';
     if (timestamp.seconds) {
@@ -48,65 +45,83 @@ const DocumentListPreview = ({ user, projectId, limit = 5, onDocumentClick }) =>
     return 'Invalid date';
   };
 
+  if (loading) {
+    return <div className={moduleStyles.loading}>Loading documents...</div>;
+  }
+
+  const hasMoreDocuments = documents.length === limit;
+
   return (
-    <div className="card">
-      <div className="card-body">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
-          <h2 className="card-title mb-md-0">Recent Documents</h2>
-          <div className={styles.documentButtons}>
-            <Link 
-              to={`/project/${projectId}/documents/new`} 
-              className={`btn btn-sm btn-outline-primary me-2 ${styles.documentButton}`}
-            >
-              <Plus size={16} className="me-1" /> New Document
-            </Link>
-            <button 
-              className={`btn btn-sm btn-outline-secondary ${styles.documentButton}`}
-              onClick={() => setIsQuickNoteModalOpen(true)}
-            >
-              <FileUp size={16} className="me-1" /> Create from Quick Note
-            </button>
-          </div>
-        </div>
-
-        <ul className={`list-group ${styles.documentList}`}>
-          {documents.map((document) => (
-            <li key={document.id} className={`list-group-item ${styles.documentItem}`}>
-              <a 
-                href="#" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  onDocumentClick(document);
-                }} 
-                className={styles.documentLink}
-              >
-                <span className={styles.documentTitle}>
-                  {document.source === 'Google Drive' ? <ExternalLink size={16} /> : <FileText size={16} />}
-                  {document.title || 'Untitled Document'}
-                </span>
-                <small className={styles.documentDate}>
-                  Last updated: {formatDate(document.updatedAt)}
-                </small>
-              </a>
-            </li>
-          ))}
-        </ul>
-        
-        {documents.length === limit && (
-          <div className={`${styles.viewMoreContainer} mt-3`}>
-            <Link to={`/project/${projectId}/documents`} className={`btn btn-link ${styles.viewMoreLink}`}>View More</Link>
-          </div>
-        )}
-
-        {/* Quick Note Selector Modal */}
-        {isQuickNoteModalOpen && (
-          <QuickNoteSelector
-            user={user}
-            projectId={projectId}
-            onClose={() => setIsQuickNoteModalOpen(false)}
-          />
+    <div className={moduleStyles.container}>
+      <div className={moduleStyles.header}>
+        <h2 className={moduleStyles.title}>
+          <File size={20} />
+          <span>Recent Documents</span>
+        </h2>
+        {hasMoreDocuments && (
+          <Link to={`/project/${projectId}/documents`} className={moduleStyles.viewAllButton}>
+            View All
+          </Link>
         )}
       </div>
+
+      <div className={styles.documentButtons}>
+        <Link 
+          to={`/project/${projectId}/documents/new`} 
+          className={`${moduleStyles.actionButton} ${moduleStyles.primaryButton} ${styles.documentButton}`}
+        >
+          <Plus size={16} /> New Document
+        </Link>
+        <button 
+          className={`${moduleStyles.actionButton} ${moduleStyles.secondaryButton} ${styles.documentButton}`}
+          onClick={() => setIsQuickNoteModalOpen(true)}
+        >
+          <FileUp size={16} /> From Note
+        </button>
+      </div>
+
+      <ul className={moduleStyles.list}>
+        {documents.length > 0 ? (
+          documents.map((document) => (
+            <li 
+              key={document.id} 
+              className={`${moduleStyles.listItem} ${moduleStyles.documentItem}`}
+            >
+              <div 
+                className={moduleStyles.listItemContent}
+                style={{ cursor: 'pointer' }}
+                onClick={() => onDocumentClick(document)}
+              >
+                {document.source === 'Google Drive' ? (
+                  <ExternalLink size={18} className={styles.documentIcon} />
+                ) : (
+                  <FileText size={18} className={styles.documentIcon} />
+                )}
+                <span>{document.title || 'Untitled Document'}</span>
+              </div>
+              
+              <div className={moduleStyles.listItemActions}>
+                <span className={moduleStyles.timestamp}>
+                  {formatDate(document.updatedAt)}
+                </span>
+              </div>
+            </li>
+          ))
+        ) : (
+          <div className={moduleStyles.emptyState}>
+            No documents yet. Create one using the buttons above.
+          </div>
+        )}
+      </ul>
+
+      {/* Quick Note Selector Modal */}
+      {isQuickNoteModalOpen && (
+        <QuickNoteSelector
+          user={user}
+          projectId={projectId}
+          onClose={() => setIsQuickNoteModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

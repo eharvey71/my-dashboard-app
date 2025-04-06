@@ -1,79 +1,31 @@
-.documentListCard {
-  margin-bottom: 20px;
-}
-
-.documentList {
-  margin-bottom: 0;
-}
-
-.documentItem {
-  border: none;
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.documentItem:last-child {
-  border-bottom: none;
-}
-
-.documentLink {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: inherit;
-  text-decoration: none;
-}
-
-.documentLink:hover {
-  text-decoration: none;
-  background-color: #f8f9fa;
-}
-
-.documentTitle {
-  font-weight: 500;
-  margin-right: 10px;
-  word-break: break-word;
-}
-
-.documentDate {
-  color: #6c757d;
-  font-size: 0.875em;
-}
-
-.viewMoreContainer {
-  text-align: center;
-}
-
-.viewMoreLink {
-  color: #007bff;
-  text-decoration: none;
-}
-
-.viewMoreLink:hover {
-  text-decoration: underline;
-}
-
 .documentButtons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 1rem;
 }
 
 .documentButton {
   display: flex;
   align-items: center;
-  font-size: 0.85rem;
-  white-space: nowrap;
+  gap: 0.5rem;
+  font-size: 0.875rem;
 }
 
-@media (max-width: 768px) {
-  .documentButtons {
-    margin-top: 10px;
-    width: 100%;
-    justify-content: flex-start;
-  }
+.documentIcon {
+  color: #4b5563;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
 
-  .documentTitle {
-    font-size: 0.95rem;
+@media (max-width: 640px) {
+  .documentButtons {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .documentButton {
+    width: 100%;
+    justify-content: center;
   }
 }
