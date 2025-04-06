@@ -20,15 +20,18 @@
   padding: 10px;
   border-radius: 5px;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   transition: all 0.3s ease;
   border: 2px solid transparent;
   color: #333;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 90px;
 }
 
 .taskItem:hover {
-  opacity: 0.8;
+  opacity: 0.9;
   transform: translateY(-2px);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
@@ -36,14 +39,41 @@
 .taskItem.selected {
   border-color: #007bff;
   font-weight: bold;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
 }
 
-.priorityIndicator {
+.taskItem.completedTask {
+  opacity: 0.7;
+  text-decoration: line-through;
+}
+
+.priorityBadge {
   position: absolute;
-  top: 2px;
-  left: 5px;
+  top: 8px;
+  right: 8px;
   font-weight: bold;
   font-size: 0.8em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: white;
+}
+
+.taskContent {
+  margin-top: 10px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  flex-grow: 1;
+  word-break: break-word;
+}
+
+.completedBadge {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  background-color: #28a745;
+  color: white;
+  border-radius: 4px;
 }
 
 .colorIndicator {
