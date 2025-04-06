@@ -1,187 +1,99 @@
-.documentList {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+.documentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
-.title {
-  font-size: 2rem;
-  margin-bottom: 20px;
-  color: #333;
+.documentCard {
+  border-radius: 0.375rem;
+  background-color: #f9fafb;
+  padding: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border-left: 3px solid #9f7aea;
+  min-height: 150px;
 }
 
-.newDocButton, .googleDriveButton, .toggleGoogleDriveButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-right: 10px;
-  margin-bottom: 20px;
-  padding: 10px 20px;
-  color: white;
-  text-decoration: none;
-  border-radius: 5px;
-  font-weight: bold;
-  transition: background-color 0.3s;
+.documentCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.documentTitle {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0 0 0.75rem 0;
+  color: #4b5563;
+  word-break: break-word;
+  padding-right: 2.5rem;
+}
+
+.documentDate, .documentSource {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+}
+
+.documentActions {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.googleDriveSection {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f3f4f6;
+  border-radius: 0.375rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.googleDriveButton, .googleDriveImportButton {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
   border: none;
   cursor: pointer;
-  height: 40px;
-}
-
-.newDocButton {
-  background-color: #4CAF50;
-}
-
-.newDocButton:hover {
-  background-color: #45a049;
+  transition: background-color 0.2s;
+  font-weight: 500;
 }
 
 .googleDriveButton {
   background-color: #4285F4;
+  color: white;
 }
 
 .googleDriveButton:hover {
   background-color: #3367D6;
 }
 
-.toggleGoogleDriveButton {
-  background-color: #FF9800;
-}
-
-.toggleGoogleDriveButton:hover {
-  background-color: #F57C00;
-}
-
-.googleDriveSection {
-  margin-bottom: 30px;
-  padding: 20px;
-  background-color: #f0f0f0;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.documentGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.documentCard {
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  transition: box-shadow 0.3s;
-}
-
-.documentCard:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.documentTitle {
-  font-size: 1.2rem;
-  margin: 0 0 10px 0;
-  color: #333;
-  word-break: break-word;
-}
-
-.documentDate, .documentSource {
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 10px;
-}
-
-.documentActions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: auto;
-}
-
-.editButton, .deleteButton, .addButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  text-decoration: none;
-  transition: background-color 0.3s;
+.googleDriveImportButton {
+  background-color: #34D399;
   color: white;
 }
 
-.editButton {
-  background-color: #2196F3;
+.googleDriveImportButton:hover {
+  background-color: #10B981;
 }
 
-.editButton:hover {
-  background-color: #1976D2;
-}
-
-.deleteButton {
-  background-color: #f44336;
-}
-
-.deleteButton:hover {
-  background-color: #d32f2f;
-}
-
-.addButton {
-  background-color: #FF9800;
-}
-
-.addButton:hover {
-  background-color: #F57C00;
-}
-
-.loading {
-  text-align: center;
-  font-size: 1.2rem;
-  color: #666;
-  margin-top: 50px;
-}
-
-.openButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  text-decoration: none;
-  transition: background-color 0.3s;
-  color: white;
-  background-color: #2196F3;
-}
-
-.openButton:hover {
-  background-color: #1976D2;
-}
-
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .documentGrid {
     grid-template-columns: 1fr;
   }
-
-  .newDocButton, .googleDriveButton, .toggleGoogleDriveButton {
-    width: 100%;
-    justify-content: center;
-    margin-right: 0;
-  }
-
-  .documentActions {
+  
+  .googleDriveSection {
     flex-direction: column;
-    gap: 10px;
   }
-
-  .editButton, .deleteButton, .addButton {
+  
+  .googleDriveButton, .googleDriveImportButton {
     width: 100%;
     justify-content: center;
   }

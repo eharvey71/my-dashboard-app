@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { getBookmarks, deleteBookmark } from '../services/firebaseConfig';
-import { Trash2, Check, X, Globe } from 'lucide-react';
-import './FullPageBookmarks.css';
+import { Trash2, Check, X, Globe, Bookmark } from 'lucide-react';
+import moduleStyles from './DashboardModule.module.css';
+import styles from './FullPageBookmarks.module.css';
 
 const BookmarkCard = ({ bookmark, onDelete }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -24,18 +25,20 @@ const BookmarkCard = ({ bookmark, onDelete }) => {
 
   return (
     <div 
-      className="bookmark-card"
+      className={styles.bookmarkCard}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
-        setIsConfirmingDelete(false);
+        if (!isConfirmingDelete) {
+          setIsConfirmingDelete(false);
+        }
       }}
     >
-      <a href={bookmark.url} target="_blank" rel="noopener noreferrer" className="bookmark-link">
+      <a href={bookmark.url} target="_blank" rel="noopener noreferrer" className={styles.bookmarkLink}>
         {imageError ? (
-          <div className="bookmark-image-fallback">
+          <div className={styles.bookmarkImageFallback}>
             <Globe size={40} />
-            <span className="bookmark-initial">
+            <span className={styles.bookmarkInitial}>
               {(bookmark.title || bookmark.url || 'B').charAt(0).toUpperCase()}
             </span>
           </div>
@@ -43,36 +46,40 @@ const BookmarkCard = ({ bookmark, onDelete }) => {
           <img 
             src={bookmark.image} 
             alt={bookmark.title} 
-            className="bookmark-image-large" 
+            className={styles.bookmarkImage} 
             onError={() => setImageError(true)}
           />
         )}
-        <h3 className="bookmark-title">{bookmark.title}</h3>
+        <h3 className={styles.bookmarkTitle}>{bookmark.title}</h3>
       </a>
-      <div className="bookmark-actions">
+      
+      <div className={styles.bookmarkActions}>
         <button
-          className="btn btn-sm btn-link text-danger delete-btn"
+          className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
           onClick={handleDeleteClick}
           title="Delete bookmark"
         >
-          <Trash2 size={18} />
+          <Trash2 size={16} />
         </button>
       </div>
+      
       {isConfirmingDelete && (
-        <div className="delete-confirmation-overlay">
-          <div className="delete-confirmation d-flex align-items-center justify-content-center">
-            <span className="me-2">Confirm delete?</span>
+        <div className={moduleStyles.deleteConfirmationOverlay}>
+          <div className={moduleStyles.deleteConfirmation}>
+            <span>Confirm delete?</span>
             <button
-              className="btn btn-sm btn-success me-1"
+              className={moduleStyles.actionButton}
+              style={{ backgroundColor: '#4ade80', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
               onClick={handleConfirmDelete}
-              title="Confirm delete"
+              title="Yes, delete bookmark"
             >
               <Check size={14} />
             </button>
             <button
-              className="btn btn-sm btn-danger"
+              className={moduleStyles.actionButton}
+              style={{ backgroundColor: '#f87171', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
               onClick={handleCancelDelete}
-              title="Cancel delete"
+              title="No, cancel"
             >
               <X size={14} />
             </button>
@@ -115,20 +122,34 @@ const FullPageBookmarks = ({ user }) => {
   };
 
   if (loading) {
-    return <div>Loading bookmarks...</div>;
+    return <div className={moduleStyles.loading}>Loading bookmarks...</div>;
   }
 
   return (
     <div className="container mt-4">
-      <h1>All Bookmarks</h1>
-      <div className="bookmark-grid">
-        {bookmarks.map((bookmark) => (
-          <BookmarkCard
-            key={bookmark.id}
-            bookmark={bookmark}
-            onDelete={handleDelete}
-          />
-        ))}
+      <div className={moduleStyles.container}>
+        <div className={moduleStyles.header}>
+          <h2 className={moduleStyles.title}>
+            <Bookmark size={20} />
+            <span>All Bookmarks</span>
+          </h2>
+        </div>
+        
+        {bookmarks.length > 0 ? (
+          <div className={styles.bookmarkGrid}>
+            {bookmarks.map((bookmark) => (
+              <BookmarkCard
+                key={bookmark.id}
+                bookmark={bookmark}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className={moduleStyles.emptyState}>
+            No bookmarks added yet. Add some bookmarks to get started!
+          </div>
+        )}
       </div>
     </div>
   );
