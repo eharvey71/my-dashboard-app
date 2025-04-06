@@ -128,7 +128,7 @@ const Notes = ({ user, projectId, limit = 5 }) => {
         )}
       </div>
 
-      <div className={moduleStyles.inputGroup}>
+      <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '1rem' }}>
         <textarea
           className={moduleStyles.input}
           placeholder="New Note"
@@ -136,19 +136,19 @@ const Notes = ({ user, projectId, limit = 5 }) => {
           onChange={(e) => setNewNote(e.target.value)}
           maxLength={maxChars}
           rows="3"
+          style={{ marginBottom: '0.25rem' }}
         />
-        <div className={moduleStyles.charCounter}>
+        <div className={moduleStyles.charCounter} style={{ alignSelf: 'flex-start', marginBottom: '0.5rem', fontSize: '0.75rem' }}>
           {maxChars - newNote.length} characters remaining
         </div>
+        <button
+          className={`${moduleStyles.actionButton} ${moduleStyles.primaryButton}`}
+          onClick={handleAddNote}
+          style={{ alignSelf: 'flex-start', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+        >
+          Add
+        </button>
       </div>
-      
-      <button
-        className={`${moduleStyles.actionButton} ${moduleStyles.primaryButton}`}
-        style={{ marginBottom: '1rem' }}
-        onClick={handleAddNote}
-      >
-        Add Note
-      </button>
 
       <ul className={moduleStyles.list}>
         {displayedNotes.length > 0 ? (
@@ -157,37 +157,39 @@ const Notes = ({ user, projectId, limit = 5 }) => {
               key={note.id} 
               className={`${moduleStyles.listItem} ${moduleStyles.noteItem}`}
             >
-              <div className={moduleStyles.listItemContent}>
-                <div style={{ flex: 1 }}>
+              <div className={moduleStyles.listItemContent} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div style={{ width: '100%' }}>
                   <div>{note.content.trim()}</div>
-                  {!note.indexedInPinecone && (
-                    <small style={{ color: '#f59e0b', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}>
-                      <Clock size={12} /> Indexing for AI might be delayed
-                    </small>
-                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <span className={moduleStyles.timestamp}>
+                        {note.createdAt.toLocaleString()}
+                      </span>
+                      {!note.indexedInPinecone && (
+                        <small style={{ color: '#f59e0b', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <Clock size={12} /> Indexing for AI might be delayed
+                        </small>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        className={`${moduleStyles.iconButton} ${moduleStyles.editButton}`}
+                        onClick={() => handleExpandNote(note)}
+                        title="Expand to document"
+                      >
+                        <ArrowUpRight size={16} />
+                      </button>
+                      
+                      <button
+                        className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
+                        onClick={() => setDeletingId(note.id)}
+                        title="Delete note"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              
-              <div className={moduleStyles.listItemActions}>
-                <span className={moduleStyles.timestamp}>
-                  {note.createdAt.toLocaleString()}
-                </span>
-                
-                <button
-                  className={`${moduleStyles.iconButton} ${moduleStyles.editButton}`}
-                  onClick={() => handleExpandNote(note)}
-                  title="Expand to document"
-                >
-                  <ArrowUpRight size={18} />
-                </button>
-                
-                <button
-                  className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
-                  onClick={() => setDeletingId(note.id)}
-                  title="Delete note"
-                >
-                  <Trash2 size={18} />
-                </button>
               </div>
               
               {deletingId === note.id && (
