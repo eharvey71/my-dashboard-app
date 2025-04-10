@@ -2,11 +2,81 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDocuments, deleteDocument, addDocumentFromGoogleDrive } from '../services/firebaseConfig';
 import { indexContent, deleteVector } from '../services/pineconeService';
-import { Trash2, Edit2, PlusCircle, FileText, ExternalLink } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, File, ExternalLink, LogIn, LogOut } from 'lucide-react';
 import { signIn, signOut, isSignedIn, openGoogleDriveDocument, ensureValidToken } from '../services/googleDriveService';
+import moduleStyles from './DashboardModule.module.css';
 import styles from './DocumentList.module.css';
 import GoogleDrivePicker from './GoogleDrivePicker';
-import { AppContext } from '../App'; // We'll create this context in App.js
+import { AppContext } from '../App';
+
+const DocumentCard = ({ document, onDelete, onOpen }) => {
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  
+  const handleDeleteClick = () => {
+    setIsConfirmingDelete(true);
+  };
+  
+  const handleConfirmDelete = () => {
+    onDelete(document.id);
+    setIsConfirmingDelete(false);
+  };
+  
+  const handleCancelDelete = () => {
+    setIsConfirmingDelete(false);
+  };
+  
+  return (
+    <div className={styles.documentCard}>
+      <h3 className={styles.documentTitle}>{document.title || 'Untitled Document'}</h3>
+      <p className={styles.documentDate}>
+        Last updated: {new Date(document.updatedAt.seconds * 1000).toLocaleDateString()}
+      </p>
+      <p className={styles.documentSource}>
+        Source: {document.source || 'Native'}
+      </p>
+      <div className={styles.documentActions}>
+        <button 
+          className={`${moduleStyles.iconButton} ${moduleStyles.editButton}`}
+          onClick={() => onOpen(document)}
+          title={document.source === 'Google Drive' ? "Open in Google Drive" : "Edit document"}
+        >
+          {document.source === 'Google Drive' ? <ExternalLink size={16} /> : <Edit size={16} />}
+        </button>
+        <button 
+          className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
+          onClick={handleDeleteClick}
+          title="Delete document"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+      
+      {isConfirmingDelete && (
+        <div className={moduleStyles.deleteConfirmationOverlay}>
+          <div className={moduleStyles.deleteConfirmation}>
+            <span>Delete this document?</span>
+            <button
+              className={moduleStyles.actionButton}
+              style={{ backgroundColor: '#4ade80', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
+              onClick={handleConfirmDelete}
+              title="Yes, delete document"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              className={moduleStyles.actionButton}
+              style={{ backgroundColor: '#f87171', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
+              onClick={handleCancelDelete}
+              title="No, cancel"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const DocumentList = ({ user }) => {
   const { projectId } = useParams();
@@ -51,14 +121,12 @@ const DocumentList = ({ user }) => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this document?')) {
-      try {
-        await deleteDocument(id);
-        await deleteVector(user.uid, id, 'document');
-        setDocuments(documents.filter(doc => doc.id !== id));
-      } catch (error) {
-        console.error('Error deleting document:', error);
-      }
+    try {
+      await deleteDocument(id);
+      await deleteVector(user.uid, id, 'document');
+      setDocuments(documents.filter(doc => doc.id !== id));
+    } catch (error) {
+      console.error('Error deleting document:', error);
     }
   };
 
@@ -89,7 +157,6 @@ const DocumentList = ({ user }) => {
       if (newDoc && newDoc.id && newDoc.updatedAt) {
         setDocuments(prevDocuments => [newDoc, ...prevDocuments]);
         await indexContent(user.uid, projectId, file.content, 'document', newDoc.id, `Google Drive Document: ${file.name}`, 'Google Drive');
-        //alert(`Document "${file.name}" has been added to your project and indexed for AI processing.`);
       } else {
         throw new Error('Invalid document structure returned from addDocumentFromGoogleDrive');
       }
@@ -112,60 +179,78 @@ const DocumentList = ({ user }) => {
   };
 
   if (loading) {
-    return <div className={styles.loading}>Loading documents...</div>;
+    return <div className={moduleStyles.loading}>Loading documents...</div>;
   }
 
   return (
-    <div className={styles.documentList}>
-      <h2 className={styles.title}>My Documents</h2>
-      <Link to={`/project/${projectId}/documents/new`} className={styles.newDocButton}>
-        <PlusCircle size={20} />
-        New Document
-      </Link>
-      
-      <div className={styles.googleDriveSection}>
-        {googleDriveSignedIn ? (
-          <>
-            <button onClick={handleGoogleDriveSignOut} className={styles.googleDriveButton}>
-              Sign Out from Google Drive
+    <div className="container mt-4">
+      <div className={moduleStyles.container}>
+        <div className={moduleStyles.header}>
+          <h2 className={moduleStyles.title}>
+            <File size={20} />
+            <span>My Documents</span>
+          </h2>
+          
+          <Link 
+            to={`/project/${projectId}/documents/new`} 
+            className={`${moduleStyles.actionButton} ${moduleStyles.primaryButton}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <PlusCircle size={16} />
+            New Document
+          </Link>
+        </div>
+        
+        <div className={styles.googleDriveSection}>
+          {googleDriveSignedIn ? (
+            <>
+              <button 
+                onClick={handleGoogleDriveSignOut} 
+                className={styles.googleDriveButton}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <LogOut size={16} />
+                Sign Out from Google Drive
+              </button>
+              <button 
+                onClick={() => setIsGoogleDrivePickerOpen(true)} 
+                className={styles.googleDriveImportButton}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <File size={16} />
+                Import from Google Drive
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={handleGoogleDriveSignIn} 
+              className={styles.googleDriveButton}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <LogIn size={16} />
+              Sign In to Google Drive
             </button>
-            <button onClick={() => setIsGoogleDrivePickerOpen(true)} className={styles.googleDriveButton}>
-              <FileText size={18} />
-              Import from Google Drive
-            </button>
-          </>
+          )}
+        </div>
+        
+        {documents.length > 0 ? (
+          <div className={styles.documentGrid}>
+            {documents.map(doc => (
+              <DocumentCard 
+                key={doc.id} 
+                document={doc} 
+                onDelete={handleDelete}
+                onOpen={handleOpenDocument}
+              />
+            ))}
+          </div>
         ) : (
-          <button onClick={handleGoogleDriveSignIn} className={styles.googleDriveButton}>
-            Sign In to Google Drive
-          </button>
+          <div className={moduleStyles.emptyState}>
+            No documents yet. Create one using the "New Document" button or import from Google Drive.
+          </div>
         )}
       </div>
-
-      <h3>Project Documents</h3>
-      <div className={styles.documentGrid}>
-        {documents.map(doc => (
-          <div key={doc.id} className={styles.documentCard}>
-            <h3 className={styles.documentTitle}>{doc.title || 'Untitled Document'}</h3>
-            <p className={styles.documentDate}>
-              Last updated: {new Date(doc.updatedAt.seconds * 1000).toLocaleDateString()}
-            </p>
-            <p className={styles.documentSource}>
-              Source: {doc.source || 'Native'}
-            </p>
-            <div className={styles.documentActions}>
-              <button onClick={() => handleOpenDocument(doc)} className={styles.openButton}>
-                {doc.source === 'Google Drive' ? <ExternalLink size={18} /> : <Edit2 size={18} />}
-                {doc.source === 'Google Drive' ? 'Open in Drive' : 'Edit'}
-              </button>
-              <button onClick={() => handleDelete(doc.id)} className={styles.deleteButton}>
-                <Trash2 size={18} />
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
+      
       <GoogleDrivePicker
         isOpen={isGoogleDrivePickerOpen}
         onClose={() => setIsGoogleDrivePickerOpen(false)}

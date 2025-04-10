@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getNotes, addNote, deleteNote, addDocument } from "../services/firebaseConfig";
 import { indexContent } from "../services/pineconeService";
-import { Trash2, Check, X, ArrowUpRight } from 'lucide-react';
+import { Trash2, Check, X, ArrowUpRight, Clipboard } from 'lucide-react';
+import moduleStyles from './DashboardModule.module.css';
 import styles from './FullPageNotes.module.css';
 
 const Note = ({ note, onDeleteNote, onExpandNote }) => {
@@ -23,44 +24,46 @@ const Note = ({ note, onDeleteNote, onExpandNote }) => {
 
   return (
     <div className={styles.noteCard}>
-      <p>{note.content.trim()}</p>
-      {!note.indexedInPinecone && <span className={styles.textWarning}> (Indexing for AI might be delayed)</span>}
+      <p className={styles.noteContent}>{note.content.trim()}</p>
+      {!note.indexedInPinecone && <span className={styles.notIndexed}>(Indexing for AI might be delayed)</span>}
       <div className={styles.noteFooter}>
-        <small className={styles.textMuted}>
+        <small className={styles.noteDate}>
           {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}
         </small>
         <div className={styles.noteActions}>
           <button
-            className={`${styles.expandButton} btn btn-sm btn-link`}
+            className={`${moduleStyles.iconButton} ${moduleStyles.editButton}`}
             onClick={() => onExpandNote(note)}
             title="Expand to document"
           >
-            <ArrowUpRight size={18} />
+            <ArrowUpRight size={16} />
           </button>
           <button
-            className="btn btn-sm btn-link text-danger"
+            className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
             onClick={handleDeleteClick}
             title="Delete note"
           >
-            <Trash2 size={18} />
+            <Trash2 size={16} />
           </button>
         </div>
       </div>
       {isConfirmingDelete && (
-        <div className={styles.deleteConfirmationOverlay}>
-          <div className={`${styles.deleteConfirmation} d-flex align-items-center justify-content-center`}>
-            <span className="me-2">Confirm delete?</span>
+        <div className={moduleStyles.deleteConfirmationOverlay}>
+          <div className={moduleStyles.deleteConfirmation}>
+            <span>Confirm delete?</span>
             <button
-              className="btn btn-sm btn-success me-1"
+              className={moduleStyles.actionButton}
+              style={{ backgroundColor: '#4ade80', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
               onClick={handleConfirmDelete}
-              title="Confirm delete"
+              title="Yes, delete note"
             >
               <Check size={14} />
             </button>
             <button
-              className="btn btn-sm btn-danger"
+              className={moduleStyles.actionButton}
+              style={{ backgroundColor: '#f87171', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
               onClick={handleCancelDelete}
-              title="Cancel delete"
+              title="No, cancel"
             >
               <X size={14} />
             </button>
@@ -159,41 +162,60 @@ const FullPageNotes = ({ user }) => {
   };
 
   if (loading) {
-    return <div>Loading notes...</div>;
+    return <div className={moduleStyles.loading}>Loading notes...</div>;
   }
 
   return (
-    <div className="container">
-      <h1>All Notes</h1>
-      <div className="mb-3">
-        <textarea
-          className="form-control"
-          placeholder="New Note"
-          value={newNote}
-          onChange={(e) => setNewNote(e.target.value)}
-          maxLength={maxChars}
-          rows="3"
-        />
-        <div className={styles.characterCount}>
-          {maxChars - newNote.length} characters remaining
+    <div className="container mt-4">
+      <div className={moduleStyles.container}>
+        <div className={moduleStyles.header}>
+          <h2 className={moduleStyles.title}>
+            <Clipboard size={20} />
+            <span>Quick Notes</span>
+          </h2>
         </div>
-      </div>
-      <button
-        className="btn btn-outline-secondary mb-3"
-        onClick={handleAddNote}
-      >
-        Add Note
-      </button>
-      {error && <p className={styles.textDanger}>{error}</p>}
-      <div className={styles.notesGrid}>
-        {notes.map((note) => (
-          <Note 
-            key={note.id} 
-            note={note} 
-            onDeleteNote={handleDeleteNote} 
-            onExpandNote={handleExpandNote}
+        
+        <div className={moduleStyles.inputGroup} style={{ flexDirection: 'column' }}>
+          <textarea
+            className={moduleStyles.input}
+            placeholder="New Note"
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            maxLength={maxChars}
+            rows="3"
+            style={{ resize: 'vertical', minHeight: '3rem', marginBottom: '0' }}
           />
-        ))}
+          <div className={styles.characterCount}>
+            {maxChars - newNote.length} characters remaining
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <button
+              className={`${moduleStyles.actionButton} ${moduleStyles.primaryButton}`}
+              onClick={handleAddNote}
+            >
+              Add Note
+            </button>
+          </div>
+        </div>
+        
+        {error && <div className={moduleStyles.error}>{error}</div>}
+        
+        {notes.length > 0 ? (
+          <div className={styles.notesGrid}>
+            {notes.map((note) => (
+              <Note 
+                key={note.id} 
+                note={note} 
+                onDeleteNote={handleDeleteNote} 
+                onExpandNote={handleExpandNote}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className={moduleStyles.emptyState}>
+            No notes added yet. Add a note above to get started!
+          </div>
+        )}
       </div>
     </div>
   );

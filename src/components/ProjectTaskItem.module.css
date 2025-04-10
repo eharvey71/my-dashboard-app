@@ -7,44 +7,222 @@
 .projectBadge {
   display: inline-flex;
   align-items: center;
-  font-size: 0.8rem;
-  color: #6c757d;
-  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #4b5563;
+  background-color: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 1rem;
+  margin-top: 0.375rem;
 }
 
 .folderIcon {
-  margin-right: 4px;
+  margin-right: 0.375rem;
+  color: #3b82f6;
 }
 
 /* Project section container */
 .projectSection {
-  margin-bottom: 30px;
-  padding-bottom: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.taskList {
+  padding-left: 0;
+  list-style-type: none;
+  margin-bottom: 0;
 }
 
 /* Section headers for project grouping when sorted by project */
 .projectHeader {
-  display: block;
-  margin-top: 32px;
-  margin-bottom: 16px;
-  font-weight: 500;
-  color: #495057;
-  padding: 10px 16px;
-  border-bottom: 1px solid #63b3ed;
-  background: linear-gradient(to right, #f8f9fa, transparent);
-  border-radius: 6px 6px 0 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 .projectHeaderName {
-  font-size: 1.1rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #4a5568;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* Make first header have less top margin */
-.projectHeader:first-of-type {
-  margin-top: 8px;
+.projectHeaderName svg {
+  color: #3b82f6;
+}
+
+/* Task styling */
+.taskItem {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  background-color: #f9fafb;
+  border-left: 3px solid #4299e1;
+  position: relative;
+  transition: background-color 0.2s;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.taskItem:hover {
+  background-color: #f1f1f1;
+}
+
+.taskCheckbox {
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.taskPriority, .taskRecurrence {
+  position: relative;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.priorityButton, .recurrenceButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: transparent;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+}
+
+.priorityMenu, .recurrenceMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1050;
+  min-width: 100px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  margin-top: 4px;
+}
+
+.priorityOption, .recurrenceOption {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.75rem;
+}
+
+.priorityOption:hover, .recurrenceOption:hover {
+  background-color: #f3f4f6;
+}
+
+.taskContent {
+  flex-grow: 1;
+  min-width: 0;
+  margin-right: 0.5rem;
+  word-break: break-word;
+}
+
+.taskContent span {
+  cursor: pointer;
+  display: inline-block;
+}
+
+.taskContent small {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.taskActions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.actionButton:hover {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+.deleteButton {
+  color: #ef4444;
+}
+
+.deleteButton:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.completedTask {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.overdueTask {
+  color: #ef4444;
+}
+
+.overdueBadge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  border-radius: 0.25rem;
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+.deleteConfirmationOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  z-index: 10;
+}
+
+.deleteConfirmation {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #fee2e2;
+  border: 1px solid #ef4444;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
 }
 
 /* Responsive styling */
@@ -57,10 +235,8 @@
   
   .projectBadge {
     margin-top: 0;
-    margin-left: 16px;
-    background-color: #f8f9fa;
-    padding: 2px 8px;
-    border-radius: 12px;
+    margin-left: 1rem;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 }

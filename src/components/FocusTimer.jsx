@@ -46,12 +46,20 @@ const FocusTimer = ({ user }) => {
   const [selectedTime, setSelectedTime] = useState(25);
   const [analytics, setAnalytics] = useState({});
   const [lastUpdateTime, setLastUpdateTime] = useState(0);
-  const [showDeletedTasks, setShowDeletedTasks] = useState(true);
+  const [showDeletedTasks, setShowDeletedTasks] = useState(false);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [sortBy, setSortBy] = useState('priority'); // priority, name, color
 
   useEffect(() => {
     const fetchTasks = async () => {
       const fetchedTasks = await getTasks(user.uid, projectId);
-      setTasks(fetchedTasks.filter((task) => !task.completed));
+      
+      // Filter tasks based on completed status toggle
+      const filteredTasks = showCompletedTasks 
+        ? fetchedTasks 
+        : fetchedTasks.filter((task) => !task.completed);
+        
+      setTasks(filteredTasks);
 
       if (activeTimer?.taskId) {
         const activeTask = fetchedTasks.find(
@@ -70,7 +78,7 @@ const FocusTimer = ({ user }) => {
 
     fetchTasks();
     fetchAnalytics();
-  }, [user, projectId, activeTimer?.taskId]);
+  }, [user, projectId, activeTimer?.taskId, showCompletedTasks]);
 
   const updateDatabaseAnalytics = async (secondsToAdd) => {
     if (user && selectedTask && secondsToAdd > 0) {
@@ -115,13 +123,53 @@ const FocusTimer = ({ user }) => {
 
   const renderPriorityIndicator = (priority) => {
     const indicators = {
-      1: "!!!",
-      2: "!!",
-      3: "!",
-      4: "",
-      5: "",
+      1: "P1",
+      2: "P2",
+      3: "P3",
+      4: "P4",
+      5: "P5",
     };
-    return indicators[priority] || "";
+    return indicators[priority] || "-";
+  };
+  
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 1: return '#f5222d'; // Red - Highest priority
+      case 2: return '#fa8c16'; // Orange
+      case 3: return '#faad14'; // Yellow
+      case 4: return '#52c41a'; // Green
+      case 5: return '#1890ff'; // Blue - Lowest priority
+      default: return '#d9d9d9'; // Grey - No priority
+    }
+  };
+  
+  const sortTasks = (tasksToSort) => {
+    return [...tasksToSort].sort((a, b) => {
+      switch (sortBy) {
+        case 'priority':
+          // Sort by priority (lower number is higher priority)
+          if (!a.priority) return 1;
+          if (!b.priority) return -1;
+          if (a.priority !== b.priority) {
+            return a.priority - b.priority;
+          }
+          // If same priority, sort by title
+          return a.title.localeCompare(b.title);
+          
+        case 'name':
+          // Sort alphabetically by title
+          return a.title.localeCompare(b.title);
+          
+        case 'color':
+          // Sort by color
+          if (!a.color) return 1;
+          if (!b.color) return -1;
+          return a.color.localeCompare(b.color);
+          
+        default:
+          return 0;
+      }
+    });
   };
 
   const sortedAnalytics = Object.entries(analytics)
@@ -187,21 +235,57 @@ const FocusTimer = ({ user }) => {
         <div className="col-md-8">
           <div className="card mb-4">
             <div className="card-body">
-              <h4 className="card-title mb-4">Tasks</h4>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4 className="card-title mb-0">Tasks</h4>
+                <div className="d-flex align-items-center">
+                  <div className="form-check form-switch me-3">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="showCompletedTasksSwitch"
+                      checked={showCompletedTasks}
+                      onChange={() => setShowCompletedTasks(!showCompletedTasks)}
+                    />
+                    <label className="form-check-label" htmlFor="showCompletedTasksSwitch" style={{ fontSize: '0.85rem' }}>
+                      Show Completed
+                    </label>
+                  </div>
+                  
+                  <select 
+                    className="form-select form-select-sm" 
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    style={{ width: 'auto', fontSize: '0.85rem' }}
+                  >
+                    <option value="priority">Sort by Priority</option>
+                    <option value="name">Sort by Name</option>
+                    <option value="color">Sort by Color</option>
+                  </select>
+                </div>
+              </div>
+              
               <div className={styles.taskGrid}>
-                {tasks.map((task) => (
+                {sortTasks(tasks).map((task) => (
                   <div
                     key={task.id}
                     className={`${styles.taskItem} ${
                       selectedTask?.id === task.id ? styles.selected : ""
-                    }`}
+                    } ${task.completed ? styles.completedTask : ""}`}
                     onClick={() => handleTaskClick(task)}
-                    style={{ backgroundColor: task.color || "#CCCCCC" }}
+                    style={{ 
+                      backgroundColor: task.color || "#CCCCCC",
+                      borderLeft: task.priority ? `5px solid ${getPriorityColor(task.priority)}` : '5px solid transparent'
+                    }}
                   >
-                    <span className={styles.priorityIndicator}>
-                      {renderPriorityIndicator(task.priority)}
-                    </span>
-                    {task.title}
+                    {task.priority && (
+                      <div className={styles.priorityBadge} style={{ backgroundColor: getPriorityColor(task.priority) }}>
+                        {renderPriorityIndicator(task.priority)}
+                      </div>
+                    )}
+                    <div className={styles.taskContent}>
+                      {task.title}
+                      {task.completed && <span className={styles.completedBadge}>Completed</span>}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -262,18 +346,32 @@ const FocusTimer = ({ user }) => {
           <div className="card">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h4 className="card-title mb-0">Analytics Dashboard</h4>
-                <div className="form-check form-switch">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id="showDeletedTasksSwitch"
-                    checked={showDeletedTasks}
-                    onChange={() => setShowDeletedTasks(!showDeletedTasks)}
-                  />
-                  <label className="form-check-label" htmlFor="showDeletedTasksSwitch">
-                    Show Deleted Tasks
-                  </label>
+                <h4 className="card-title mb-0">Focus Metrics</h4>
+                <div className="d-flex flex-column" style={{ gap: '0.5rem' }}>
+                  <div className="form-check form-switch">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="showDeletedTasksSwitch"
+                      checked={showDeletedTasks}
+                      onChange={() => setShowDeletedTasks(!showDeletedTasks)}
+                    />
+                    <label className="form-check-label" htmlFor="showDeletedTasksSwitch" style={{ fontSize: '0.85rem' }}>
+                      Show Deleted Tasks
+                    </label>
+                  </div>
+                  <div className="form-check form-switch">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="analyticsShowCompletedSwitch"
+                      checked={showCompletedTasks}
+                      onChange={() => setShowCompletedTasks(!showCompletedTasks)}
+                    />
+                    <label className="form-check-label" htmlFor="analyticsShowCompletedSwitch" style={{ fontSize: '0.85rem' }}>
+                      Show Completed Tasks
+                    </label>
+                  </div>
                 </div>
               </div>
               <div className={styles.chartContainer}>

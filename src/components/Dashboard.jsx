@@ -4,6 +4,7 @@ import { setLastAccessedProject } from '../services/firebaseConfig';
 import TaskList from './TaskList';
 import Notes from './Notes';
 import BookmarkList from './BookmarkList';
+import FocusMetrics from './FocusMetrics';
 // These components are temporarily removed from the dashboard but code is retained
 // import AIAssistant from './AIAssistant';
 // import CustomAPIModule from './CustomAPIModule';
@@ -45,6 +46,9 @@ const Dashboard = ({ user }) => {
           </div>
           <div className="mb-4">
             <Notes user={user} projectId={projectId} limit={5} />
+          </div>
+          <div className="mb-4">
+            <FocusMetrics user={user} projectId={projectId} limit={3} />
           </div>
         </div>
 

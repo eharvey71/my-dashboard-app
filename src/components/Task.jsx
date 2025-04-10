@@ -1,24 +1,52 @@
 import React, { useState, useRef, useEffect } from "react";
 import { updateTask, addTask } from "../services/firebaseConfig";
-import PomodoroTimer from "./PomodoroTimer";
-import { Trash2, Check, X, ChevronDown, Repeat } from "lucide-react";
-import styles from "./Task.module.css";
+import { 
+  Trash2, Check, X, ChevronDown, Repeat, Edit, Circle, CheckCircle 
+} from "lucide-react";
+import taskStyles from "./Task.module.css";
+import moduleStyles from "./DashboardModule.module.css";
 
 const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
   const [editTaskTitle, setEditTaskTitle] = useState(task.title || task.content);
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [hoveredItem, setHoveredItem] = useState(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
-  const [showRecurrenceDropdown, setShowRecurrenceDropdown] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState({ type: null });
   const inputRef = useRef(null);
+  const priorityMenuRef = useRef(null);
+  const recurrenceMenuRef = useRef(null);
+
+  const styles = isFullPage ? taskStyles : moduleStyles;
 
   useEffect(() => {
     if (isEditing) {
       inputRef.current.focus();
     }
   }, [isEditing]);
+
+  // Handle clicks outside of dropdowns to close them
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openDropdown.type === 'priority' && 
+          priorityMenuRef.current && 
+          !priorityMenuRef.current.contains(event.target) && 
+          !event.target.closest(`.${taskStyles.priorityButton}`)) {
+        setOpenDropdown({ type: null });
+      }
+      
+      if (openDropdown.type === 'recurrence' && 
+          recurrenceMenuRef.current && 
+          !recurrenceMenuRef.current.contains(event.target) && 
+          !event.target.closest(`.${taskStyles.recurrenceButton}`)) {
+        setOpenDropdown({ type: null });
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
 
   const handleToggleComplete = async () => {
     try {
@@ -80,7 +108,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
     try {
       await updateTask(task.id, { priority: priority });
       onTaskUpdate();
-      setShowPriorityDropdown(false);
+      setOpenDropdown({ type: null });
     } catch (error) {
       console.error("Error updating task priority:", error);
     }
@@ -92,21 +120,17 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
       await updateTask(task.id, {
         isRecurring: !!recurrencePattern,
         recurrencePattern: recurrencePattern,
-        nextDueDate: nextDueDate
+        nextDueDate: nextDueDate ? nextDueDate.toISOString() : null
       });
       onTaskUpdate();
-      setShowRecurrenceDropdown(false);
+      setOpenDropdown({ type: null });
     } catch (error) {
       console.error("Error updating task recurrence:", error);
     }
   };
 
   const calculateNextDueDate = (recurrencePattern, currentDate) => {
-    const date = currentDate instanceof Date ? currentDate : new Date(currentDate);
-    if (isNaN(date.getTime())) {
-      console.error("Invalid date:", currentDate);
-      return null;
-    }
+    const date = new Date(currentDate);
     switch (recurrencePattern) {
       case 'daily':
         date.setDate(date.getDate() + 1);
@@ -124,80 +148,87 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
   };
 
   const isOverdue = () => {
-    if (task.nextDueDate) {
-      const dueDate = new Date(task.nextDueDate);
-      const now = new Date();
-      return !task.completed && dueDate < now;
-    }
-    return false;
+    if (!task.nextDueDate) return false;
+    const dueDate = new Date(task.nextDueDate);
+    const today = new Date();
+    return dueDate < today && !task.completed;
   };
 
-  const taskClasses = `list-group-item ${task.completed ? styles.completed : ""} ${isOverdue() ? styles.taskOverdue : ""}`;
-
-  const getPriorityStyle = (priority) => {
-    const colors = {
-      1: 'rgba(255, 204, 203, 0.5)',
-      2: 'rgba(255, 218, 185, 0.5)',
-      3: 'rgba(255, 250, 205, 0.5)',
-      4: 'rgba(144, 238, 144, 0.5)',
-      5: 'rgba(173, 216, 230, 0.5)',
-    };
-    return { backgroundColor: colors[priority] || 'transparent' };
-  };
-
-  const getRecurringStyle = (pattern) => {
-    const isRecurring = task.recurrencePattern && task.recurrencePattern !== 'none';
-    
-    if (!pattern) {
-      return isRecurring ? { backgroundColor: 'rgba(230, 230, 250, 0.8)' } : {};
+  // Helper to get priority color
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 1: return '#f5222d'; // Red - Highest priority
+      case 2: return '#fa8c16'; // Orange
+      case 3: return '#faad14'; // Yellow
+      case 4: return '#52c41a'; // Green
+      case 5: return '#1890ff'; // Blue - Lowest priority
+      default: return '#d9d9d9'; // Grey - No priority
     }
-    
-    if (hoveredItem === pattern) {
-      return { backgroundColor: '#e9ecef', color: '#495057' };
-    }
-    
-    return task.recurrencePattern === pattern ? 
-      { backgroundColor: 'rgba(230, 230, 250, 0.8)' } : 
-      {};
   };
 
   return (
-    <li
-      className={taskClasses}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        // Only close dropdowns, but keep delete confirmation open if active
-        setShowPriorityDropdown(false);
-        setShowRecurrenceDropdown(false);
+    <li 
+      className={`${moduleStyles.listItem} ${moduleStyles.taskItem} ${taskStyles.taskItem} ${isOverdue() ? taskStyles.overdueTask : ''} ${(openDropdown.type) ? taskStyles.activeTask : ''}`}
+      style={{ 
+        borderLeftColor: task.color || '#4299e1',
+        opacity: task.completed ? 0.7 : 1,
+        textDecoration: task.completed ? 'line-through' : 'none'
       }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={styles.taskRow}>
-        <div className={styles.taskCheckbox}>
+      <div className={moduleStyles.listItemContent}>
+        {/* Checkbox */}
+        <div className={taskStyles.taskCheckbox}>
           <input
             type="checkbox"
             checked={task.completed}
             onChange={handleToggleComplete}
+            title={task.completed ? "Mark as incomplete" : "Mark as complete"}
           />
         </div>
-        <div className={styles.taskPriority}>
+
+        {/* Priority */}
+        <div className={`${taskStyles.taskPriority} ${openDropdown.type === 'priority' ? taskStyles.activeDropdown : ''}`}>
           <button
-            className="btn btn-sm btn-outline-secondary"
-            style={getPriorityStyle(task.priority)}
-            onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
+            className={taskStyles.priorityButton}
+            onClick={() => {
+              if (openDropdown.type === 'priority') {
+                setOpenDropdown({ type: null });
+              } else {
+                setOpenDropdown({ type: 'priority' });
+              }
+            }}
+            title="Set priority"
+            style={{ 
+              backgroundColor: task.priority ? `${getPriorityColor(task.priority)}20` : 'transparent',
+              color: task.priority ? getPriorityColor(task.priority) : '#6b7280',
+              border: `1px solid ${task.priority ? getPriorityColor(task.priority) : '#d1d5db'}`
+            }}
           >
-            {task.priority !== undefined ? task.priority : <ChevronDown size={14} />}
+            {task.priority || <ChevronDown size={14} />}
           </button>
-          {showPriorityDropdown && (
-            <div className={styles.priorityDropdown}>
+          
+          {openDropdown.type === 'priority' && (
+            <div 
+              className={taskStyles.priorityMenu}
+              ref={priorityMenuRef}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: '0',
+                zIndex: 1050
+              }}
+            >
               {[1, 2, 3, 4, 5].map((priority) => (
                 <button
                   key={priority}
-                  className={`btn btn-sm btn-outline-secondary ${styles.dropdownButton}`}
-                  style={getPriorityStyle(priority)}
+                  className={taskStyles.priorityOption}
                   onClick={() => handlePriorityChange(priority)}
-                  onMouseEnter={() => setHoveredItem(priority)}
-                  onMouseLeave={() => setHoveredItem(null)}
+                  style={{ 
+                    backgroundColor: `${getPriorityColor(priority)}20`,
+                    color: getPriorityColor(priority)
+                  }}
                 >
                   {priority}
                 </button>
@@ -205,100 +236,146 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             </div>
           )}
         </div>
-        <div className={styles.taskRecurrence}>
+
+        {/* Recurrence */}
+        <div className={`${taskStyles.taskRecurrence} ${openDropdown.type === 'recurrence' ? taskStyles.activeDropdown : ''}`}>
           <button
-            className="btn btn-sm btn-outline-secondary"
-            style={getRecurringStyle()}
-            onClick={() => setShowRecurrenceDropdown(!showRecurrenceDropdown)}
+            className={taskStyles.recurrenceButton}
+            onClick={() => {
+              if (openDropdown.type === 'recurrence') {
+                setOpenDropdown({ type: null });
+              } else {
+                setOpenDropdown({ type: 'recurrence' });
+              }
+            }}
+            title={task.isRecurring ? `Recurring: ${task.recurrencePattern}` : "Set recurrence"}
+            style={{ 
+              backgroundColor: task.isRecurring ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
+              color: task.isRecurring ? '#4f46e5' : '#6b7280',
+              border: `1px solid ${task.isRecurring ? '#4f46e5' : '#d1d5db'}`
+            }}
           >
             <Repeat size={14} />
           </button>
-          {showRecurrenceDropdown && (
-            <div className={styles.recurrenceDropdown}>
-              {['none', 'daily', 'weekly', 'monthly'].map((pattern) => (
+          
+          {openDropdown.type === 'recurrence' && (
+            <div 
+              className={taskStyles.recurrenceMenu}
+              ref={recurrenceMenuRef}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: '0',
+                zIndex: 1050
+              }}
+            >
+              <button 
+                className={taskStyles.recurrenceOption}
+                onClick={() => handleRecurrenceChange(null)}
+                style={{ 
+                  color: !task.isRecurring ? '#4f46e5' : '#6b7280',
+                  fontWeight: !task.isRecurring ? '600' : 'normal'
+                }}
+              >
+                None
+              </button>
+              {['daily', 'weekly', 'monthly'].map((pattern) => (
                 <button
                   key={pattern}
-                  className={`btn btn-sm btn-outline-secondary ${styles.dropdownButton}`}
-                  style={getRecurringStyle(pattern)}
-                  onClick={() => handleRecurrenceChange(pattern === 'none' ? null : pattern)}
-                  onMouseEnter={() => setHoveredItem(pattern)}
-                  onMouseLeave={() => setHoveredItem(null)}
+                  className={taskStyles.recurrenceOption}
+                  onClick={() => handleRecurrenceChange(pattern)}
+                  style={{ 
+                    color: task.recurrencePattern === pattern ? '#4f46e5' : '#6b7280',
+                    fontWeight: task.recurrencePattern === pattern ? '600' : 'normal'
+                  }}
                 >
-                  {pattern}
+                  {pattern.charAt(0).toUpperCase() + pattern.slice(1)}
                 </button>
               ))}
             </div>
           )}
         </div>
-        <div className={`${styles.taskContent} ${isHovered ? styles.hovered : ""}`}>
-          {isEditing ? (
-            <input
-              ref={inputRef}
-              type="text"
-              className="form-control"
-              value={editTaskTitle}
-              onChange={(e) => setEditTaskTitle(e.target.value)}
-              onBlur={handleSaveTask}
-              onKeyPress={handleKeyPress}
-            />
-          ) : (
-            <span 
-              onClick={handleUpdateTask}
-              className={`
-                ${task.completed ? styles.completedTask : ''}
-                ${isOverdue() ? styles.overdueTask : ''}
-              `}
-            >
-              {task.title || task.content}
-              {task.isRecurring && (
-                <small className="text-muted ms-2">
-                  ({task.recurrencePattern}, Next: {task.nextDueDate ? new Date(task.nextDueDate).toLocaleDateString() : 'Not set'})
-                </small>
-              )}
-              {isOverdue() && <small className="text-danger ms-2">(Overdue)</small>}
-            </span>
-          )}
-        </div>
-        <div className={styles.taskActions}>
-          <button
-            className="btn btn-sm btn-link text-danger"
-            onClick={handleDeleteClick}
-            title="Delete task"
+        
+        {/* Title */}
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            className={moduleStyles.input}
+            style={{ minWidth: 0, flex: 1 }}
+            value={editTaskTitle}
+            onChange={(e) => setEditTaskTitle(e.target.value)}
+            onBlur={handleSaveTask}
+            onKeyPress={handleKeyPress}
+            autoFocus
+          />
+        ) : (
+          <span 
+            style={{ flex: 1, cursor: 'pointer' }} 
+            onClick={handleUpdateTask}
           >
-            <Trash2 size={18} />
-          </button>
-        </div>
-        {isConfirmingDelete && (
-          <div className={styles.deleteConfirmationOverlay}>
-            <div className={styles.deleteConfirmation}>
-              <span className="me-2">Confirm delete?</span>
-              <button
-                className="btn btn-sm btn-success me-1"
-                onClick={handleConfirmDelete}
-                title="Confirm delete"
-              >
-                <Check size={14} />
-              </button>
-              <button
-                className="btn btn-sm btn-danger"
-                onClick={handleCancelDelete}
-                title="Cancel delete"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
+            {task.title || task.content}
+            {task.isRecurring && (
+              <small style={{ marginLeft: '0.5rem', color: '#6b7280', fontSize: '0.75rem' }}>
+                ({task.recurrencePattern}, Next: {task.nextDueDate ? new Date(task.nextDueDate).toLocaleDateString() : 'Not set'})
+              </small>
+            )}
+            {isOverdue() && !task.completed && (
+              <span className={taskStyles.overdueBadge}>
+                Overdue
+              </span>
+            )}
+          </span>
         )}
       </div>
-      {/* {isFullPage && !task.completed && (
-        <div className={styles.taskTimer}>
-          <PomodoroTimer
-            taskId={task.id}
-            initialSeconds={task.timerSeconds || 1500}
-            isHovered={isHovered}
-          />
+      
+      {/* Actions */}
+      <div className={moduleStyles.listItemActions}>
+        {/* Edit button (only show when not editing) */}
+        {!isEditing && (
+          <button 
+            className={`${moduleStyles.iconButton} ${moduleStyles.editButton}`}
+            onClick={handleUpdateTask}
+            title="Edit task"
+          >
+            <Edit size={16} />
+          </button>
+        )}
+        
+        {/* Delete button */}
+        <button 
+          className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
+          onClick={handleDeleteClick}
+          title="Delete task"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+      
+      {/* Delete confirmation */}
+      {isConfirmingDelete && (
+        <div className={moduleStyles.deleteConfirmationOverlay}>
+          <div className={moduleStyles.deleteConfirmation}>
+            <span>Confirm delete?</span>
+            <button
+              className={moduleStyles.actionButton}
+              style={{ backgroundColor: '#4ade80', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
+              onClick={handleConfirmDelete}
+              title="Yes, delete task"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              className={moduleStyles.actionButton}
+              style={{ backgroundColor: '#f87171', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
+              onClick={handleCancelDelete}
+              title="No, cancel"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
-      )} */}
+      )}
     </li>
   );
 };

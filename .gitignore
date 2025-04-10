@@ -1,5 +1,119 @@
-*.local
-.env
-.runtimeconfig.json
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node and Dependencies
 node_modules
+dist
+dist-ssr
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Firebase
+.runtimeconfig.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+firebase-debug.*.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+*-service-account.json
+.firebaserc
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# React / Build files
+/build
 /dist
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Cache and misc
+.cache/
+.eslintcache
+.parcel-cache
+.temp
+.tmp
+.sass-cache
+storybook-static
+
+# Debug files
+*.tsbuildinfo
+debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Compiled source
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Packages
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Temporary files
+*.swp
+*.swo
+*~
+
+# Emulator data
+emulator_data
+firebase-export-*/

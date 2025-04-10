@@ -6,20 +6,65 @@
 
 .taskCheckbox {
   margin-right: 0.5rem;
+  flex-shrink: 0;
 }
 
-.taskPriority {
-  margin-right: 0.5rem;
+.taskPriority, .taskRecurrence {
   position: relative;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
 }
 
-.taskRecurrence {
-  margin-right: 0.5rem;
-  position: relative;
+.priorityButton, .recurrenceButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: transparent;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+}
+
+.priorityMenu, .recurrenceMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1050;
+  min-width: 100px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  margin-top: 4px;
+}
+
+.priorityOption, .recurrenceOption {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.75rem;
+}
+
+.priorityOption:hover, .recurrenceOption:hover {
+  background-color: #f3f4f6;
 }
 
 .taskContent {
   flex-grow: 1;
+  min-width: 0;
+  margin-right: 0.5rem;
+  word-break: break-word;
 }
 
 .taskContent.hovered span {
@@ -28,94 +73,65 @@
   word-wrap: break-word;
 }
 
-.taskActions {
-  display: flex;
-}
-
-.deleteConfirmationOverlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.9);
+.taskItem {
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 10;
-  cursor: default; /* Prevents cursor from changing */
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  background-color: #f9fafb;
+  border-left: 3px solid #4299e1;
+  position: relative;
+  transition: background-color 0.2s;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.deleteConfirmation {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
-  padding: 5px 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.taskTimer {
-  margin-left: 0.5rem;
-}
-
-.priorityDropdown, .recurrenceDropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 1001;
-  background-color: white;
-  border: 1px solid #ced4da;
-  border-radius: 0.25rem;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.priorityDropdown {
-  min-width: 40px;
-}
-
-.recurrenceDropdown {
-  min-width: 80px;
-}
-
-.dropdownButton {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 0.25rem 0.5rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-
-.dropdownButton:hover {
-  background-color: #f8f9fa;
+.taskItem:hover {
+  background-color: #f1f1f1;
 }
 
 .completedTask {
   text-decoration: line-through;
+  color: #9ca3af;
 }
 
 .overdueTask {
-  color: #cc0000;
+  color: #ef4444;
 }
 
-/* Desktop-specific enhancements */
-@media (min-width: 768px) {
-  .deleteConfirmation {
-    padding: 8px 15px;
-    font-size: 1rem;
-  }
-  
-  .deleteConfirmation button {
-    padding: 6px 10px;
-    margin: 0 5px;
-  }
-  
-  .deleteConfirmation button svg {
-    width: 18px;
-    height: 18px;
-  }
+.overdueBadge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  border-radius: 0.25rem;
+  background-color: #fee2e2;
+  color: #ef4444;
 }
+
+/* Ensure proper stacking for tasks with dropdowns */
+.taskItem {
+  position: relative;
+  z-index: 1;
+}
+
+.taskItem:hover {
+  z-index: 2;
+}
+
+/* Active task with dropdown open */
+.activeTask {
+  z-index: 1049 !important;
+}
+
+.activeDropdown {
+  z-index: 1050 !important;
+}
+
+/* Prioritize dropdown menus */
+.priorityMenu, 
+.recurrenceMenu {
+  z-index: 1050 !important;
+}
+
