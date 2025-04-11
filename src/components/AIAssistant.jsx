@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { addAIResponse, getAIResponses } from '../services/firebaseConfig';
-import MarkdownRenderer from './MarkdownRenderer';
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { addAIResponse, getAIResponses } from "../services/firebaseConfig";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 const AIAssistant = ({ user, projectId }) => {
   const [input, setInput] = useState("");
@@ -11,12 +11,13 @@ const AIAssistant = ({ user, projectId }) => {
   const responseContainerRef = useRef(null);
 
   const functions = getFunctions();
-  const queryPinecone = httpsCallable(functions, 'queryPinecone');
-  const analyzeContent = httpsCallable(functions, 'analyzeContent');
+  const queryPinecone = httpsCallable(functions, "queryPinecone");
+  const analyzeContent = httpsCallable(functions, "analyzeContent");
 
   useEffect(() => {
     if (responseContainerRef.current) {
-      responseContainerRef.current.scrollTop = responseContainerRef.current.scrollHeight;
+      responseContainerRef.current.scrollTop =
+        responseContainerRef.current.scrollHeight;
     }
   }, [response]);
 
@@ -24,10 +25,10 @@ const AIAssistant = ({ user, projectId }) => {
     setIsTyping(true);
     setError(null);
     try {
-      const userContentResult = await queryPinecone({ 
-        query: input, 
-        userId: user.uid, 
-        projectId: projectId 
+      const userContentResult = await queryPinecone({
+        query: input,
+        userId: user.uid,
+        projectId: projectId,
       });
       const userContent = userContentResult.data.relevantContent;
 
@@ -35,7 +36,10 @@ const AIAssistant = ({ user, projectId }) => {
 You are an AI assistant with access to the user's tasks, notes, and bookmarked content for a specific project. 
 Below is the relevant information from the user's data for this project:
 
-${userContent || "No specific user data found for this query in the current project."}
+${
+  userContent ||
+  "No specific user data found for this query in the current project."
+}
 
 Now, please answer the following question or request from the user:
 User: ${input}
@@ -46,16 +50,18 @@ In your response, please:
 3. Provide insights or suggestions based on the combined information for this project.
 4. If relevant, suggest any actions the user might take based on the analyzed information within the project scope.
 5. For tasks, consider their priorities (if available) when providing recommendations or insights.
+6. Please look deeply into the user's bookmarked content, notes, and documents to provide a comprehensive answer.
+7. Provide a comprehensive guide for the user after analyzing bookmarked content, notes, and documents.
 
 Remember to focus only on the information related to the current project.
 
-A: Certainly! I've analyzed your tasks (including their priorities), notes, and bookmarked content for this specific project. Here's my response:
+A: I've analyzed your tasks (including their priorities), notes, and bookmarked content for this specific project. Here's my response:
 `;
 
       const aiResponseResult = await analyzeContent({ prompt });
       const aiResponse = aiResponseResult.data.content;
 
-      let displayedResponse = '';
+      let displayedResponse = "";
       for (let i = 0; i < aiResponse.length; i++) {
         displayedResponse += aiResponse[i];
         setResponse(displayedResponse);
@@ -73,7 +79,7 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
   };
 
   const handleSaveResponse = async () => {
-    if (response.trim() === '') return;
+    if (response.trim() === "") return;
     try {
       await addAIResponse(user.uid, projectId, response);
       setError(null);
@@ -106,7 +112,10 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
           {isTyping ? "Analyzing..." : "Ask AI Assistant"}
         </button>
         {error && <div className="alert alert-danger">{error}</div>}
-        <div ref={responseContainerRef} style={{ maxHeight: "400px", overflowY: "auto" }}>
+        <div
+          ref={responseContainerRef}
+          style={{ maxHeight: "400px", overflowY: "auto" }}
+        >
           <h4>Response</h4>
           <div className="bg-light p-3 rounded">
             <MarkdownRenderer content={response} />
@@ -116,14 +125,14 @@ A: Certainly! I've analyzed your tasks (including their priorities), notes, and 
           <button
             className="btn btn-outline-primary"
             onClick={handleSaveResponse}
-            disabled={response.trim() === ''}
+            disabled={response.trim() === ""}
           >
             Save Response
           </button>
           <button
             className="btn btn-outline-secondary"
             onClick={handleClearResponse}
-            disabled={response.trim() === ''}
+            disabled={response.trim() === ""}
           >
             Clear Response
           </button>

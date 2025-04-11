@@ -491,7 +491,7 @@ exports.analyzeSynapseContent = functions.https.onCall(
       );
     }
 
-    const { synapseContent, synapseName } = data;
+    const { synapseContent, synapseName, analysisType = "comprehensive", analysisMode = "core" } = data;
 
     try {
       // Organize content by type
@@ -513,27 +513,117 @@ ${items.map((item) => `- ${item.title || item.content}`).join("\n")}
         )
         .join("\n");
 
+      // Configure the analysis based on the analysis type
+      let specificFocus = "";
+      let systemPrompt = "You are an AI assistant specializing in finding meaningful patterns and connections between different types of project items.";
+      
+      switch (analysisType) {
+        case "relationships":
+          specificFocus = `Focus primarily on:
+1. Detailed relationship mapping between all items
+2. How different content types interact with each other
+3. Hierarchical or dependency relationships between items
+4. Conflicting or reinforcing relationships between the items
+5. Network-style analysis of how ideas connect`;
+          break;
+          
+        case "summary":
+          specificFocus = `Focus primarily on:
+1. High-level executive summary of the key themes (be concise)
+2. The 3-5 most important insights from this collection
+3. Brief recommendations based on these insights
+4. Avoid excessive detail and focus on clarity and actionability`;
+          systemPrompt = "You are an executive assistant providing concise summaries of complex information.";
+          break;
+          
+        case "actionItems":
+          specificFocus = `Focus primarily on:
+1. Extracting and organizing all explicit and implicit action items
+2. Prioritizing these action items by apparent importance
+3. Identifying dependencies between action items
+4. Suggesting timeframes for completion where possible
+5. Identifying any missing action items that would be logical next steps`;
+          systemPrompt = "You are a project management assistant specializing in action item extraction and organization.";
+          break;
+          
+        case "timeline":
+          specificFocus = `Focus primarily on:
+1. Analyzing the temporal relationships between items
+2. Creating a logical sequence or timeline of events/ideas
+3. Identifying past accomplishments vs. future plans
+4. Suggesting a chronological organization of the content
+5. Noting any time-sensitive elements that require attention`;
+          systemPrompt = "You are a timeline analysis specialist who excels at organizing information chronologically.";
+          break;
+          
+        case "comprehensive":
+        default:
+          specificFocus = `Focus on:
+1. Key themes and patterns across these items
+2. Specific relationships between different types of items
+3. Concrete insights based on the connections between these items
+4. Potential next steps directly related to these items`;
+          break;
+      }
+
+      // Configure temperature and model based on analysis mode
+      let temperature = 0.7;
+      let model = "gpt-3.5-turbo";
+      let includesBroaderAnalysis = false;
+      
+      switch (analysisMode) {
+        case "expanded":
+          temperature = 0.8;
+          model = "gpt-4";
+          includesBroaderAnalysis = true;
+          break;
+        case "creative":
+          temperature = 1.0;
+          model = "gpt-4";
+          includesBroaderAnalysis = true;
+          systemPrompt += " You think creatively and provide innovative perspectives.";
+          break;
+        case "core":
+        default:
+          includesBroaderAnalysis = false;
+          break;
+      }
+
       // First, analyze the specific synapse content
       const synapseAnalysisPrompt = `
 You are analyzing a "synapse" - a collection of related items that the user has intentionally grouped together. This synapse is named "${synapseName}" and contains the following items:
 
 ${contextString}
 
-Please analyze these specific items and their relationships. Focus on:
-1. Key themes and patterns across these items
-2. Specific relationships between different types of items
-3. Concrete insights based on the connections between these items
-4. Potential next steps directly related to these items
+Please analyze these specific items and their relationships. ${specificFocus}
 
 Only reference the items provided above in this analysis.
 `;
 
-      // Second, provide broader context and connections
-      const broaderAnalysisPrompt = `
+      let result;
+      
+      // If using core mode, just do a single analysis
+      if (!includesBroaderAnalysis) {
+        const analysis = await openai.chat.completions.create({
+          model: model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: synapseAnalysisPrompt },
+          ],
+          temperature: temperature,
+          max_tokens: 2000,
+        });
+        
+        result = `
+## Analysis of Your Synapse: ${synapseName}
+
+${analysis.choices[0].message.content.trim()}
+`;
+      } else {
+        // For expanded or creative modes, include broader analysis
+        const broaderAnalysisPrompt = `
 You're now going to provide additional insights about the themes present in the synapse named "${synapseName}". 
-The synapse contains content related to: ${Object.keys(organizedContent).join(
-        ", "
-      )}.
+The synapse contains content related to: ${Object.keys(organizedContent).join(", ")}.
 
 The main themes appear to be about: ${contextString.substring(0, 200)}...
 
@@ -546,46 +636,94 @@ Using your knowledge base:
 Use specific examples and explain why they're relevant to this collection of items.
 `;
 
-      // Make both API calls concurrently
-      const [synapseAnalysis, broaderAnalysis] = await Promise.all([
-        openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an AI assistant specializing in finding meaningful patterns and connections between different types of project items.",
-            },
-            { role: "user", content: synapseAnalysisPrompt },
-          ],
-          temperature: 0.7,
-        }),
-        openai.chat.completions.create({
-          model: "gpt-4", // Using GPT-4 for broader analysis for more sophisticated connections
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an AI assistant that provides broader context and innovative connections for collections of related items.",
-            },
-            { role: "user", content: broaderAnalysisPrompt },
-          ],
-          temperature: 0.9,
-        }),
-      ]);
+        // Make both API calls concurrently
+        const [synapseAnalysis, broaderAnalysis] = await Promise.all([
+          openai.chat.completions.create({
+            model: model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: synapseAnalysisPrompt },
+            ],
+            temperature: temperature,
+            max_tokens: 2000,
+          }),
+          openai.chat.completions.create({
+            model: "gpt-4", // Always use GPT-4 for broader analysis
+            messages: [
+              {
+                role: "system",
+                content: "You are an AI assistant that provides broader context and innovative connections for collections of related items.",
+              },
+              { role: "user", content: broaderAnalysisPrompt },
+            ],
+            temperature: temperature + 0.1, // Slightly higher temperature for broader analysis
+            max_tokens: 1500,
+          }),
+        ]);
 
-      // Combine the analyses
-      const combinedAnalysis = `
-## Analysis of Your Synapse Items
+        // Combine the analyses
+        result = `
+## Analysis of Your Synapse: ${synapseName}
 
 ${synapseAnalysis.choices[0].message.content.trim()}
 
 ## Broader Context & Insights
 
-${broaderAnalysis.choices[0].message.content.trim()}
-`;
+${broaderAnalysis.choices[0].message.content.trim()}`;
+      }
+      
+      // For creative mode, add an additional creative section if appropriate
+      if (analysisMode === "creative") {
+        let additionalSection = "";
+        
+        if (analysisType === "comprehensive" || analysisType === "relationships") {
+          additionalSection = `
 
-      return { content: combinedAnalysis };
+## Creative Applications & Future Directions
+
+How might these ideas evolve or be combined in unexpected ways? What innovative approaches could emerge from this collection?`;
+        } else if (analysisType === "actionItems") {
+          additionalSection = `
+
+## Innovation Opportunities
+
+Beyond the standard action items, what creative approaches or experiments could yield breakthrough results?`;
+        }
+        
+        if (additionalSection) {
+          const creativePrompt = `
+For the synapse named "${synapseName}" containing:
+${contextString.substring(0, 500)}...
+
+${additionalSection.replace('##', '')}
+
+Be specific, imaginative, and thought-provoking. Suggest at least 3-5 creative possibilities that go beyond obvious connections.`;
+
+          try {
+            const creativeResponse = await openai.chat.completions.create({
+              model: "gpt-4",
+              messages: [
+                { 
+                  role: "system", 
+                  content: "You are a creative innovation consultant who specializes in generating unexpected connections and novel applications from existing ideas." 
+                },
+                { role: "user", content: creativePrompt },
+              ],
+              temperature: 1.1,
+              max_tokens: 1000,
+            });
+            
+            result += `${additionalSection}
+
+${creativeResponse.choices[0].message.content.trim()}`;
+          } catch (error) {
+            console.error("Error generating creative section:", error);
+            // Continue without the creative section if it fails
+          }
+        }
+      }
+
+      return { content: result };
     } catch (error) {
       console.error("Error analyzing synapse content:", error);
       throw new functions.https.HttpsError(

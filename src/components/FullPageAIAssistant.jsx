@@ -16,11 +16,22 @@ import {
   ChevronUp,
   Zap,
   Brain,
+  Network,
+  FileText,
+  CheckSquare,
+  Bookmark,
+  StickyNote,
+  Filter,
+  Plus,
+  Download,
+  BarChart4,
+  Share2,
 } from "lucide-react";
 import MarkdownRenderer from "./MarkdownRenderer";
 import SynapseTile from "./SynapseTile";
 
-const AIResponse = ({ response, onDeleteResponse, onToggleInclude }) => {
+// Component for saved AI responses
+const AIResponse = ({ response, onDeleteResponse, onToggleInclude, onShare }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -71,6 +82,13 @@ const AIResponse = ({ response, onDeleteResponse, onToggleInclude }) => {
             Include in future analysis
           </label>
           <button
+            className="btn btn-sm btn-link"
+            onClick={() => onShare(response)}
+            title="Share analysis"
+          >
+            <Share2 size={18} />
+          </button>
+          <button
             className="btn btn-sm btn-link text-danger"
             onClick={handleDeleteClick}
             title="Delete idea"
@@ -106,6 +124,14 @@ const AIResponse = ({ response, onDeleteResponse, onToggleInclude }) => {
   );
 };
 
+// Content type icons to display in the synapse content section
+const contentTypeIcons = {
+  document: <FileText size={16} />,
+  task: <CheckSquare size={16} />,
+  bookmark: <Bookmark size={16} />,
+  note: <StickyNote size={16} />
+};
+
 const FullPageAIAssistant = ({ user }) => {
   const navigate = useNavigate();
   const { projectId } = useParams();
@@ -119,11 +145,23 @@ const FullPageAIAssistant = ({ user }) => {
   // States
   const [selectedSynapse, setSelectedSynapse] = useState(urlSynapseId);
   const [synapses, setSynapses] = useState([]);
+  const [synapseContents, setSynapseContents] = useState([]);
   const [response, setResponse] = useState("");
   const [savedResponses, setSavedResponses] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [hasAutoAnalyzed, setHasAutoAnalyzed] = useState(false);
+  const [analysisType, setAnalysisType] = useState("comprehensive");
+  const [showTypeFilter, setShowTypeFilter] = useState(false);
+  const [typeFilters, setTypeFilters] = useState({
+    document: true,
+    task: true,
+    bookmark: true,
+    note: true
+  });
+  const [analysisMode, setAnalysisMode] = useState("core");
+  const [showDownloadOptions, setShowDownloadOptions] = useState(false);
+  const [showSynapseContent, setShowSynapseContent] = useState(false);
 
   const functions = getFunctions();
   const analyzeSynapseContent = httpsCallable(
@@ -141,113 +179,30 @@ const FullPageAIAssistant = ({ user }) => {
 
   // Auto-analyze when synapse ID is in URL and synapses are loaded
   useEffect(() => {
-    // Log the initial state for debugging 
-    console.log("Auto-analyze effect running with:", {
-      urlSynapseId,
-      "synapses.length": synapses.length,
-      hasAutoAnalyzed,
-      selectedSynapse
-    });
-    
-    // Only proceed if we have what we need
     if (urlSynapseId && synapses.length > 0 && !hasAutoAnalyzed) {
-      console.log('URL contains synapse ID:', urlSynapseId);
-      
-      // Log all available synapses for debugging
-      console.log('Available synapses:');
-      synapses.forEach(s => {
-        console.log(`- Synapse ID: '${s.id}', Name: '${s.name || "unknown"}', Type: ${typeof s.id}`);
-      });
-      
-      // Check for exact synapse ID match
-      let exactMatch = false;
-      let matchedSynapse = null;
-      
-      // Try direct comparison first
-      for (const s of synapses) {
-        if (s.id === urlSynapseId) {
-          exactMatch = true;
-          matchedSynapse = s;
-          console.log("Found exact match:", s);
-          break;
-        }
-      }
+      const matchedSynapse = synapses.find(s => s.id === urlSynapseId);
       
       if (matchedSynapse) {
-        console.log('Found matching synapse:', matchedSynapse.name || "unnamed");
-        
-        // Set flag immediately to prevent repeated triggers
         setHasAutoAnalyzed(true);
-        
-        // Update the selectedSynapse state
         setSelectedSynapse(urlSynapseId);
         
-        // Use a longer delay to ensure state has fully updated
         setTimeout(() => {
-          console.log('Triggering analysis now');
-          
-          // Set the selected synapse again right before analyzing (extra safety)
-          setSelectedSynapse(urlSynapseId);
-          
-          // Create a direct function to avoid stale closures
-          setTimeout(() => {
-            // Define what to do in the scope of this timeout
-            console.log("Running actual analysis with selectedSynapse=", selectedSynapse);
-            
-            // Call analyze directly to avoid React's event loop issues
-            (async () => {
-              try {
-                // Find the synapse again in this scope
-                const currentSynapse = synapses.find(s => s.id === urlSynapseId);
-                if (!currentSynapse) {
-                  console.error("Synapse disappeared from list?");
-                  setError("Synapse could not be found");
-                  return;
-                }
-                
-                setIsAnalyzing(true);
-                
-                const synapseData = await getSynapseContent(
-                  user.uid,
-                  projectId,
-                  urlSynapseId
-                );
-                
-                if (!synapseData || !synapseData.contents) {
-                  throw new Error("Failed to retrieve synapse content");
-                }
-                
-                const result = await analyzeSynapseContent({
-                  synapseContent: synapseData.contents || [],
-                  synapseName: currentSynapse.name || "Unnamed Synapse",
-                });
-                
-                let displayedResponse = "";
-                for (let i = 0; i < result.data.content.length; i++) {
-                  displayedResponse += result.data.content[i];
-                  setResponse(displayedResponse);
-                  await new Promise(resolve => setTimeout(resolve, 5));
-                }
-              } catch (error) {
-                console.error("Error in auto-analysis:", error);
-                setError("Error analyzing synapse: " + error.message);
-              } finally {
-                setIsAnalyzing(false);
-                
-                // Remove URL parameter after analysis is done (success or failure)
-                navigate(`/project/${projectId}/ai-assistant`, { replace: true });
-              }
-            })();
-          }, 300);
+          (async () => {
+            try {
+              await fetchSynapseContent(urlSynapseId);
+              handleAnalyze();
+            } catch (error) {
+              console.error("Error in auto-analysis:", error);
+              setError("Error analyzing synapse: " + error.message);
+            } finally {
+              navigate(`/project/${projectId}/ai-assistant`, { replace: true });
+            }
+          })();
         }, 800);
       } else {
-        console.error('Synapse ID from URL not found in loaded synapses after checking all items');
-        console.error('URL synapse ID:', urlSynapseId, 'Type:', typeof urlSynapseId);
-        console.error('First synapse ID for comparison:', synapses[0]?.id, 'Type:', typeof synapses[0]?.id);
         setError("The requested synapse could not be found. Please select one from the dropdown.");
       }
     }
-  // We can't include handleAnalyze in deps as it's defined later
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [synapses, urlSynapseId, hasAutoAnalyzed, projectId, navigate]);
 
@@ -259,6 +214,21 @@ const FullPageAIAssistant = ({ user }) => {
     } catch (error) {
       console.error("Error loading synapses:", error);
       setError("Failed to load synapses");
+    }
+  };
+
+  // Fetch synapse content
+  const fetchSynapseContent = async (synapseId) => {
+    if (!synapseId) return;
+    
+    try {
+      const data = await getSynapseContent(user.uid, projectId, synapseId);
+      setSynapseContents(data.contents || []);
+      return data.contents || [];
+    } catch (error) {
+      console.error("Error fetching synapse content:", error);
+      setError("Failed to fetch synapse content");
+      return [];
     }
   };
 
@@ -283,11 +253,35 @@ const FullPageAIAssistant = ({ user }) => {
     }
   };
 
-  // Main analyze function with extra safeguards
-  const handleAnalyze = async () => {
-    console.log("handleAnalyze called with selectedSynapse:", selectedSynapse);
-    console.log("Current synapses:", synapses);
+  // Handle synapse change in dropdown
+  const handleSynapseChange = async (e) => {
+    const synapseId = e.target.value;
+    setSelectedSynapse(synapseId);
     
+    if (synapseId) {
+      await fetchSynapseContent(synapseId);
+      setShowSynapseContent(true);
+    } else {
+      setSynapseContents([]);
+      setShowSynapseContent(false);
+    }
+  };
+
+  // Handle type filter changes
+  const handleTypeFilterChange = (type) => {
+    setTypeFilters(prev => ({
+      ...prev,
+      [type]: !prev[type]
+    }));
+  };
+
+  // Get filtered content based on type filters
+  const getFilteredContent = () => {
+    return synapseContents.filter(item => typeFilters[item.type]);
+  };
+
+  // Main analyze function
+  const handleAnalyze = async () => {
     if (!selectedSynapse) {
       setError("Please select a synapse to analyze");
       return;
@@ -297,42 +291,34 @@ const FullPageAIAssistant = ({ user }) => {
     setError(null);
 
     try {
-      // Extra debug to see what we're looking for
-      console.log(`Looking for synapse with ID '${selectedSynapse}' in ${synapses.length} synapses`);
-      
-      // Find the synapse with safeguards
       const synapse = synapses.find((s) => s.id === selectedSynapse);
-      console.log("Found synapse?", synapse);
       
       if (!synapse) {
-        console.error("Selected synapse not found:", selectedSynapse);
         setError("Selected synapse not found");
         setIsAnalyzing(false);
         return;
       }
 
-      // Defensive coding - ensure name property exists
       const synapseName = synapse.name || "Unnamed Synapse";
-      console.log("Analyzing synapse:", synapseName);
       
-      const synapseData = await getSynapseContent(
-        user.uid,
-        projectId,
-        selectedSynapse
-      );
+      // Use previously fetched contents or fetch them now if needed
+      const filteredContents = getFilteredContent();
       
-      console.log("Got synapse content:", synapseData);
-      
-      // Check if synapseData and its contents exist
-      if (!synapseData || !synapseData.contents) {
-        throw new Error("Failed to retrieve synapse content");
+      if (filteredContents.length === 0) {
+        setError("No content to analyze after applying filters");
+        setIsAnalyzing(false);
+        return;
       }
 
+      // Call Firebase function with appropriate analysis type
       const result = await analyzeSynapseContent({
-        synapseContent: synapseData.contents || [],
+        synapseContent: filteredContents,
         synapseName: synapseName,
+        analysisType: analysisType,
+        analysisMode: analysisMode
       });
 
+      // Display the response with a typing effect
       let displayedResponse = "";
       for (let i = 0; i < result.data.content.length; i++) {
         displayedResponse += result.data.content[i];
@@ -365,8 +351,6 @@ const FullPageAIAssistant = ({ user }) => {
       );
       setSavedResponses((prevResponses) => [savedResponse, ...prevResponses]);
       setError(null);
-      setResponse("");
-      setSelectedSynapse("");
     } catch (error) {
       console.error("Error saving idea:", error);
       setError("Failed to save idea");
@@ -402,101 +386,352 @@ const FullPageAIAssistant = ({ user }) => {
     }
   };
 
+  const handleShare = (response) => {
+    // For now, just copy to clipboard
+    navigator.clipboard.writeText(response.content)
+      .then(() => {
+        alert("Analysis copied to clipboard!");
+      })
+      .catch(err => {
+        console.error("Error copying to clipboard:", err);
+        setError("Failed to copy to clipboard");
+      });
+  };
+
+  const handleDownload = (format) => {
+    if (!response) return;
+    
+    let content = response;
+    let fileExtension = ".md";
+    let mimeType = "text/markdown";
+    
+    if (format === "pdf") {
+      // For real implementation, generate PDF using a library
+      alert("PDF download would be implemented here");
+      return;
+    } else if (format === "txt") {
+      // For plain text, remove markdown formatting (simplified)
+      content = content.replace(/#+\s/g, ""); // Remove headers
+      content = content.replace(/\*\*/g, "");  // Remove bold
+      content = content.replace(/\*/g, "");    // Remove italic
+      fileExtension = ".txt";
+      mimeType = "text/plain";
+    }
+    
+    const synapse = synapses.find(s => s.id === selectedSynapse);
+    const fileName = `synapse-analysis-${synapse?.name || 'unnamed'}${fileExtension}`;
+    
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    setShowDownloadOptions(false);
+  };
+
+  // Count content items by type
+  const contentTypeCounts = synapseContents.reduce((counts, item) => {
+    counts[item.type] = (counts[item.type] || 0) + 1;
+    return counts;
+  }, {});
+
   return (
     <div className="container">
       <div className="flex items-center gap-2 mb-4">
         <Brain className="h-6 w-6" />
-        <h1>Synapse Analysis</h1>
+        <h1>Advanced Synapse Analysis</h1>
       </div>
 
-      <div className="mb-3">
-        <select
-          className="form-select"
-          value={selectedSynapse}
-          onChange={(e) => setSelectedSynapse(e.target.value)}
-        >
-          <option value="">Select a Synapse to Analyze</option>
-          {synapses.map((synapse) => (
-            <option key={synapse.id} value={synapse.id}>
-              {synapse.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Synapse Preview */}
-      {selectedSynapse && (
-        <div className="mb-4">
-          <h4 className="mb-2">Selected Synapse</h4>
-          <div
-            onClick={handleSynapseClick}
-            className={styles.clickableSynapse}
-            title="Click to view in Synapses"
-          >
-            <SynapseTile
-              synapse={synapses.find((s) => s.id === selectedSynapse) || null}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="mb-3">
-        <button
-          className="btn btn-primary mb-3"
-          onClick={handleAnalyze}
-          disabled={isAnalyzing || !selectedSynapse}
-        >
-          {isAnalyzing ? (
-            <>
-              Analyzing... <Zap className="ms-1" size={18} />
-            </>
-          ) : (
-            <>
-              Fire a Neuron <Zap className="ms-1" size={18} />
-            </>
-          )}
-        </button>
-      </div>
-
-      {error && <p className={styles.textDanger}>{error}</p>}
-
-      {response && (
-        <div className={styles.responseSection}>
-          <div ref={responseContainerRef} className={styles.responseContainer}>
-            <h4 className="mb-2">Analysis</h4>
-            <div className={styles.responseContent}>
-              <MarkdownRenderer content={response} />
+      {/* Synapse Selection */}
+      <div className="card mb-4">
+        <div className="card-body">
+          <h5 className="card-title">Select Synapse to Analyze</h5>
+          <div className="row">
+            <div className="col-md-8">
+              <select
+                className="form-select"
+                value={selectedSynapse}
+                onChange={handleSynapseChange}
+              >
+                <option value="">Select a Synapse</option>
+                {synapses.map((synapse) => (
+                  <option key={synapse.id} value={synapse.id}>
+                    {synapse.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-4 mt-2 mt-md-0">
+              <button 
+                className={`btn ${showSynapseContent ? 'btn-secondary' : 'btn-outline-secondary'} w-100`}
+                onClick={() => setShowSynapseContent(!showSynapseContent)}
+                disabled={synapseContents.length === 0}
+              >
+                {showSynapseContent ? 'Hide Content' : 'Show Content'} 
+                {synapseContents.length > 0 && <span className="ms-1 badge bg-light text-dark">{synapseContents.length}</span>}
+              </button>
             </div>
           </div>
-          <div className="d-flex mb-4 mt-3">
-            <button
-              className="btn btn-outline-primary me-2"
-              onClick={handleSaveResponse}
-              disabled={response.trim() === ""}
-            >
-              Save as Idea
-            </button>
-            <button
-              className="btn btn-outline-secondary"
-              onClick={handleClearResponse}
-              disabled={response.trim() === ""}
-            >
-              Clear Analysis
-            </button>
+        </div>
+      </div>
+
+      {/* Synapse Content Preview */}
+      {showSynapseContent && synapseContents.length > 0 && (
+        <div className="card mb-4">
+          <div className="card-body">
+            <div className="d-flex justify-content-between mb-3">
+              <h5 className="card-title mb-0">Synapse Content</h5>
+              <div>
+                <button
+                  className="btn btn-sm btn-outline-secondary me-2"
+                  onClick={() => setShowTypeFilter(!showTypeFilter)}
+                >
+                  <Filter size={16} className="me-1" /> Filter
+                </button>
+                {showTypeFilter && (
+                  <div className={styles.filterDropdown}>
+                    {Object.keys(typeFilters).map(type => (
+                      <div key={type} className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id={`filter-${type}`}
+                          checked={typeFilters[type]}
+                          onChange={() => handleTypeFilterChange(type)}
+                        />
+                        <label className="form-check-label" htmlFor={`filter-${type}`}>
+                          <span className="d-flex align-items-center">
+                            {contentTypeIcons[type]}
+                            <span className="ms-1">{type.charAt(0).toUpperCase() + type.slice(1)}s</span>
+                            {contentTypeCounts[type] && <span className="ms-1 badge bg-light text-dark">{contentTypeCounts[type]}</span>}
+                          </span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.synapseContentGrid}>
+              {synapseContents
+                .filter(item => typeFilters[item.type])
+                .map((item, index) => (
+                  <div key={`${item.id}-${index}`} className={`${styles.contentItem} ${styles[item.type]}`}>
+                    <div className={styles.contentTypeIcon}>
+                      {contentTypeIcons[item.type]}
+                    </div>
+                    <div className={styles.contentTitle}>
+                      {item.title || item.content.substring(0, 40) + (item.content.length > 40 ? '...' : '')}
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
       )}
 
-      <h2>Saved Ideas</h2>
-      <div className={styles.responsesGrid}>
-        {savedResponses.map((response) => (
-          <AIResponse
-            key={response.id}
-            response={response}
-            onDeleteResponse={handleDeleteResponse}
-            onToggleInclude={handleToggleInclude}
-          />
-        ))}
+      {/* Analysis Options */}
+      <div className="card mb-4">
+        <div className="card-body">
+          <h5 className="card-title">Analysis Options</h5>
+          <div className="row">
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Analysis Type</label>
+                <select
+                  className="form-select"
+                  value={analysisType}
+                  onChange={(e) => setAnalysisType(e.target.value)}
+                >
+                  <option value="comprehensive">Comprehensive Analysis</option>
+                  <option value="relationships">Relationship-Focused</option>
+                  <option value="summary">Executive Summary</option>
+                  <option value="actionItems">Action Items Extraction</option>
+                  <option value="timeline">Timeline Analysis</option>
+                </select>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="mb-3">
+                <label className="form-label">Analysis Mode</label>
+                <div className="d-flex">
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="analysisMode"
+                      id="analysisMode1"
+                      value="core"
+                      checked={analysisMode === "core"}
+                      onChange={() => setAnalysisMode("core")}
+                    />
+                    <label className="form-check-label" htmlFor="analysisMode1">
+                      Core Only
+                    </label>
+                  </div>
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="analysisMode"
+                      id="analysisMode2"
+                      value="expanded"
+                      checked={analysisMode === "expanded"}
+                      onChange={() => setAnalysisMode("expanded")}
+                    />
+                    <label className="form-check-label" htmlFor="analysisMode2">
+                      Enhanced
+                    </label>
+                  </div>
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="analysisMode"
+                      id="analysisMode3"
+                      value="creative"
+                      checked={analysisMode === "creative"}
+                      onChange={() => setAnalysisMode("creative")}
+                    />
+                    <label className="form-check-label" htmlFor="analysisMode3">
+                      Creative
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="d-flex justify-content-between">
+            <button
+              className="btn btn-primary"
+              onClick={handleAnalyze}
+              disabled={isAnalyzing || !selectedSynapse || synapseContents.length === 0}
+            >
+              {isAnalyzing ? (
+                <>
+                  Analyzing... <Zap className="ms-1" size={18} />
+                </>
+              ) : (
+                <>
+                  Analyze Synapse <Zap className="ms-1" size={18} />
+                </>
+              )}
+            </button>
+            
+            <div className={styles.buttonGroup}>
+              <button 
+                className="btn btn-outline-primary"
+                onClick={() => navigate(`/project/${projectId}/synapses`)}
+              >
+                <Network size={16} className="me-1" /> 
+                View Synapses
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
+
+      {/* Analysis Results */}
+      {response && (
+        <div className="card mb-4">
+          <div className="card-body">
+            <div className="d-flex justify-content-between mb-3">
+              <h5 className="card-title">Analysis Results</h5>
+              <div className={styles.actionButtons}>
+                <div className={styles.dropdownContainer}>
+                  <button 
+                    className="btn btn-sm btn-outline-secondary me-2"
+                    onClick={() => setShowDownloadOptions(!showDownloadOptions)}
+                  >
+                    <Download size={16} className="me-1" /> Export
+                  </button>
+                  {showDownloadOptions && (
+                    <div className={styles.downloadDropdown}>
+                      <button 
+                        className={styles.downloadOption}
+                        onClick={() => handleDownload('md')}
+                      >
+                        Markdown (.md)
+                      </button>
+                      <button 
+                        className={styles.downloadOption}
+                        onClick={() => handleDownload('txt')}
+                      >
+                        Plain Text (.txt)
+                      </button>
+                      <button 
+                        className={styles.downloadOption}
+                        onClick={() => handleDownload('pdf')}
+                      >
+                        PDF Document
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button 
+                  className="btn btn-sm btn-primary"
+                  onClick={handleSaveResponse}
+                >
+                  <Plus size={16} className="me-1" /> Save Analysis
+                </button>
+              </div>
+            </div>
+            
+            <div ref={responseContainerRef} className={styles.responseContainer}>
+              <div className={styles.responseContent}>
+                <MarkdownRenderer content={response} />
+              </div>
+            </div>
+            
+            <div className="d-flex mt-3">
+              <button
+                className="btn btn-outline-secondary"
+                onClick={handleClearResponse}
+              >
+                Clear Analysis
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saved Analysis Section */}
+      <div className="card">
+        <div className="card-body">
+          <div className="d-flex justify-content-between">
+            <h5 className="card-title">
+              <BarChart4 size={18} className="me-2" />
+              Saved Analyses
+            </h5>
+          </div>
+          
+          <div className={styles.responsesGrid}>
+            {savedResponses.length > 0 ? (
+              savedResponses.map((response) => (
+                <AIResponse
+                  key={response.id}
+                  response={response}
+                  onDeleteResponse={handleDeleteResponse}
+                  onToggleInclude={handleToggleInclude}
+                  onShare={handleShare}
+                />
+              ))
+            ) : (
+              <div className="alert alert-info">
+                No saved analyses yet. Analyze a synapse and save the results to see them here.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
