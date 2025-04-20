@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, createContext } from "react";
+import React, { useEffect, useState, useCallback, createContext, Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -31,6 +31,8 @@ import {
 import AuthEntry from "./components/AuthEntry";
 import UserAccount from "./components/UserAccount";
 import { Timer } from "lucide-react";
+import LoadingComponent from "./components/LoadingComponent";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 export const AppContext = createContext();
 
@@ -149,7 +151,10 @@ const App = () => {
   };
 
   if (state.loading || !state.googleDriveInitialized) {
-    return <div>Loading...</div>;
+    // Use LoadingComponent with fullHeight for better mobile experience
+    return <React.Suspense fallback={<div>Loading...</div>}>
+      <LoadingComponent message="Loading application..." fullHeight={true} />
+    </React.Suspense>;
   }
 
   return (
@@ -164,107 +169,177 @@ const App = () => {
       >
         <ProjectProvider user={state.user}>
           <TimerProviderWithOverlay>
-            <NavBar user={state.user} />
-            <div className="main-container">
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    state.initialized ? (
-                      <Navigate to={getRedirectPath()} replace />
-                    ) : (
-                      <div>Initializing...</div>
-                    )
-                  }
-                />
-                <Route
-                  path="/login"
-                  element={
-                    state.user ? <Navigate to="/" replace /> : <AuthEntry />
-                  }
-                />
-                <Route path="/auth/email-link" element={<EmailLinkHandler />} />
-                <Route path="/setup-profile" element={<SetupProfile />} />
-                <Route
-                  path="/projects"
-                  element={
-                    state.user ? (
-                      <ProjectList
-                        user={state.user}
-                        onProjectsUpdate={(projects) =>
-                          setState((prev) => ({
-                            ...prev,
-                            hasProjects: projects.length > 0,
-                          }))
+            <ErrorBoundary>
+              <NavBar user={state.user} />
+              <div className="main-container">
+                <Routes>
+                  <Route
+                    path="/"
+                    element={
+                      state.initialized ? (
+                        <Navigate to={getRedirectPath()} replace />
+                      ) : (
+                        <LoadingComponent message="Initializing application..." fullHeight={true} />
+                      )
+                    }
+                  />
+                  <Route
+                    path="/login"
+                    element={
+                      state.user ? (
+                        <Navigate to="/" replace />
+                      ) : (
+                        <Suspense fallback={<LoadingComponent message="Loading login..." fullHeight={true} />}>
+                          <AuthEntry />
+                        </Suspense>
+                      )
+                    }
+                  />
+                  <Route 
+                    path="/auth/email-link" 
+                    element={
+                      <Suspense fallback={<LoadingComponent message="Processing link..." fullHeight={true} />}>
+                        <EmailLinkHandler />
+                      </Suspense>
+                    } 
+                  />
+                  <Route 
+                    path="/setup-profile" 
+                    element={
+                      <Suspense fallback={<LoadingComponent message="Loading profile setup..." fullHeight={true} />}>
+                        <SetupProfile />
+                      </Suspense>
+                    } 
+                  />
+                  <Route
+                    path="/projects"
+                    element={
+                      state.user ? (
+                        <Suspense fallback={<LoadingComponent message="Loading projects..." fullHeight={true} />}>
+                          <ProjectList
+                            user={state.user}
+                            onProjectsUpdate={(projects) =>
+                              setState((prev) => ({
+                                ...prev,
+                                hasProjects: projects.length > 0,
+                              }))
+                            }
+                          />
+                        </Suspense>
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+                  <Route
+                    path="/account"
+                    element={
+                      state.user ? (
+                        <Suspense fallback={<LoadingComponent message="Loading account..." fullHeight={true} />}>
+                          <UserAccount user={state.user} />
+                        </Suspense>
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+
+                  {/* Protected Routes */}
+                  {state.user && state.displayNameSet ? (
+                    <>
+                      <Route
+                        path="/project/:projectId"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading dashboard..." fullHeight={true} />}>
+                            <Dashboard user={state.user} />
+                          </Suspense>
                         }
                       />
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
-                <Route
-                  path="/account"
-                  element={
-                    state.user ? (
-                      <UserAccount user={state.user} />
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
-
-                {/* Protected Routes */}
-                {state.user && state.displayNameSet ? (
-                  <>
-                    <Route
-                      path="/project/:projectId"
-                      element={<Dashboard user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/notes"
-                      element={<FullPageNotes user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/tasks"
-                      element={<FullPageTasks user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/bookmarks"
-                      element={<FullPageBookmarks user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/documents"
-                      element={<DocumentList user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/ai-assistant"
-                      element={<FullPageAIAssistant user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/ai-assistant/:synapseId"
-                      element={<FullPageAIAssistant user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/documents/new"
-                      element={<DocumentEditor user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/documents/:id"
-                      element={<DocumentEditor user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/focus"
-                      element={<FocusTimer user={state.user} />}
-                    />
-                    <Route
-                      path="/project/:projectId/synapses"
-                      element={<Synapse user={state.user} />}
-                    />
-                  </>
-                ) : null}
-              </Routes>
-            </div>
+                      <Route
+                        path="/project/:projectId/notes"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading notes..." fullHeight={true} />}>
+                            <FullPageNotes user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/project/:projectId/tasks"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading tasks..." fullHeight={true} />}>
+                            <FullPageTasks user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/project/:projectId/bookmarks"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading bookmarks..." fullHeight={true} />}>
+                            <FullPageBookmarks user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/project/:projectId/documents"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading documents..." fullHeight={true} />}>
+                            <DocumentList user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/project/:projectId/ai-assistant"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading AI assistant..." fullHeight={true} />}>
+                            <FullPageAIAssistant user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/project/:projectId/ai-assistant/:synapseId"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading AI assistant..." fullHeight={true} />}>
+                            <FullPageAIAssistant user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/project/:projectId/documents/new"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading document editor..." fullHeight={true} />}>
+                            <DocumentEditor user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/project/:projectId/documents/:id"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading document..." fullHeight={true} />}>
+                            <DocumentEditor user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/project/:projectId/focus"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading focus timer..." fullHeight={true} />}>
+                            <FocusTimer user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/project/:projectId/synapses"
+                        element={
+                          <Suspense fallback={<LoadingComponent message="Loading synapses..." fullHeight={true} />}>
+                            <Synapse user={state.user} />
+                          </Suspense>
+                        }
+                      />
+                    </>
+                  ) : null}
+                </Routes>
+              </div>
+            </ErrorBoundary>
           </TimerProviderWithOverlay>
         </ProjectProvider>
       </AppContext.Provider>
