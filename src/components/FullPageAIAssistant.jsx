@@ -442,9 +442,24 @@ const FullPageAIAssistant = ({ user }) => {
 
   return (
     <div className="container">
-      <div className="flex items-center gap-2 mb-4">
-        <Brain className="h-6 w-6" />
-        <h1>Advanced Synapse Analysis</h1>
+      <div className="d-flex align-items-center justify-content-between mb-4">
+        <div className="d-flex align-items-center gap-2">
+          <Brain className="h-6 w-6" />
+          <h1>Advanced Synapse Analysis</h1>
+        </div>
+        
+        <div className={styles.tooltipContainer}>
+          <div className="alert alert-info p-3 mb-0">
+            <strong>How to use the AI Assistant:</strong> 
+            <ul className="mb-0 mt-2">
+              <li><strong>Select a synapse</strong> to analyze from the dropdown</li>
+              <li><strong>Choose an analysis type</strong> depending on what insights you need</li>
+              <li><strong>Select a processing mode</strong>: Core (factual), Enhanced (deeper insights), or Creative (innovative perspectives)</li>
+              <li><strong>Click "Analyze Synapse"</strong> to generate your analysis</li>
+              <li><strong>Save</strong> useful analyses to reference later</li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* Synapse Selection */}
@@ -548,82 +563,128 @@ const FullPageAIAssistant = ({ user }) => {
                   className="form-select"
                   value={analysisType}
                   onChange={(e) => setAnalysisType(e.target.value)}
+                  title="Choose what kind of analysis you want the AI to perform on your synapse content"
                 >
-                  <option value="comprehensive">Comprehensive Analysis</option>
-                  <option value="relationships">Relationship-Focused</option>
-                  <option value="summary">Executive Summary</option>
-                  <option value="actionItems">Action Items Extraction</option>
-                  <option value="timeline">Timeline Analysis</option>
+                  <option value="comprehensive" title="A thorough analysis of all content within the synapse, identifying patterns, themes, and insights across all materials">Comprehensive Analysis</option>
+                  <option value="relationships" title="Focuses on identifying connections, similarities, and contradictions between different pieces of content in your synapse">Relationship-Focused</option>
+                  <option value="summary" title="A concise overview that extracts the most essential information from all content in your synapse">Executive Summary</option>
+                  <option value="actionItems" title="Identifies concrete next steps, tasks, and actionable insights from your synapse content">Action Items Extraction</option>
+                  <option value="timeline" title="Organizes content chronologically to show the development or sequence of information in your synapse">Timeline Analysis</option>
+                  <option value="learningPlan" title="Creates a structured learning guide with resources, steps, and milestones based on your synapse content">Learning Plan/Study Guide</option>
                 </select>
               </div>
             </div>
             <div className="col-md-6">
               <div className="mb-3">
                 <label className="form-label">Analysis Mode</label>
-                <div className="d-flex">
-                  <div className="form-check form-check-inline">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="analysisMode"
-                      id="analysisMode1"
-                      value="core"
-                      checked={analysisMode === "core"}
-                      onChange={() => setAnalysisMode("core")}
-                    />
-                    <label className="form-check-label" htmlFor="analysisMode1">
-                      Core Only
-                    </label>
+                <div className="d-flex flex-column">
+                  <div className="d-flex mb-2">
+                    <div className="form-check form-check-inline">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="analysisMode"
+                        id="analysisMode1"
+                        value="core"
+                        checked={analysisMode === "core"}
+                        onChange={() => setAnalysisMode("core")}
+                      />
+                      <label className="form-check-label" htmlFor="analysisMode1" title="Focuses strictly on the content provided without additional interpretation or creativity">
+                        Core Only
+                      </label>
+                    </div>
+                    <div className="form-check form-check-inline">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="analysisMode"
+                        id="analysisMode2"
+                        value="expanded"
+                        checked={analysisMode === "expanded"}
+                        onChange={() => setAnalysisMode("expanded")}
+                      />
+                      <label className="form-check-label" htmlFor="analysisMode2" title="Offers deeper insights and connections beyond what's explicitly stated in the content">
+                        Enhanced
+                      </label>
+                    </div>
+                    <div className="form-check form-check-inline">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="analysisMode"
+                        id="analysisMode3"
+                        value="creative"
+                        checked={analysisMode === "creative"}
+                        onChange={() => setAnalysisMode("creative")}
+                      />
+                      <label className="form-check-label" htmlFor="analysisMode3" title="Provides innovative perspectives, metaphors, and creative approaches to analyzing your content">
+                        Creative
+                      </label>
+                    </div>
                   </div>
-                  <div className="form-check form-check-inline">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="analysisMode"
-                      id="analysisMode2"
-                      value="expanded"
-                      checked={analysisMode === "expanded"}
-                      onChange={() => setAnalysisMode("expanded")}
-                    />
-                    <label className="form-check-label" htmlFor="analysisMode2">
-                      Enhanced
-                    </label>
-                  </div>
-                  <div className="form-check form-check-inline">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="analysisMode"
-                      id="analysisMode3"
-                      value="creative"
-                      checked={analysisMode === "creative"}
-                      onChange={() => setAnalysisMode("creative")}
-                    />
-                    <label className="form-check-label" htmlFor="analysisMode3">
-                      Creative
-                    </label>
+                  <div className={styles.modeDescription}>
+                    {analysisMode === "core" && (
+                      <small className="text-muted">
+                        <strong>Core Only:</strong> Focuses strictly on the facts and information explicitly present in your synapse content. Provides a straightforward analysis without additional interpretation.
+                      </small>
+                    )}
+                    {analysisMode === "expanded" && (
+                      <small className="text-muted">
+                        <strong>Enhanced:</strong> Provides deeper analysis with additional context, insights, and connections that may not be explicitly stated in your content. Includes more detailed explanations.
+                      </small>
+                    )}
+                    {analysisMode === "creative" && (
+                      <small className="text-muted">
+                        <strong>Creative:</strong> Offers innovative perspectives, metaphors, and creative approaches to analyzing your content. Includes novel ideas and connections to enhance understanding.
+                      </small>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
           </div>
           
-          <div className="d-flex justify-content-between">
-            <button
-              className="btn btn-primary"
-              onClick={handleAnalyze}
-              disabled={isAnalyzing || !selectedSynapse || synapseContents.length === 0}
-            >
-              {isAnalyzing ? (
-                <>
-                  Analyzing... <Zap className="ms-1" size={18} />
-                </>
-              ) : (
-                <>
-                  Analyze Synapse <Zap className="ms-1" size={18} />
-                </>
+          <div className="d-flex justify-content-between align-items-center">
+            <div className="d-flex align-items-center">
+              <button
+                className="btn btn-primary"
+                onClick={handleAnalyze}
+                disabled={isAnalyzing || !selectedSynapse || synapseContents.length === 0}
+              >
+                {isAnalyzing ? (
+                  <>
+                    Analyzing... <Zap className="ms-1" size={18} />
+                  </>
+                ) : (
+                  <>
+                    Analyze Synapse <Zap className="ms-1" size={18} />
+                  </>
+                )}
+              </button>
+              
+              {!isAnalyzing && selectedSynapse && synapseContents.length > 0 && (
+                <div className={`ms-3 ${styles.analysisDescription}`}>
+                  {analysisType === "comprehensive" && (
+                    <small>Will perform a thorough analysis of all your synapse content</small>
+                  )}
+                  {analysisType === "relationships" && (
+                    <small>Will identify connections and relationships between your synapse items</small>
+                  )}
+                  {analysisType === "summary" && (
+                    <small>Will create a concise summary of your entire synapse content</small>
+                  )}
+                  {analysisType === "actionItems" && (
+                    <small>Will extract concrete next steps and tasks from your synapse</small>
+                  )}
+                  {analysisType === "timeline" && (
+                    <small>Will organize your content to show chronological sequence and development</small>
+                  )}
+                  {analysisType === "learningPlan" && (
+                    <small>Will create a structured learning guide with resources and milestones</small>
+                  )}
+                </div>
               )}
-            </button>
+            </div>
             
             <div className={styles.buttonGroup}>
               <button 

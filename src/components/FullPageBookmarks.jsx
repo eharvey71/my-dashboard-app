@@ -257,7 +257,7 @@ const FullPageBookmarks = ({ user }) => {
   const { projectId } = useParams();
   const [bookmarks, setBookmarks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
   const [sortBy, setSortBy] = useState('newest'); // 'newest', 'oldest', 'title', 'favorite'
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
