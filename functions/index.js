@@ -503,99 +503,233 @@ exports.analyzeSynapseContent = functions.https.onCall(
         return acc;
       }, {});
 
-      // Create a detailed context string
+      // Create a more detailed context string with full content
       const contextString = Object.entries(organizedContent)
         .map(
           ([type, items]) => `
 ${type.toUpperCase()}:
-${items.map((item) => `- ${item.title || item.content}`).join("\n")}
+${items.map((item, index) => {
+  // Create a more detailed entry for each item with both title and content
+  const title = item.title || (item.content ? item.content.substring(0, 50) + "..." : "Untitled");
+  let fullContent = item.content || "";
+  const url = item.url ? `\nURL: ${item.url}` : "";
+  
+  // For bookmarks, enhance the description since we may only have URLs
+  let itemDescription = "";
+  if (type === "bookmark") {
+    // Get just the domain name for context
+    let domain = "";
+    try {
+      domain = new URL(item.url).hostname;
+    } catch (e) {
+      domain = item.url;
+    }
+    
+    itemDescription = `
+SOURCE TYPE: Web resource / Article from ${domain}
+TITLE: ${title}
+${url}
+`;
+
+    // If we have no real content from the bookmark, add a note
+    if (!fullContent || fullContent === item.url) {
+      itemDescription += `
+NOTE: This is a bookmark to a web resource. The content hasn't been fully extracted, 
+but the title and URL suggest this is about "${title}".
+`;
+    }
+  } else {
+    itemDescription = `
+SOURCE TYPE: ${type.charAt(0).toUpperCase() + type.slice(1)}
+TITLE: ${title}
+${url}
+`;
+  }
+  
+  return `SOURCE ${index + 1}: ${title}
+${itemDescription}
+FULL CONTENT:
+${fullContent}
+---
+`;
+}).join("\n")}
 `
         )
         .join("\n");
 
       // Configure the analysis based on the analysis type
       let specificFocus = "";
-      let systemPrompt = "You are an AI assistant specializing in finding meaningful patterns and connections between different types of project items.";
+      let systemPrompt = "You are an AI assistant specializing in finding meaningful patterns and connections between different types of project items. You provide deep, substantive analysis that goes beyond shallow overviews.";
+      let maxTokens = 2500; // Default token limit
+      
+      // Add debug logging to see what we're working with
+      console.log("Synapse Content Analysis - Input Data:", JSON.stringify({
+        synapseContent: synapseContent.map(item => ({
+          type: item.type,
+          id: item.id,
+          title: item.title,
+          contentLength: item.content ? item.content.length : 0,
+          url: item.url
+        })),
+        analysisType,
+        analysisMode
+      }));
       
       switch (analysisType) {
         case "relationships":
           specificFocus = `Focus primarily on:
-1. Detailed relationship mapping between all items
-2. How different content types interact with each other
-3. Hierarchical or dependency relationships between items
-4. Conflicting or reinforcing relationships between the items
-5. Network-style analysis of how ideas connect`;
+1. Detailed relationship mapping between all items - be specific and extensive
+2. Analyze how different content types interact with each other with concrete examples
+3. Map hierarchical or dependency relationships between items using specific references
+4. Identify conflicting or reinforcing relationships between items and explain precisely how they interact
+5. Provide network-style analysis of how ideas connect with substantive examples from source material
+
+Important: Include direct references to specific content from the source items. Don't just list relationships - explain them in detail with evidence from the content.`;
           break;
           
         case "summary":
           specificFocus = `Focus primarily on:
-1. High-level executive summary of the key themes (be concise)
-2. The 3-5 most important insights from this collection
-3. Brief recommendations based on these insights
-4. Avoid excessive detail and focus on clarity and actionability`;
-          systemPrompt = "You are an executive assistant providing concise summaries of complex information.";
+1. High-level executive summary of the key themes (be concise but substantive)
+2. The 3-5 most important insights from this collection with specific examples
+3. Brief recommendations based on these insights, referencing specific content
+4. Balance conciseness with meaningful content and actionable detail
+
+Include specific references to the content where appropriate to maintain precision.`;
+          systemPrompt = "You are an executive assistant providing concise yet substantive summaries of complex information.";
           break;
           
         case "actionItems":
           specificFocus = `Focus primarily on:
-1. Extracting and organizing all explicit and implicit action items
-2. Prioritizing these action items by apparent importance
-3. Identifying dependencies between action items
-4. Suggesting timeframes for completion where possible
-5. Identifying any missing action items that would be logical next steps`;
-          systemPrompt = "You are a project management assistant specializing in action item extraction and organization.";
+1. Extracting and organizing all explicit and implicit action items with concrete details
+2. Prioritizing these action items by apparent importance with rationale
+3. Identifying dependencies between action items with specific reasoning
+4. Suggesting precise timeframes for completion where possible
+5. Identifying missing action items that would be logical next steps 
+6. For each action item, include specific references to the source content
+
+Your response should be highly actionable, with clear steps and rationale for each item. Avoid vague suggestions. Provide substantive descriptions of each action item.`;
+          systemPrompt = "You are a project management assistant specializing in detailed action item extraction and organization.";
           break;
           
         case "timeline":
           specificFocus = `Focus primarily on:
-1. Analyzing the temporal relationships between items
-2. Creating a logical sequence or timeline of events/ideas
-3. Identifying past accomplishments vs. future plans
-4. Suggesting a chronological organization of the content
-5. Noting any time-sensitive elements that require attention`;
-          systemPrompt = "You are a timeline analysis specialist who excels at organizing information chronologically.";
+1. Analyzing the temporal relationships between items with specific references
+2. Creating a detailed logical sequence or timeline of events/ideas
+3. Identifying past accomplishments vs. future plans with supporting evidence
+4. Suggesting a chronological organization of the content with rationale
+5. Noting time-sensitive elements that require attention, with specific references
+6. Where appropriate, create a visual timeline representation using markdown
+
+Include sufficient context and explanations for each element in your timeline. Refer specifically to content when establishing chronology.`;
+          systemPrompt = "You are a timeline analysis specialist who excels at organizing information chronologically with substantive explanations.";
+          break;
+          
+        case "learningPlan":
+          specificFocus = `Create a comprehensive learning plan / study guide based on this synapse content. Your response MUST include:
+
+1. DETAILED CORE CONCEPTS: Identify and thoroughly explain each core concept from the source material
+   - Each concept should have a thorough explanation with examples from the source
+   - Include direct references or quotes from the source material with SPECIFIC details (e.g., "From the article 'Introduction to Python Type Hints' by Real Python: {quote}")
+   - Connect concepts to each other to show relationships
+   - For each concept, explain it in depth using 200+ words with examples
+
+2. PROGRESSIVE LEARNING PATH: Structure topics in a logical learning sequence
+   - Begin with foundational knowledge and progress to advanced topics
+   - Explain the rationale for this sequence
+   - Include realistic estimated time commitments for each section
+   - Detail prerequisites for each topic
+
+3. PRACTICAL APPLICATIONS: For each major concept, provide:
+   - Detailed real-world applications with specific examples
+   - At least 2-3 practical exercises with step-by-step instructions
+   - Complete sample problems/solutions derived from the source material
+
+4. RESOURCES: Identify specific resources from the source material
+   - When referring to a resource, use its EXACT title and details (e.g., "Python Type Checking Guide by MyPy Documentation", not "Item 3")
+   - Provide specific page numbers, sections, or chapters where appropriate
+   - Explain exactly what valuable information each resource contains
+   - Organize them by topic and difficulty level
+
+5. ASSESSMENT: Create comprehension questions for each major section
+   - Include 3-5 questions per section, ranging from basic to advanced
+   - Provide detailed answer explanations based on the source material
+   - For code examples, include complete runnable code, not just snippets
+
+EXTREMELY IMPORTANT: Never use generic references like "Item 1" or "Source X". Instead, always use the EXACT titles and descriptions of the source materials. If a bookmark is a website, refer to it by its actual title and URL. If it's a document, use the document title. Be highly specific about where information comes from.
+
+Your learning plan must be substantive, detailed, and directly reference the content provided. Avoid generic advice and shallow overviews. The plan should be immediately useful for someone wanting to master this subject matter. Your response should be at least 1500 words to provide sufficient depth.`;
+          systemPrompt = "You are an expert educational content designer who creates comprehensive, in-depth learning plans based on source materials. You excel at extracting knowledge from various sources and organizing it into effective learning pathways. You have deep knowledge of programming concepts and can expand on references to programming topics with detailed, accurate information, while still clearly indicating what came from the source materials and what is your expert knowledge. If the source materials are limited, you should clearly indicate that you are supplementing with your knowledge, but still create a thorough, detailed plan. When referencing content, always use specific titles and sources, not generic 'Item X' references.";
+          maxTokens = 4000; // Increase token limit for learning plans
           break;
           
         case "comprehensive":
         default:
-          specificFocus = `Focus on:
-1. Key themes and patterns across these items
-2. Specific relationships between different types of items
-3. Concrete insights based on the connections between these items
-4. Potential next steps directly related to these items`;
+          specificFocus = `Provide a deep, thorough analysis of this content. Focus on:
+
+1. Key themes and patterns across these items - explore each theme in detail with examples
+2. Specific relationships between different types of items with concrete references
+3. Detailed insights based on the connections between these items
+4. Potential next steps directly related to these items with specific rationale
+5. Critical analysis of the content, including strengths, gaps, and contradictions
+
+For each point, include specific references to the source content. Avoid shallow generalizations. Your analysis should provide substantive value beyond what's obvious from skimming the items.`;
+          maxTokens = 3000; // Increase token limit for comprehensive analysis
           break;
       }
 
-      // Configure temperature and model based on analysis mode
+      // Configure temperature and model based on analysis mode and type
       let temperature = 0.7;
       let model = "gpt-3.5-turbo";
       let includesBroaderAnalysis = false;
       
+      // Always use GPT-4 for learning plans regardless of mode
+      if (analysisType === "learningPlan") {
+        model = "gpt-4";
+        temperature = 0.6; // Lower temperature for more focused, detailed content
+      }
+      
       switch (analysisMode) {
         case "expanded":
-          temperature = 0.8;
+          temperature = 0.7; // Slightly reduced for better depth vs creativity balance
           model = "gpt-4";
           includesBroaderAnalysis = true;
+          systemPrompt += " You provide thorough, in-depth analysis with comprehensive explanations and specific examples.";
           break;
         case "creative":
-          temperature = 1.0;
+          temperature = 0.9; // Slightly reduced from 1.0 to balance creativity with substance
           model = "gpt-4";
           includesBroaderAnalysis = true;
-          systemPrompt += " You think creatively and provide innovative perspectives.";
+          systemPrompt += " You think creatively and provide innovative perspectives while maintaining substantive depth and detailed examples.";
           break;
         case "core":
         default:
+          // For comprehensive analysis, still use GPT-4 for more depth
+          if (analysisType === "comprehensive") {
+            model = "gpt-4";
+          }
           includesBroaderAnalysis = false;
+          systemPrompt += " You focus on factual, substantive analysis with specific references to source content.";
           break;
       }
 
       // First, analyze the specific synapse content
       const synapseAnalysisPrompt = `
-You are analyzing a "synapse" - a collection of related items that the user has intentionally grouped together. This synapse is named "${synapseName}" and contains the following items:
+You are analyzing a "synapse" - a carefully curated collection of related items that the user has intentionally grouped together. This synapse is named "${synapseName}" and contains the following items:
 
 ${contextString}
 
-Please analyze these specific items and their relationships. ${specificFocus}
+${analysisType === "learningPlan" ? 
+`Your task is to create a comprehensive, detailed learning plan based on this content.` : 
+`Your task is to analyze these specific items and their relationships in depth.`}
+
+${specificFocus}
+
+IMPORTANT GUIDELINES:
+1. Be specific and substantive - avoid shallow overviews
+2. Include direct quotes or specific references from the source material
+3. Provide detailed explanations, not just listings or summaries
+4. Go beyond what's immediately obvious to provide valuable insights
+5. Structure your response in a clear, logical manner with appropriate headings
 
 Only reference the items provided above in this analysis.
 `;
@@ -611,7 +745,7 @@ Only reference the items provided above in this analysis.
             { role: "user", content: synapseAnalysisPrompt },
           ],
           temperature: temperature,
-          max_tokens: 2000,
+          max_tokens: maxTokens, // Use the type-specific token limit
         });
         
         result = `
@@ -622,18 +756,20 @@ ${analysis.choices[0].message.content.trim()}
       } else {
         // For expanded or creative modes, include broader analysis
         const broaderAnalysisPrompt = `
-You're now going to provide additional insights about the themes present in the synapse named "${synapseName}". 
+You're now going to provide additional substantive insights about the themes present in the synapse named "${synapseName}". 
 The synapse contains content related to: ${Object.keys(organizedContent).join(", ")}.
 
-The main themes appear to be about: ${contextString.substring(0, 200)}...
+Using your knowledge base, but directly referencing the synapse content:
 
-Using your knowledge base:
-1. What broader concepts or theories might be relevant to these themes?
-2. Are there any well-known frameworks, methodologies, or best practices that could be applicable?
-3. Can you suggest any additional resources, tools, or approaches that might complement this collection?
-4. What are some potential innovative applications or combinations of these ideas?
+1. What broader concepts or theories are clearly relevant to these materials? Be specific about how they relate to particular items.
 
-Use specific examples and explain why they're relevant to this collection of items.
+2. Are there established frameworks, methodologies, or best practices that would help organize or understand this content better? Explain exactly how they apply.
+
+3. What high-quality additional resources would complement this collection? Be specific about what each would add.
+
+4. What potential applications of this knowledge would be most valuable? Provide specific, detailed examples.
+
+Important: Your response should be substantive and directly reference the source content where possible. Avoid generic advice - be specific and practical.
 `;
 
         // Make both API calls concurrently
@@ -645,19 +781,19 @@ Use specific examples and explain why they're relevant to this collection of ite
               { role: "user", content: synapseAnalysisPrompt },
             ],
             temperature: temperature,
-            max_tokens: 2000,
+            max_tokens: maxTokens, // Use the type-specific token limit
           }),
           openai.chat.completions.create({
             model: "gpt-4", // Always use GPT-4 for broader analysis
             messages: [
               {
                 role: "system",
-                content: "You are an AI assistant that provides broader context and innovative connections for collections of related items.",
+                content: "You are an AI assistant that provides in-depth, practical context and substantive connections for collections of related items. You focus on meaningful analysis rather than superficial summaries.",
               },
               { role: "user", content: broaderAnalysisPrompt },
             ],
-            temperature: temperature + 0.1, // Slightly higher temperature for broader analysis
-            max_tokens: 1500,
+            temperature: temperature, // Keep same temperature for consistency
+            max_tokens: Math.min(2000, maxTokens), // Limit to 2000 or the type-specific limit, whichever is smaller
           }),
         ]);
 
@@ -667,7 +803,7 @@ Use specific examples and explain why they're relevant to this collection of ite
 
 ${synapseAnalysis.choices[0].message.content.trim()}
 
-## Broader Context & Insights
+## Broader Context & Practical Applications
 
 ${broaderAnalysis.choices[0].message.content.trim()}`;
       }
@@ -675,51 +811,61 @@ ${broaderAnalysis.choices[0].message.content.trim()}`;
       // For creative mode, add an additional creative section if appropriate
       if (analysisMode === "creative") {
         let additionalSection = "";
+        let sectionTitle = "";
         
         if (analysisType === "comprehensive" || analysisType === "relationships") {
-          additionalSection = `
-
-## Creative Applications & Future Directions
-
-How might these ideas evolve or be combined in unexpected ways? What innovative approaches could emerge from this collection?`;
+          sectionTitle = "Creative Applications & Future Directions";
         } else if (analysisType === "actionItems") {
-          additionalSection = `
-
-## Innovation Opportunities
-
-Beyond the standard action items, what creative approaches or experiments could yield breakthrough results?`;
+          sectionTitle = "Innovation Opportunities";
+        } else if (analysisType === "learningPlan") {
+          sectionTitle = "Innovative Learning Approaches";
+        } else {
+          sectionTitle = "Creative Extensions";
         }
         
-        if (additionalSection) {
-          const creativePrompt = `
-For the synapse named "${synapseName}" containing:
-${contextString.substring(0, 500)}...
+        additionalSection = `\n\n## ${sectionTitle}`;
+          
+        const creativePrompt = `
+You're analyzing a synapse named "${synapseName}" that contains curated content on a specific topic.
 
-${additionalSection.replace('##', '')}
+Based on your in-depth analysis of this synapse, provide creative, substantive, and detailed innovations in the form of ${sectionTitle}.
 
-Be specific, imaginative, and thought-provoking. Suggest at least 3-5 creative possibilities that go beyond obvious connections.`;
+IMPORTANT:
+1. Reference specific content items when making your suggestions
+2. For each idea, provide detailed implementation strategies, not just concepts
+3. Include concrete examples of how each idea would work in practice
+4. Explain why each suggestion is valuable, given the specific content in the synapse
+5. Be innovative yet practical - these should be realistic ideas with substantive value
+6. Include at least 3-5 detailed, thoughtful ideas, each with clear implementation steps
 
-          try {
-            const creativeResponse = await openai.chat.completions.create({
-              model: "gpt-4",
-              messages: [
-                { 
-                  role: "system", 
-                  content: "You are a creative innovation consultant who specializes in generating unexpected connections and novel applications from existing ideas." 
-                },
-                { role: "user", content: creativePrompt },
-              ],
-              temperature: 1.1,
-              max_tokens: 1000,
-            });
-            
-            result += `${additionalSection}
+Do not provide generic advice or shallow overviews. Your suggestions should directly build upon the specific content in this synapse and provide substantive, actionable value.
+
+Here's a sample of the content you're working with:
+${contextString.substring(0, 1000)}...
+
+(Note: the above is just a sample; your full analysis should consider all content items.)
+`;
+
+        try {
+          const creativeResponse = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+              { 
+                role: "system", 
+                content: "You are a creative innovation consultant who specializes in generating substantive, detailed, and innovative applications from existing ideas. You provide depth and specificity, not just surface-level suggestions." 
+              },
+              { role: "user", content: creativePrompt },
+            ],
+            temperature: 0.9, // Slightly reduced for more focused creativity
+            max_tokens: 2000, // Increase token limit for more detailed creative content
+          });
+          
+          result += `${additionalSection}
 
 ${creativeResponse.choices[0].message.content.trim()}`;
-          } catch (error) {
-            console.error("Error generating creative section:", error);
-            // Continue without the creative section if it fails
-          }
+        } catch (error) {
+          console.error("Error generating creative section:", error);
+          // Continue without the creative section if it fails
         }
       }
 
