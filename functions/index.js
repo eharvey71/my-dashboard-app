@@ -482,6 +482,201 @@ exports.generateSuggestions = functions.https.onCall(async (data, context) => {
   }
 });
 
+// Function to convert tasks to a document
+exports.convertTasksToDocument = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "User must be authenticated"
+    );
+  }
+
+  const { userId, projectId, documentTitle = "Tasks Summary", archiveTasks = false } = data;
+
+  try {
+    // Get all tasks for the project
+    const db = admin.firestore();
+    const taskSnapshot = await db.collection("tasks")
+      .where("userId", "==", userId)
+      .where("projectId", "==", projectId)
+      .get();
+    
+    if (taskSnapshot.empty) {
+      return { 
+        success: false, 
+        message: "No tasks found for this project" 
+      };
+    }
+
+    // Group tasks by completion status and priority
+    const completedTasks = [];
+    const incompleteTasks = [];
+    
+    taskSnapshot.docs.forEach((doc) => {
+      const task = { id: doc.id, ...doc.data() };
+      if (task.completed) {
+        completedTasks.push(task);
+      } else {
+        incompleteTasks.push(task);
+      }
+    });
+    
+    // Sort by priority if available
+    const sortByPriority = (a, b) => {
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      
+      // Handle both string and numeric priorities (convert string to lowercase if it's a string)
+      const getPriorityValue = (task) => {
+        if (!task.priority) return 3;
+        if (typeof task.priority === 'string') {
+          return priorityOrder[task.priority.toLowerCase()] || 3;
+        }
+        // If priority is numeric, assume 1=high, 2=medium, 3=low
+        return typeof task.priority === 'number' ? task.priority : 3;
+      };
+      
+      const aPriority = getPriorityValue(a);
+      const bPriority = getPriorityValue(b);
+      return aPriority - bPriority;
+    };
+    
+    incompleteTasks.sort(sortByPriority);
+    completedTasks.sort(sortByPriority);
+    
+    // Format markdown content
+    const currentDate = new Date().toLocaleDateString();
+    let documentContent = `# ${documentTitle}\n\nGenerated on ${currentDate}\n\n`;
+    
+    // Add incomplete tasks section
+    documentContent += `## Active Tasks (${incompleteTasks.length})\n\n`;
+    
+    if (incompleteTasks.length > 0) {
+      // Group by priority - handling both string and numeric priorities
+      const highPriority = incompleteTasks.filter(t => {
+        if (!t.priority) return false;
+        if (typeof t.priority === 'string') return t.priority.toLowerCase() === 'high';
+        if (typeof t.priority === 'number') return t.priority === 1;
+        return false;
+      });
+      
+      const mediumPriority = incompleteTasks.filter(t => {
+        if (!t.priority) return false;
+        if (typeof t.priority === 'string') return t.priority.toLowerCase() === 'medium';
+        if (typeof t.priority === 'number') return t.priority === 2;
+        return false;
+      });
+      
+      const lowPriority = incompleteTasks.filter(t => {
+        if (!t.priority) return false;
+        if (typeof t.priority === 'string') return t.priority.toLowerCase() === 'low';
+        if (typeof t.priority === 'number') return t.priority === 3;
+        return false;
+      });
+      
+      const noPriority = incompleteTasks.filter(t => !t.priority);
+      
+      // Add high priority tasks
+      if (highPriority.length > 0) {
+        documentContent += `### High Priority\n\n`;
+        highPriority.forEach(task => {
+          const dueDate = task.nextDueDate ? `\n**Due:** ${new Date(task.nextDueDate).toLocaleDateString()}` : '';
+          const notes = task.notes ? `\n\n${task.notes}` : '';
+          documentContent += `- [ ] **${task.title || task.content}**${dueDate}${notes}\n\n`;
+        });
+      }
+      
+      // Add medium priority tasks
+      if (mediumPriority.length > 0) {
+        documentContent += `### Medium Priority\n\n`;
+        mediumPriority.forEach(task => {
+          const dueDate = task.nextDueDate ? `\n**Due:** ${new Date(task.nextDueDate).toLocaleDateString()}` : '';
+          const notes = task.notes ? `\n\n${task.notes}` : '';
+          documentContent += `- [ ] **${task.title || task.content}**${dueDate}${notes}\n\n`;
+        });
+      }
+      
+      // Add low priority tasks
+      if (lowPriority.length > 0) {
+        documentContent += `### Low Priority\n\n`;
+        lowPriority.forEach(task => {
+          const dueDate = task.nextDueDate ? `\n**Due:** ${new Date(task.nextDueDate).toLocaleDateString()}` : '';
+          const notes = task.notes ? `\n\n${task.notes}` : '';
+          documentContent += `- [ ] **${task.title || task.content}**${dueDate}${notes}\n\n`;
+        });
+      }
+      
+      // Add no priority tasks
+      if (noPriority.length > 0) {
+        documentContent += `### No Priority Set\n\n`;
+        noPriority.forEach(task => {
+          const dueDate = task.nextDueDate ? `\n**Due:** ${new Date(task.nextDueDate).toLocaleDateString()}` : '';
+          const notes = task.notes ? `\n\n${task.notes}` : '';
+          documentContent += `- [ ] **${task.title || task.content}**${dueDate}${notes}\n\n`;
+        });
+      }
+    } else {
+      documentContent += "*No active tasks*\n\n";
+    }
+    
+    // Add completed tasks section
+    documentContent += `## Completed Tasks (${completedTasks.length})\n\n`;
+    
+    if (completedTasks.length > 0) {
+      completedTasks.forEach(task => {
+        const completedDate = task.completedAt ? `\n**Completed:** ${new Date(task.completedAt.toDate ? task.completedAt.toDate() : task.completedAt).toLocaleDateString()}` : '';
+        const notes = task.notes ? `\n\n${task.notes}` : '';
+        documentContent += `- [x] **${task.title || task.content}**${completedDate}${notes}\n\n`;
+      });
+    } else {
+      documentContent += "*No completed tasks*\n\n";
+    }
+    
+    // Create a new document
+    const docRef = await db.collection("documents").add({
+      title: documentTitle,
+      content: documentContent,
+      userId,
+      projectId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      source: "task-conversion",
+      indexedInPinecone: false
+    });
+    
+    // If requested, archive/delete the tasks
+    let archivedCount = 0;
+    if (archiveTasks) {
+      // For completed tasks, we'll delete them
+      const deletionPromises = completedTasks.map(async (task) => {
+        try {
+          await db.collection("tasks").doc(task.id).delete();
+          archivedCount++;
+        } catch (err) {
+          console.error(`Error deleting task ${task.id}:`, err);
+        }
+      });
+      
+      await Promise.all(deletionPromises);
+    }
+    
+    return {
+      success: true,
+      documentId: docRef.id,
+      documentTitle,
+      archivedCount,
+      totalTasks: taskSnapshot.docs.length
+    };
+    
+  } catch (error) {
+    console.error("Error converting tasks to document:", error);
+    throw new functions.https.HttpsError(
+      "internal",
+      "Error converting tasks to document",
+      error
+    );
+  }
+});
+
 exports.analyzeSynapseContent = functions.https.onCall(
   async (data, context) => {
     if (!context.auth) {

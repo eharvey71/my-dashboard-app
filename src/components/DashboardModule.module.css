@@ -183,6 +183,15 @@
   color: #2563eb;
 }
 
+.viewButton {
+  color: #10b981; /* Green color for view */
+}
+
+.viewButton:hover {
+  background-color: #ecfdf5; /* Light green background on hover */
+  color: #059669;
+}
+
 /* Item type colors based on SynapseTile styles */
 .taskItem { border-left-color: #4299e1; }
 .noteItem { border-left-color: #ed8936; }

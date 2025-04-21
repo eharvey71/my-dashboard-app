@@ -397,9 +397,14 @@ const addDocument = async (
   content,
   userId,
   projectId,
-  source = "native",
-  originalId = null
+  options = {}
 ) => {
+  const { 
+    source = "native", 
+    originalId = null, 
+    isMarkdown = false 
+  } = options;
+  
   const timestamp = new Date();
   return addItem(title, userId, projectId, "document", {
     content,
@@ -407,6 +412,7 @@ const addDocument = async (
     updatedAt: timestamp,
     source,
     originalId,
+    isMarkdown,
   });
 };
 const updateDocument = async (id, updates) => {

@@ -2,46 +2,83 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDocuments, deleteDocument, addDocumentFromGoogleDrive } from '../services/firebaseConfig';
 import { indexContent, deleteVector } from '../services/pineconeService';
-import { Trash2, Edit, PlusCircle, File, ExternalLink, LogIn, LogOut } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, File, ExternalLink, LogIn, LogOut, Eye, Check, X } from 'lucide-react';
 import { signIn, signOut, isSignedIn, openGoogleDriveDocument, ensureValidToken } from '../services/googleDriveService';
 import moduleStyles from './DashboardModule.module.css';
 import styles from './DocumentList.module.css';
 import GoogleDrivePicker from './GoogleDrivePicker';
 import { AppContext } from '../App';
 
-const DocumentCard = ({ document, onDelete, onOpen }) => {
+const DocumentCard = ({ document, onDelete, onOpen, onView }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   
-  const handleDeleteClick = () => {
+  const handleDeleteClick = (e) => {
+    e.stopPropagation(); // Prevent card click
     setIsConfirmingDelete(true);
   };
   
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = (e) => {
+    e.stopPropagation(); // Prevent card click
     onDelete(document.id);
     setIsConfirmingDelete(false);
   };
   
-  const handleCancelDelete = () => {
+  const handleCancelDelete = (e) => {
+    e.stopPropagation(); // Prevent card click
     setIsConfirmingDelete(false);
   };
   
+  const handleEditClick = (e) => {
+    e.stopPropagation(); // Prevent card click
+    onOpen(document);
+  };
+  
+  const handleViewClick = (e) => {
+    e.stopPropagation(); // Prevent card click
+    onView(document);
+  };
+  
+  const handleCardClick = () => {
+    // Card click always goes to view mode
+    onView(document);
+  };
+  
+  // Google Drive documents open externally, so they don't have view/edit distinction
+  const isGoogleDriveDoc = document.source === 'Google Drive';
+  
   return (
-    <div className={styles.documentCard}>
+    <div 
+      className={styles.documentCard} 
+      onClick={isGoogleDriveDoc ? null : handleCardClick}
+      style={{ cursor: isGoogleDriveDoc ? 'default' : 'pointer' }}
+    >
       <h3 className={styles.documentTitle}>{document.title || 'Untitled Document'}</h3>
       <p className={styles.documentDate}>
         Last updated: {new Date(document.updatedAt.seconds * 1000).toLocaleDateString()}
       </p>
       <p className={styles.documentSource}>
         Source: {document.source || 'Native'}
+        {document.isMarkdown && <span className={styles.mdBadge}>MD</span>}
       </p>
-      <div className={styles.documentActions}>
+      <div className={styles.documentActions} onClick={e => e.stopPropagation()}>
+        {!isGoogleDriveDoc && (
+          <button 
+            className={`${moduleStyles.iconButton} ${moduleStyles.viewButton}`}
+            onClick={handleViewClick}
+            title="View document"
+          >
+            <Eye size={16} />
+          </button>
+        )}
+        
         <button 
           className={`${moduleStyles.iconButton} ${moduleStyles.editButton}`}
-          onClick={() => onOpen(document)}
-          title={document.source === 'Google Drive' ? "Open in Google Drive" : "Edit document"}
+          onClick={handleEditClick}
+          title={isGoogleDriveDoc ? "Open in Google Drive" : "Edit document"}
         >
-          {document.source === 'Google Drive' ? <ExternalLink size={16} /> : <Edit size={16} />}
+          {isGoogleDriveDoc ? <ExternalLink size={16} /> : <Edit size={16} />}
         </button>
+        
         <button 
           className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
           onClick={handleDeleteClick}
@@ -52,7 +89,7 @@ const DocumentCard = ({ document, onDelete, onOpen }) => {
       </div>
       
       {isConfirmingDelete && (
-        <div className={moduleStyles.deleteConfirmationOverlay}>
+        <div className={moduleStyles.deleteConfirmationOverlay} onClick={e => e.stopPropagation()}>
           <div className={moduleStyles.deleteConfirmation}>
             <span>Delete this document?</span>
             <button
@@ -169,12 +206,22 @@ const DocumentList = ({ user }) => {
     }
   };
 
-  const handleOpenDocument = (doc) => {
+  const handleEditDocument = (doc) => {
     if (doc.source === 'Google Drive' && doc.originalId) {
       openGoogleDriveDocument(doc.originalId);
     } else {
-      // For native documents, use the existing route
+      // For native documents, use the existing route to edit mode
       window.location.href = `/project/${projectId}/documents/${doc.id}`;
+    }
+  };
+  
+  const handleViewDocument = (doc) => {
+    if (doc.source === 'Google Drive' && doc.originalId) {
+      // Google Drive docs just open in Google Drive
+      openGoogleDriveDocument(doc.originalId);
+    } else {
+      // For native documents, go to the same route but add view=true param
+      window.location.href = `/project/${projectId}/documents/${doc.id}?view=true`;
     }
   };
 
@@ -240,7 +287,8 @@ const DocumentList = ({ user }) => {
                 key={doc.id} 
                 document={doc} 
                 onDelete={handleDelete}
-                onOpen={handleOpenDocument}
+                onOpen={handleEditDocument}
+                onView={handleViewDocument}
               />
             ))}
           </div>
