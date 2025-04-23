@@ -71,11 +71,66 @@ const DocumentEditor = ({ user }) => {
       // Use a small delay to ensure the editor is ready
       setTimeout(() => {
         if (editorRef.current) {
-          // If it's a Markdown document and we're in edit mode, convert to HTML first
-          if (isMarkdown && !isViewMode) {
-            // Use marked directly here
-            const htmlContent = marked(initialContent);
-            editorRef.current.setContent(htmlContent);
+          // If it's a Markdown document (or from task conversion) and we're in edit mode, convert to HTML first
+          if ((isMarkdown || sourceContent.indexOf('##') >= 0) && !isViewMode) {
+            // Configure marked options
+            marked.setOptions({
+              gfm: true,          // GitHub Flavored Markdown
+              breaks: true,       // Add <br> on single line breaks
+              smartLists: true,
+            });
+            
+            // Process markdown into properly structured HTML
+            let htmlContent = marked(initialContent);
+            
+            // Additional processing to ensure proper structure in TinyMCE
+            htmlContent = htmlContent
+              // Ensure list items have proper breaks
+              .replace(/<\/li><li>/g, '</li>\n<li>')
+              // Format task list items better
+              .replace(/<input type="checkbox" disabled>/g, '<input type="checkbox">')
+              .replace(/<input type="checkbox" checked disabled>/g, '<input type="checkbox" checked>');
+              
+            // For markdown documents, use direct code editor approach
+            if (isMarkdown || (htmlContent.includes('# ') && !htmlContent.includes('<h1>'))) {
+              // Get the markdown content directly
+              let markdownContent = initialContent;
+              
+              // If HTML content starts with markdown patterns, extract them
+              if (htmlContent.match(/<p>\s*#\s+/)) {
+                markdownContent = htmlContent.replace(/<p>([^<]+)<\/p>/g, '$1\n').trim();
+              }
+              
+              // Normalize line breaks before inserting into editor
+              const normalizedContent = markdownContent
+                .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+                .replace(/\r/g, '\n')    // Convert old Mac line breaks
+                .replace(/\n{3,}/g, '\n\n'); // Limit excessive line breaks
+              
+              // Create a simulated code editor for markdown - with better pre tag attributes
+              const formattedHtml = `<pre class="markdown-editor" contenteditable="true" style="white-space: pre-wrap; font-family: monospace; padding: 10px; background: #f8f9fa; border: none; outline: none; width: 100%; height: 100%; overflow: auto; line-height: 1.5;">${normalizedContent
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')}</pre>
+                <div style="font-size: 11px; color: #6c757d; padding: 5px 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">Markdown editor mode</div>`;
+              
+              // Set raw HTML content to bypass TinyMCE parsing
+              editorRef.current.getBody().innerHTML = formattedHtml;
+              
+              // Add a class to the editor content to mark it as markdown in pre format
+              setTimeout(() => {
+                if (editorRef.current) {
+                  const editorBody = editorRef.current.getBody();
+                  if (editorBody) {
+                    editorBody.classList.add('markdown-pre-format');
+                    // Disable TinyMCE complex formatting features
+                    editorRef.current.getDoc().execCommand('styleWithCSS', false, false);
+                  }
+                }
+              }, 100);
+            } else {
+              editorRef.current.setContent(htmlContent);
+            }
           } else {
             editorRef.current.setContent(initialContent);
           }
@@ -106,24 +161,27 @@ const DocumentEditor = ({ user }) => {
           lastSaveTimeRef.current = Date.now();
         }
         
-        // Check if document is explicitly marked as Markdown
+        // Check if document is explicitly marked as Markdown and store the result
+        let detectMarkdown = false;
         if (doc.isMarkdown !== undefined) {
+          detectMarkdown = doc.isMarkdown;
           setIsMarkdown(doc.isMarkdown);
         } else {
           // Attempt to detect if the content is Markdown
           // Check for common Markdown patterns like # headers, - lists, etc.
-          const isLikelyMarkdown = 
+          detectMarkdown = 
             /^#+ |^-\s|^[*-] |^>\s|\[.+\]\(.+\)|^```\w*\n|^\s*\[[x ]\]\s/m.test(doc.content) || 
-            doc.source === 'task-conversion';  // Auto-detect documents from task conversion
+            doc.source === 'task-conversion' ||  // Auto-detect documents from task conversion
+            doc.content.indexOf('## ') >= 0;     // Also detect documents with h2 headers (common in task conversion)
           
-          setIsMarkdown(isLikelyMarkdown);
+          setIsMarkdown(detectMarkdown);
         }
         
         // If document was created from task conversion, auto-switch to view mode
         if (doc.source === 'task-conversion') {
           setIsViewMode(true);
           // For Markdown content in edit mode, will need it as HTML
-          if (doc.isMarkdown || isLikelyMarkdown) {
+          if (doc.isMarkdown || detectMarkdown) {
             setEditorContent(marked(doc.content));
           } else {
             setEditorContent(doc.content);
@@ -137,7 +195,7 @@ const DocumentEditor = ({ user }) => {
 
         console.log("Document loaded:", {
           id: docId,
-          isMarkdown: doc.isMarkdown || isLikelyMarkdown,
+          isMarkdown: doc.isMarkdown || detectMarkdown,
           isViewMode: doc.source === 'task-conversion',
           titleLength: doc.title?.length || 0,
           contentLength: doc.content?.length || 0,
@@ -173,49 +231,88 @@ const DocumentEditor = ({ user }) => {
         const convertToMarkdown = (html) => {
           if (!html) return '';
           
-          let md = html
-            // Convert heading tags
-            .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-            .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
-            .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
-            .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
-            .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n')
-            .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n')
-            
-            // Convert lists
-            .replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, function(match, content) {
-              return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n');
-            })
-            .replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, function(match, content) {
-              let num = 1;
-              return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, function(match, item) {
-                return (num++) + '. ' + item + '\n';
-              });
-            })
-            
-            // Convert checkboxes
-            .replace(/<input[^>]*type=['"]checkbox['"][^>]*checked[^>]*>/gi, '[x] ')
-            .replace(/<input[^>]*type=['"]checkbox['"][^>]*>/gi, '[ ] ')
-            
-            // Convert basic formatting
-            .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
-            .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
-            .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
-            .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-            
-            // Remove paragraph tags but keep new lines
-            .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n')
-            
-            // Preserve line breaks
-            .replace(/<br[^>]*>/gi, '\n')
-            
-            // Remove any remaining HTML tags
-            .replace(/<[^>]*>/g, '')
-            
-            // Fix repeated newlines
-            .replace(/\n\s*\n\s*\n/g, '\n\n');
+          console.log("HTML TO CONVERT TO MARKDOWN:", html);
           
-          return md.trim();
+          // Check if this is our special pre-formatted markdown content
+          if (html.includes('<pre class="markdown-editor"') || html.includes('<pre style="white-space: pre-wrap; font-family: monospace;">')) {
+            // Extract content from pre tag - more robust matching
+            const preMatch = html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+            if (preMatch && preMatch[1]) {
+              // This is pre-formatted markdown - decode HTML entities and ensure line breaks are preserved
+              let extractedContent = preMatch[1]
+                .replace(/<br\s*\/?>/gi, '\n')  // Convert <br> back to newlines
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&')
+                .replace(/\r\n/g, '\n') // Normalize Windows line breaks
+                .replace(/\r/g, '\n');  // Normalize old Mac line breaks
+              
+              // Ensure consistent line breaks for task lists
+              extractedContent = extractedContent
+                .replace(/^- \[ \]/gm, '- [ ]') // Ensure space consistency in unchecked tasks
+                .replace(/^- \[x\]/gm, '- [x]') // Ensure space consistency in checked tasks
+                .replace(/\n{3,}/g, '\n\n');    // Avoid excessive line breaks
+              
+              console.log("Extracted pre-formatted markdown:", extractedContent);
+              return extractedContent;
+            }
+          }
+          
+          // Use a simpler regex-based approach but with careful ordering
+          let md = html;
+          
+          // First, preserve checkboxes by converting them to placeholders
+          md = md.replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*>/gi, '__CHECKED_BOX__');
+          md = md.replace(/<input[^>]*type="checkbox"[^>]*>/gi, '__UNCHECKED_BOX__');
+          
+          // Process headings (need to be handled first since they're distinct)
+          md = md.replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, '\n# $1\n\n');
+          md = md.replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, '\n## $1\n\n');
+          md = md.replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, '\n### $1\n\n');
+          md = md.replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, '\n#### $1\n\n');
+          md = md.replace(/<h5[^>]*>([\s\S]*?)<\/h5>/gi, '\n##### $1\n\n');
+          md = md.replace(/<h6[^>]*>([\s\S]*?)<\/h6>/gi, '\n###### $1\n\n');
+          
+          // Process lists carefully - one item at a time
+          md = md.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (match, content) => {
+            // Check if this list item contained a checkbox
+            if (content.includes('__CHECKED_BOX__')) {
+              return '\n- [x] ' + content.replace('__CHECKED_BOX__', '').trim() + '\n';
+            } else if (content.includes('__UNCHECKED_BOX__')) {
+              return '\n- [ ] ' + content.replace('__UNCHECKED_BOX__', '').trim() + '\n';
+            } else {
+              return '\n- ' + content.trim() + '\n';
+            }
+          });
+          
+          // Process paragraphs with care for line breaks
+          md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n');
+          
+          // Handle text formatting
+          md = md.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, '**$1**');
+          md = md.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '**$1**');
+          md = md.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, '*$1*');
+          md = md.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, '*$1*');
+          
+          // Handle breaks
+          md = md.replace(/<br[^>]*>/gi, '\n');
+          
+          // Remove any remaining HTML tags
+          md = md.replace(/<[^>]*>/g, '');
+          
+          // Fix spacing issues
+          md = md
+            // Fix excessive newlines
+            .replace(/\n{3,}/g, '\n\n')
+            // Trim leading/trailing whitespace
+            .trim();
+            
+          console.log("CONVERTED MARKDOWN:", md);
+          
+          // Console log only for debugging
+          console.log("CONVERTED MARKDOWN FOR SAVING:", md);
+          
+          return md;
         };
         
         contentToSave = convertToMarkdown(latestContent);
@@ -348,6 +445,15 @@ const DocumentEditor = ({ user }) => {
     }
   };
 
+  // Debug function - only logs to console
+  const debugHTMLToMarkdown = (html) => {
+    try {
+      console.log("HTML SOURCE FOR DEBUGGING:", html);
+    } catch (err) {
+      console.error("Error in debug function:", err);
+    }
+  };
+
   // Function to toggle between view and edit modes
   const toggleViewMode = async () => {
     // Create a local copy of current state to avoid circular dependencies
@@ -361,58 +467,145 @@ const DocumentEditor = ({ user }) => {
       if (editorRef.current) {
         const htmlContent = editorRef.current.getContent();
         
+        // Debug the HTML content
+        console.log("TOGGLING TO VIEW MODE - HTML CONTENT:", htmlContent);
+        debugHTMLToMarkdown(htmlContent);
+        
         if (currentIsMarkdown) {
           // For Markdown documents, we need to convert editor's HTML to Markdown
           const convertHtml = (html) => {
             if (!html) return '';
             
-            let md = html
-              // Convert heading tags
-              .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-              .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
-              .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
-              .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
-              .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n')
-              .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n')
-              
-              // Convert lists
-              .replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, function(match, content) {
-                return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n');
-              })
-              .replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, function(match, content) {
-                let num = 1;
-                return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, function(match, item) {
-                  return (num++) + '. ' + item + '\n';
-                });
-              })
-              
-              // Convert checkboxes
-              .replace(/<input[^>]*type=['"]checkbox['"][^>]*checked[^>]*>/gi, '[x] ')
-              .replace(/<input[^>]*type=['"]checkbox['"][^>]*>/gi, '[ ] ')
-              
-              // Convert basic formatting
-              .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
-              .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
-              .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
-              .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-              
-              // Remove paragraph tags but keep new lines
-              .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n')
-              
-              // Preserve line breaks
-              .replace(/<br[^>]*>/gi, '\n')
-              
-              // Remove any remaining HTML tags
-              .replace(/<[^>]*>/g, '')
-              
-              // Fix repeated newlines
-              .replace(/\n\s*\n\s*\n/g, '\n\n');
+            console.log("HTML TO CONVERT TO MARKDOWN:", html);
             
-            return md.trim();
+            // Check if this is our special pre-formatted markdown content
+            if (html.includes('<pre class="markdown-editor"') || html.includes('<pre style="white-space: pre-wrap; font-family: monospace;">')) {
+              // Extract content from pre tag - more robust matching
+              const preMatch = html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+              if (preMatch && preMatch[1]) {
+                // This is pre-formatted markdown - decode HTML entities and ensure line breaks are preserved
+                let extractedContent = preMatch[1]
+                  .replace(/<br\s*\/?>/gi, '\n')  // Convert <br> back to newlines
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>')
+                  .replace(/&amp;/g, '&')
+                  .replace(/\r\n/g, '\n') // Normalize Windows line breaks
+                  .replace(/\r/g, '\n');  // Normalize old Mac line breaks
+                
+                // Ensure consistent line breaks for task lists
+                extractedContent = extractedContent
+                  .replace(/^- \[ \]/gm, '- [ ]') // Ensure space consistency in unchecked tasks
+                  .replace(/^- \[x\]/gm, '- [x]') // Ensure space consistency in checked tasks
+                  .replace(/\n{3,}/g, '\n\n');    // Avoid excessive line breaks
+                
+                console.log("Extracted pre-formatted markdown:", extractedContent);
+                return extractedContent;
+              }
+            }
+            
+            // Use a simpler regex-based approach but with careful ordering
+            let md = html;
+            
+            // First, preserve checkboxes by converting them to placeholders
+            md = md.replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*>/gi, '__CHECKED_BOX__');
+            md = md.replace(/<input[^>]*type="checkbox"[^>]*>/gi, '__UNCHECKED_BOX__');
+            
+            // First, handle the critical case when all content is in a single paragraph
+            if (md.match(/<p>\s*#\s+.*<\/p>/s)) {
+              // Handle the case where the entire markdown content is in a single paragraph
+              // First, restore line breaks in markdown syntax
+              md = md.replace(/<p>([\s\S]*?)<\/p>/gi, function(match, content) {
+                // Replace markdown line breaks with actual newlines
+                let fixedContent = content
+                  .replace(/\s*#\s+/g, '\n\n# ')                   // Add newlines before headings
+                  .replace(/\s*##\s+/g, '\n\n## ')                 // Add newlines before h2 
+                  .replace(/\s*###\s+/g, '\n\n### ')               // Add newlines before h3
+                  .replace(/\s*####\s+/g, '\n\n#### ')             // Add newlines before h4
+                  .replace(/\s*-\s+\[\s*\]\s*/g, '\n\n- [ ] ')     // Add newlines before unchecked boxes
+                  .replace(/\s*-\s+\[x\]\s*/g, '\n\n- [x] ')       // Add newlines before checked boxes
+                  .replace(/\s*\*([^*]*)\*/g, '\n\n*$1*')          // Add newlines before italic text
+                  .trim();
+                return fixedContent;
+              });
+            } else {
+              // Regular process for headings if they're already properly formatted
+              md = md.replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, '\n\n# $1\n\n');
+              md = md.replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, '\n\n## $1\n\n');
+              md = md.replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, '\n\n### $1\n\n');
+              md = md.replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, '\n\n#### $1\n\n');
+              md = md.replace(/<h5[^>]*>([\s\S]*?)<\/h5>/gi, '\n\n##### $1\n\n');
+              md = md.replace(/<h6[^>]*>([\s\S]*?)<\/h6>/gi, '\n\n###### $1\n\n');
+            }
+            
+            // Process lists carefully - one item at a time
+            md = md.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (match, content) => {
+              // Check if this list item contained a checkbox
+              if (content.includes('__CHECKED_BOX__')) {
+                // Additional safeguards for task list items
+                let taskText = content.replace(/\s*__CHECKED_BOX__\s*/g, '').trim();
+                // Make sure we have extra line breaks for each task
+                return '\n- [x] ' + taskText + '\n\n';
+              } else if (content.includes('__UNCHECKED_BOX__')) {
+                // Additional safeguards for task list items
+                let taskText = content.replace(/\s*__UNCHECKED_BOX__\s*/g, '').trim();
+                // Make sure we have extra line breaks for each task
+                return '\n- [ ] ' + taskText + '\n\n';
+              } else {
+                // Regular list item
+                return '\n- ' + content.trim() + '\n';
+              }
+            });
+            
+            // Process paragraphs with care for line breaks
+            md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n');
+            
+            // Handle text formatting
+            md = md.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, '**$1**');
+            md = md.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '**$1**');
+            md = md.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, '*$1*');
+            md = md.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, '*$1*');
+            
+            // Handle breaks
+            md = md.replace(/<br[^>]*>/gi, '\n');
+            
+            // Remove any remaining HTML tags
+            md = md.replace(/<[^>]*>/g, '');
+            
+            // Handle Markdown that's all on one line case (critical fix)
+            if (!md.includes('\n\n') && md.includes('# ')) {
+              // This is likely markdown content all on a single line
+              // Insert proper line breaks at key markdown syntax points
+              md = md
+                .replace(/# /g, '\n\n# ')
+                .replace(/## /g, '\n\n## ')
+                .replace(/### /g, '\n\n### ')
+                .replace(/\- \[ \]/g, '\n\n- [ ]')
+                .replace(/\- \[x\]/g, '\n\n- [x]')
+                .replace(/\*\*/g, '**');  // Make sure bold stays intact
+            }
+            
+            // Fix spacing issues
+            md = md
+              // Fix excessive newlines while preserving structure
+              .replace(/\n{4,}/g, '\n\n\n')
+              // Double-ensure task list items have proper spacing
+              .replace(/(- \[[x ]\][^\n]*)(\n)(- \[[x ]\])/g, '$1\n\n$3')
+              // Ensure paragraphs have double line breaks
+              .replace(/([^\n])\n([^\n])/g, '$1\n\n$2')
+              // Trim leading/trailing whitespace
+              .trim();
+              
+            console.log("CONVERTED MARKDOWN:", md);
+            
+            return md;
           };
           
           // Convert HTML to Markdown for viewing
           const markdownContent = convertHtml(htmlContent);
+          
+          // Debug the converted markdown to console only
+          console.log("FINAL MARKDOWN CONTENT:", markdownContent);
+          
           setSourceContent(markdownContent);
           setEditorContent(htmlContent);
         } else {
@@ -458,10 +651,36 @@ const DocumentEditor = ({ user }) => {
               try {
                 if (editorRef.current) {
                   // If it's a Markdown document, convert to HTML for editing
-                  if (latestDoc.isMarkdown) {
-                    const html = marked(latestDoc.content);
-                    editorRef.current.setContent(html);
-                    setEditorContent(html);
+                  if (latestDoc.isMarkdown || latestDoc.source === 'task-conversion' || currentIsMarkdown) {
+                    // For markdown documents, use our special markdown editor mode
+                    // First normalize the line breaks
+                    const normalizedContent = latestDoc.content
+                      .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+                      .replace(/\r/g, '\n')    // Convert old Mac line breaks
+                      .replace(/\n{3,}/g, '\n\n'); // Limit excessive line breaks
+                    
+                    // Create the special pre-formatted editor for markdown
+                    const formattedHtml = `<pre class="markdown-editor" contenteditable="true" style="white-space: pre-wrap; font-family: monospace; padding: 10px; background: #f8f9fa; border: none; outline: none; width: 100%; height: 100%; overflow: auto; line-height: 1.5;">${normalizedContent
+                      .replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')}</pre>
+                      <div style="font-size: 11px; color: #6c757d; padding: 5px 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">Markdown editor mode</div>`;
+                    
+                    // Set raw HTML content to bypass TinyMCE parsing
+                    editorRef.current.getBody().innerHTML = formattedHtml;
+                    setEditorContent(formattedHtml);
+                    
+                    // Add a class to the editor content to mark it as markdown in pre format
+                    setTimeout(() => {
+                      if (editorRef.current) {
+                        const editorBody = editorRef.current.getBody();
+                        if (editorBody) {
+                          editorBody.classList.add('markdown-pre-format');
+                          // Disable TinyMCE complex formatting features
+                          editorRef.current.getDoc().execCommand('styleWithCSS', false, false);
+                        }
+                      }
+                    }, 100);
                   } else {
                     // For regular HTML documents, just set it directly
                     editorRef.current.setContent(latestDoc.content);
@@ -485,11 +704,36 @@ const DocumentEditor = ({ user }) => {
             setTimeout(() => {
               try {
                 if (editorRef.current) {
-                  if (currentIsMarkdown) {
-                    // Convert Markdown to HTML for the editor
-                    const html = marked(currentSourceContent);
-                    editorRef.current.setContent(html);
-                    setEditorContent(html);
+                  if (currentIsMarkdown || currentSourceContent.indexOf('##') >= 0) {
+                    // For markdown documents, use our special markdown editor mode
+                    // First normalize the line breaks
+                    const normalizedContent = currentSourceContent
+                      .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+                      .replace(/\r/g, '\n')    // Convert old Mac line breaks
+                      .replace(/\n{3,}/g, '\n\n'); // Limit excessive line breaks
+                    
+                    // Create the special pre-formatted editor for markdown
+                    const formattedHtml = `<pre class="markdown-editor" contenteditable="true" style="white-space: pre-wrap; font-family: monospace; padding: 10px; background: #f8f9fa; border: none; outline: none; width: 100%; height: 100%; overflow: auto; line-height: 1.5;">${normalizedContent
+                      .replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')}</pre>
+                      <div style="font-size: 11px; color: #6c757d; padding: 5px 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">Markdown editor mode</div>`;
+                    
+                    // Set raw HTML content to bypass TinyMCE parsing
+                    editorRef.current.getBody().innerHTML = formattedHtml;
+                    setEditorContent(formattedHtml);
+                    
+                    // Add a class to the editor content to mark it as markdown in pre format
+                    setTimeout(() => {
+                      if (editorRef.current) {
+                        const editorBody = editorRef.current.getBody();
+                        if (editorBody) {
+                          editorBody.classList.add('markdown-pre-format');
+                          // Disable TinyMCE complex formatting features
+                          editorRef.current.getDoc().execCommand('styleWithCSS', false, false);
+                        }
+                      }
+                    }, 100);
                   } else {
                     // For regular HTML documents, just set it directly
                     editorRef.current.setContent(currentSourceContent);
@@ -513,10 +757,35 @@ const DocumentEditor = ({ user }) => {
             try {
               if (editorRef.current) {
                 if (currentIsMarkdown) {
-                  // Convert Markdown to HTML for the editor
-                  const html = marked(currentSourceContent);
-                  editorRef.current.setContent(html);
-                  setEditorContent(html);
+                  // For markdown documents, use our special markdown editor mode
+                  // First normalize the line breaks
+                  const normalizedContent = currentSourceContent
+                    .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+                    .replace(/\r/g, '\n')    // Convert old Mac line breaks
+                    .replace(/\n{3,}/g, '\n\n'); // Limit excessive line breaks
+                  
+                  // Create the special pre-formatted editor for markdown
+                  const formattedHtml = `<pre class="markdown-editor" contenteditable="true" style="white-space: pre-wrap; font-family: monospace; padding: 10px; background: #f8f9fa; border: none; outline: none; width: 100%; height: 100%; overflow: auto; line-height: 1.5;">${normalizedContent
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')}</pre>
+                    <div style="font-size: 11px; color: #6c757d; padding: 5px 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">Markdown editor mode</div>`;
+                  
+                  // Set raw HTML content to bypass TinyMCE parsing
+                  editorRef.current.getBody().innerHTML = formattedHtml;
+                  setEditorContent(formattedHtml);
+                  
+                  // Add a class to the editor content to mark it as markdown in pre format
+                  setTimeout(() => {
+                    if (editorRef.current) {
+                      const editorBody = editorRef.current.getBody();
+                      if (editorBody) {
+                        editorBody.classList.add('markdown-pre-format');
+                        // Disable TinyMCE complex formatting features
+                        editorRef.current.getDoc().execCommand('styleWithCSS', false, false);
+                      }
+                    }
+                  }, 100);
                 } else {
                   // For regular HTML documents, just set it directly
                   editorRef.current.setContent(currentSourceContent);
@@ -537,10 +806,35 @@ const DocumentEditor = ({ user }) => {
           try {
             if (editorRef.current) {
               if (currentIsMarkdown) {
-                // Convert Markdown to HTML for the editor
-                const html = marked(currentSourceContent);
-                editorRef.current.setContent(html);
-                setEditorContent(html);
+                // For markdown documents, use our special markdown editor mode
+                // First normalize the line breaks
+                const normalizedContent = currentSourceContent
+                  .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+                  .replace(/\r/g, '\n')    // Convert old Mac line breaks
+                  .replace(/\n{3,}/g, '\n\n'); // Limit excessive line breaks
+                
+                // Create the special pre-formatted editor for markdown
+                const formattedHtml = `<pre class="markdown-editor" contenteditable="true" style="white-space: pre-wrap; font-family: monospace; padding: 10px; background: #f8f9fa; border: none; outline: none; width: 100%; height: 100%; overflow: auto; line-height: 1.5;">${normalizedContent
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')}</pre>
+                  <div style="font-size: 11px; color: #6c757d; padding: 5px 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">Markdown editor mode</div>`;
+                
+                // Set raw HTML content to bypass TinyMCE parsing
+                editorRef.current.getBody().innerHTML = formattedHtml;
+                setEditorContent(formattedHtml);
+                
+                // Add a class to the editor content to mark it as markdown in pre format
+                setTimeout(() => {
+                  if (editorRef.current) {
+                    const editorBody = editorRef.current.getBody();
+                    if (editorBody) {
+                      editorBody.classList.add('markdown-pre-format');
+                      // Disable TinyMCE complex formatting features
+                      editorRef.current.getDoc().execCommand('styleWithCSS', false, false);
+                    }
+                  }
+                }, 100);
               } else {
                 // For regular HTML documents, just set it directly
                 editorRef.current.setContent(currentSourceContent);
@@ -572,25 +866,32 @@ const DocumentEditor = ({ user }) => {
   const renderMarkdownContent = () => {
     if (!sourceContent) return '';
     
-    // Simpler approach - just use marked directly
-    // with basic options, and then post-process the HTML
     try {
+      // Log the original markdown content for debugging
+      console.log("ORIGINAL MARKDOWN CONTENT:", sourceContent);
+      
+      // Configure marked with better defaults
       marked.setOptions({
-        gfm: true, // GitHub Flavored Markdown
-        breaks: true, // Add <br> on single line breaks
-        smartLists: true,
+        gfm: true,           // GitHub Flavored Markdown
+        breaks: true,        // Add <br> on single line breaks
+        smartLists: true,    // Better list handling
+        headerIds: false,    // Don't add IDs to headers
+        mangle: false,       // Don't mangle email addresses
       });
       
-      // Get the HTML content
+      // Use a more direct rendering approach with minimal post-processing
       let htmlContent = marked(sourceContent);
       
-      // Post-process the HTML to handle checkbox items
-      // First, convert Markdown style checkboxes that didn't get properly converted
+      // Improved task list handling - catch both list versions and loose versions
       htmlContent = htmlContent
-        .replace(/<li>\s*\[ \]\s*(.*?)<\/li>/gi, '<li><input type="checkbox" disabled> $1</li>')
-        .replace(/<li>\s*\[x\]\s*(.*?)<\/li>/gi, '<li><input type="checkbox" checked disabled> $1</li>')
-        .replace(/<p>\s*\[ \]\s*(.*?)<\/p>/gi, '<p><input type="checkbox" disabled> $1</p>')
-        .replace(/<p>\s*\[x\]\s*(.*?)<\/p>/gi, '<p><input type="checkbox" checked disabled> $1</p>');
+        // Handle task lists in proper list items
+        .replace(/<li>\s*\[\s\]\s*(.*?)<\/li>/g, '<li><input type="checkbox" disabled> $1</li>')
+        .replace(/<li>\s*\[x\]\s*(.*?)<\/li>/g, '<li><input type="checkbox" checked disabled> $1</li>')
+        // Also handle cases where the markdown task list wasn't properly converted to an HTML list
+        .replace(/<p>-\s*\[\s\]\s*(.*?)<\/p>/g, '<p><input type="checkbox" disabled> $1</p>')
+        .replace(/<p>-\s*\[x\]\s*(.*?)<\/p>/g, '<p><input type="checkbox" checked disabled> $1</p>');
+      
+      console.log("RENDERED HTML:", htmlContent);
       
       return (
         <div 
@@ -727,9 +1028,34 @@ const DocumentEditor = ({ user }) => {
             init={{
               height: 500,
               menubar: false,
-              plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount linkchecker',
-              toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
-              content_style: 'body { font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:14px; color:#1e293b; }',
+              plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount linkchecker code',
+              toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat | code',
+              content_style: `
+                body { 
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+                  font-size: 14px; 
+                  color: #1e293b; 
+                  white-space: pre-wrap;
+                }
+                pre {
+                  white-space: pre-wrap;
+                }
+              `,
+              // Better handling of line breaks and formatting
+              forced_root_block: 'p',  // Use paragraph as root block but with good line break handling
+              end_container_on_empty_block: true,
+              entity_encoding: 'raw',
+              convert_urls: false,
+              element_format: 'html',
+              keep_styles: true,
+              br_newline_selector: '.tinymce-newline',
+              // Better list handling
+              valid_elements: '*[*]',
+              extended_valid_elements: 'li[class|style],ul[class|style],ol[class|style],input[type|checked],pre[*],code[*]',
+              // Preserve line breaks in markdown
+              protect: [
+                /\n/g,  // Protect newlines
+              ],
               setup: (editor) => {
                 // Track content changes only when done typing or on keyup with a delay
                 let typingTimer;

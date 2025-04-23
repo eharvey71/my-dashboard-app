@@ -280,6 +280,17 @@
 .markdownPreview input[type="checkbox"] {
   margin-right: 0.5em;
   transform: scale(1.1);
+  vertical-align: middle;
+}
+
+/* Improve task list styling */
+.markdownPreview li input[type="checkbox"] {
+  margin-left: -1.5em;
+  margin-right: 0.5em;
+}
+
+.markdownPreview p input[type="checkbox"] {
+  margin-right: 0.5em;
 }
 
 .markdownPreview img {
@@ -398,6 +409,21 @@
   border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Style for editor when it's displaying markdown as code */
+:global(.markdown-pre-format) {
+  background-color: #f8f9fa;
+}
+
+:global(.markdown-pre-format pre) {
+  background-color: #f8f9fa;
+  font-family: monospace;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  border: none;
+  margin: 0;
+  padding: 10px;
 }
 
 @keyframes pulse {

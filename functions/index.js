@@ -581,7 +581,7 @@ exports.convertTasksToDocument = functions.https.onCall(async (data, context) =>
         highPriority.forEach(task => {
           const dueDate = task.nextDueDate ? `\n**Due:** ${new Date(task.nextDueDate).toLocaleDateString()}` : '';
           const notes = task.notes ? `\n\n${task.notes}` : '';
-          documentContent += `- [ ] **${task.title || task.content}**${dueDate}${notes}\n\n`;
+          documentContent += `${task.title || task.content}${dueDate}${notes}\n\n`;
         });
       }
       
@@ -591,7 +591,7 @@ exports.convertTasksToDocument = functions.https.onCall(async (data, context) =>
         mediumPriority.forEach(task => {
           const dueDate = task.nextDueDate ? `\n**Due:** ${new Date(task.nextDueDate).toLocaleDateString()}` : '';
           const notes = task.notes ? `\n\n${task.notes}` : '';
-          documentContent += `- [ ] **${task.title || task.content}**${dueDate}${notes}\n\n`;
+          documentContent += `${task.title || task.content}${dueDate}${notes}\n\n`;
         });
       }
       
@@ -601,7 +601,7 @@ exports.convertTasksToDocument = functions.https.onCall(async (data, context) =>
         lowPriority.forEach(task => {
           const dueDate = task.nextDueDate ? `\n**Due:** ${new Date(task.nextDueDate).toLocaleDateString()}` : '';
           const notes = task.notes ? `\n\n${task.notes}` : '';
-          documentContent += `- [ ] **${task.title || task.content}**${dueDate}${notes}\n\n`;
+          documentContent += `${task.title || task.content}${dueDate}${notes}\n\n`;
         });
       }
       
@@ -611,7 +611,7 @@ exports.convertTasksToDocument = functions.https.onCall(async (data, context) =>
         noPriority.forEach(task => {
           const dueDate = task.nextDueDate ? `\n**Due:** ${new Date(task.nextDueDate).toLocaleDateString()}` : '';
           const notes = task.notes ? `\n\n${task.notes}` : '';
-          documentContent += `- [ ] **${task.title || task.content}**${dueDate}${notes}\n\n`;
+          documentContent += `${task.title || task.content}${dueDate}${notes}\n\n`;
         });
       }
     } else {
@@ -625,7 +625,7 @@ exports.convertTasksToDocument = functions.https.onCall(async (data, context) =>
       completedTasks.forEach(task => {
         const completedDate = task.completedAt ? `\n**Completed:** ${new Date(task.completedAt.toDate ? task.completedAt.toDate() : task.completedAt).toLocaleDateString()}` : '';
         const notes = task.notes ? `\n\n${task.notes}` : '';
-        documentContent += `- [x] **${task.title || task.content}**${completedDate}${notes}\n\n`;
+        documentContent += `${task.title || task.content}${completedDate}${notes}\n\n`;
       });
     } else {
       documentContent += "*No completed tasks*\n\n";
