@@ -7,8 +7,8 @@ import { getTerm, getTerms } from "../utils/terminologyMapper";
  */
 const EducationContext = createContext({
   educationMode: false,
-  getTerm: (key) => key,
-  getTerms: (keys) => keys,
+  getTerm: (key, projectType) => key,
+  getTerms: (keys, projectType) => keys,
 });
 
 /**
@@ -20,8 +20,8 @@ export const EducationProvider = ({ educationMode = false, children }) => {
   const contextValue = useMemo(() => {
     return {
       educationMode,
-      getTerm: (key) => getTerm(key, educationMode),
-      getTerms: (keys) => getTerms(keys, educationMode),
+      getTerm: (key, projectType = 'general') => getTerm(key, educationMode, projectType),
+      getTerms: (keys, projectType = 'general') => getTerms(keys, educationMode, projectType),
     };
   }, [educationMode]);
 

@@ -13,13 +13,26 @@ const terminologyMap = {
     standard: "Spaces",
     education: "Spaces",
   },
+  // Tasks - context-aware based on space type
   task: {
     standard: "Task",
-    education: "Assignment",
+    education: {
+      course: "Assignment",
+      research: "Milestone",
+      thesis: "Objective",
+      "study-group": "Task",
+      general: "Task",
+    },
   },
   tasks: {
     standard: "Tasks",
-    education: "Assignments",
+    education: {
+      course: "Assignments",
+      research: "Milestones",
+      thesis: "Objectives",
+      "study-group": "Tasks",
+      general: "Tasks",
+    },
   },
   note: {
     standard: "Note",
@@ -69,23 +82,47 @@ const terminologyMap = {
   },
   addTask: {
     standard: "Add Task",
-    education: "Add Assignment",
+    education: {
+      course: "Add Assignment",
+      research: "Add Milestone",
+      thesis: "Add Objective",
+      "study-group": "Add Task",
+      general: "Add Task",
+    },
   },
   taskList: {
     standard: "Task List",
-    education: "Assignments",
+    education: {
+      course: "Assignments",
+      research: "Milestones",
+      thesis: "Objectives",
+      "study-group": "Tasks",
+      general: "Tasks",
+    },
   },
   completedTasks: {
     standard: "Completed Tasks",
-    education: "Completed Assignments",
+    education: {
+      course: "Completed Assignments",
+      research: "Completed Milestones",
+      thesis: "Completed Objectives",
+      "study-group": "Completed Tasks",
+      general: "Completed Tasks",
+    },
   },
   viewAllTasks: {
     standard: "View All Tasks",
-    education: "View All Assignments",
+    education: {
+      course: "View All Assignments",
+      research: "View All Milestones",
+      thesis: "View All Objectives",
+      "study-group": "View All Tasks",
+      general: "View All Tasks",
+    },
   },
   addBookmark: {
     standard: "Add Bookmark",
-    education: "Add Resource",
+    education: "Add Bookmark",
   },
   createSynapse: {
     standard: "Create Synapse",
@@ -128,29 +165,42 @@ const terminologyMap = {
 };
 
 /**
- * Get the appropriate term based on the current mode
+ * Get the appropriate term based on the current mode and project type
  * @param {string} key - The terminology key
  * @param {boolean} educationMode - Whether education mode is active
+ * @param {string} projectType - The type of project (course, research, thesis, etc.)
  * @returns {string} - The appropriate term
  */
-export const getTerm = (key, educationMode = false) => {
-  const mode = educationMode ? "education" : "standard";
-
+export const getTerm = (key, educationMode = false, projectType = 'general') => {
   if (!terminologyMap[key]) {
     console.warn(`Terminology key "${key}" not found in terminologyMap`);
     return key;
   }
 
-  return terminologyMap[key][mode] || terminologyMap[key].standard;
+  const termData = terminologyMap[key];
+
+  if (educationMode) {
+    // Check if education value is an object (context-aware)
+    if (typeof termData.education === 'object' && !Array.isArray(termData.education)) {
+      // Return the term for the specific project type, fallback to general
+      return termData.education[projectType] || termData.education.general || termData.standard;
+    }
+    // Simple education mode term
+    return termData.education || termData.standard;
+  }
+
+  // Standard mode
+  return termData.standard;
 };
 
 /**
  * React hook for using terminology in components
  * @param {boolean} educationMode - Whether education mode is active
+ * @param {string} projectType - The type of project
  * @returns {function} - Function to get terms
  */
-export const useTerminology = (educationMode = false) => {
-  return (key) => getTerm(key, educationMode);
+export const useTerminology = (educationMode = false, projectType = 'general') => {
+  return (key) => getTerm(key, educationMode, projectType);
 };
 
 /**
@@ -165,11 +215,12 @@ export const getAvailableKeys = () => {
  * Batch get multiple terms
  * @param {string[]} keys - Array of terminology keys
  * @param {boolean} educationMode - Whether education mode is active
+ * @param {string} projectType - The type of project
  * @returns {Object} - Object with keys mapped to appropriate terms
  */
-export const getTerms = (keys, educationMode = false) => {
+export const getTerms = (keys, educationMode = false, projectType = 'general') => {
   return keys.reduce((acc, key) => {
-    acc[key] = getTerm(key, educationMode);
+    acc[key] = getTerm(key, educationMode, projectType);
     return acc;
   }, {});
 };

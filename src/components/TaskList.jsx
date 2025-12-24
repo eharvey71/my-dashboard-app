@@ -6,11 +6,13 @@ import {
   ChevronDown, Repeat, Edit
 } from "lucide-react";
 import { useEducation } from "../contexts/EducationContext";
+import { useProjectContext } from "../contexts/ProjectContext";
 import styles from "./TaskList.module.css";
 import moduleStyles from "./DashboardModule.module.css";
 
 const TaskList = ({ user, projectId, limit = 5 }) => {
   const { getTerm } = useEducation();
+  const { activeProjectType } = useProjectContext();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState("");
@@ -244,7 +246,7 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
       <div className={moduleStyles.header}>
         <h2 className={moduleStyles.title}>
           <ListTodo size={20} />
-          <span>{getTerm("tasks")}</span>
+          <span>{getTerm("tasks", activeProjectType)}</span>
         </h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <label className="form-check form-switch" style={{ fontSize: '0.875rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -258,7 +260,7 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
           </label>
 
           <Link to={`/project/${projectId}/tasks`} className={moduleStyles.viewAllButton}>
-            {getTerm("viewAllTasks")}
+            {getTerm("viewAllTasks", activeProjectType)}
           </Link>
         </div>
       </div>
@@ -267,7 +269,7 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
         <input
           type="text"
           className={moduleStyles.input}
-          placeholder={`New ${getTerm("task")}`}
+          placeholder={`New ${getTerm("task", activeProjectType)}`}
           value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
           onKeyPress={(e) => {
