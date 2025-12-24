@@ -43,6 +43,14 @@ const UserAccount = () => {
     setLoading(true);
 
     try {
+      console.log("Attempting to update profile with:", {
+        displayName: displayName.trim(),
+        city: city.trim(),
+        timezone,
+        unit,
+        educationMode,
+      });
+
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
         displayName: displayName.trim(),
         city: city.trim(),
@@ -50,6 +58,8 @@ const UserAccount = () => {
         unit,
         educationMode,
       });
+
+      console.log("Profile updated successfully");
 
       // Force a refresh of the parent component
       if (window.location.pathname === "/account") {
@@ -59,7 +69,10 @@ const UserAccount = () => {
 
       setSuccess("Profile updated successfully");
     } catch (err) {
-      setError("Failed to update profile");
+      console.error("Failed to update profile:", err);
+      console.error("Error code:", err.code);
+      console.error("Error message:", err.message);
+      setError(`Failed to update profile: ${err.message}`);
     }
     setLoading(false);
   };
