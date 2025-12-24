@@ -6,6 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ProjectProvider } from "./contexts/ProjectContext";
+import { EducationProvider } from "./contexts/EducationContext";
 import TimerProviderWithOverlay from "./components/TimerProviderWithOverlay";
 import { initializeGoogleDriveApi } from "./services/googleDriveService";
 import NavBar from "./components/NavBar";
@@ -45,6 +46,7 @@ const initialState = {
   googleDriveSignedIn: false,
   googleDriveInitialized: false,
   displayNameSet: false,
+  educationMode: false,
 };
 
 const App = () => {
@@ -83,6 +85,7 @@ const App = () => {
           lastAccessedProject,
           loading: false,
           initialized: true,
+          educationMode: userData.educationMode || false,
         }));
 
         // Redirect to profile setup if display name not set
@@ -165,11 +168,13 @@ const App = () => {
           setGoogleDriveSignedIn,
           isInitialized: state.initialized,
           user: state.user,
+          educationMode: state.educationMode,
         }}
       >
-        <ProjectProvider user={state.user}>
-          <TimerProviderWithOverlay>
-            <ErrorBoundary>
+        <EducationProvider educationMode={state.educationMode}>
+          <ProjectProvider user={state.user}>
+            <TimerProviderWithOverlay>
+              <ErrorBoundary>
               <NavBar user={state.user} />
               <div className="main-container">
                 <Routes>
@@ -339,9 +344,10 @@ const App = () => {
                   ) : null}
                 </Routes>
               </div>
-            </ErrorBoundary>
-          </TimerProviderWithOverlay>
-        </ProjectProvider>
+              </ErrorBoundary>
+            </TimerProviderWithOverlay>
+          </ProjectProvider>
+        </EducationProvider>
       </AppContext.Provider>
     </Router>
   );

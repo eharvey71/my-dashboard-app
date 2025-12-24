@@ -11,6 +11,7 @@ const UserAccount = () => {
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
   const [unit, setUnit] = useState("imperial"); // Add unit state
+  const [educationMode, setEducationMode] = useState(false); // Add education mode state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -26,6 +27,7 @@ const UserAccount = () => {
           userData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
         );
         setUnit(userData.unit || "imperial"); // Load unit from user data
+        setEducationMode(userData.educationMode || false); // Load education mode from user data
       } catch (err) {
         setError("Failed to load user data");
       }
@@ -46,6 +48,7 @@ const UserAccount = () => {
         city: city.trim(),
         timezone,
         unit,
+        educationMode,
       });
 
       // Force a refresh of the parent component
@@ -115,6 +118,20 @@ const UserAccount = () => {
                     <option value="metric">Celsius (°C)</option>
                     <option value="imperial">Fahrenheit (°F)</option>
                   </select>
+                </div>
+                <div className={`mb-3 ${styles.formGroup}`}>
+                  <label className="form-label">Application Mode</label>
+                  <select
+                    className={`form-select ${styles.formControl}`}
+                    value={educationMode ? "education" : "standard"}
+                    onChange={(e) => setEducationMode(e.target.value === "education")}
+                  >
+                    <option value="standard">Standard Mode</option>
+                    <option value="education">Education Mode</option>
+                  </select>
+                  <small className="form-text text-muted">
+                    Education Mode adapts the interface for academic use (courses, assignments, study materials)
+                  </small>
                 </div>
                 {error && <div className="alert alert-danger">{error}</div>}
                 {success && (

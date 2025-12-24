@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { logout } from "../services/firebaseAuth";
 import { useProjectContext } from "../contexts/ProjectContext";
+import { useEducation } from "../contexts/EducationContext";
 import LogoutButton from "./LogoutButton";
 import WeatherWidget from "./WeatherWidget";
 import TimeWidget from "./TimeWidget";
@@ -23,6 +24,7 @@ const NavBar = ({ user }) => {
   const navigate = useNavigate();
   const { projects, activeProject, updateActiveProject, displayName } =
     useProjectContext();
+  const { getTerm } = useEducation();
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -165,7 +167,7 @@ const NavBar = ({ user }) => {
                     onChange={handleProjectChange}
                   >
                     {projects.length === 0 ? (
-                      <option value="">Select Project</option>
+                      <option value="">Select {getTerm("project")}</option>
                     ) : (
                       projects.map((project) => (
                         <option key={project.id} value={project.id}>
@@ -208,7 +210,7 @@ const NavBar = ({ user }) => {
                             to={`/project/${activeProject}/documents`}
                             className={styles.dropdownItem}
                           >
-                            <FileText size={16} /> Documents
+                            <FileText size={16} /> {getTerm("documents")}
                           </Link>
                         </li>
                         <li>
@@ -216,7 +218,7 @@ const NavBar = ({ user }) => {
                             to={`/project/${activeProject}/tasks`}
                             className={styles.dropdownItem}
                           >
-                            <CheckSquare size={16} /> Tasks
+                            <CheckSquare size={16} /> {getTerm("tasks")}
                           </Link>
                         </li>
                         <li>
@@ -224,7 +226,7 @@ const NavBar = ({ user }) => {
                             to={`/project/${activeProject}/notes`}
                             className={styles.dropdownItem}
                           >
-                            <StickyNote size={16} /> Notes
+                            <StickyNote size={16} /> {getTerm("notes")}
                           </Link>
                         </li>
                         <li>
@@ -232,7 +234,7 @@ const NavBar = ({ user }) => {
                             to={`/project/${activeProject}/bookmarks`}
                             className={styles.dropdownItem}
                           >
-                            <Bookmark size={16} /> Bookmarks
+                            <Bookmark size={16} /> {getTerm("bookmarks")}
                           </Link>
                         </li>
                       </ul>
@@ -260,7 +262,7 @@ const NavBar = ({ user }) => {
                             to={`/project/${activeProject}/focus`}
                             className={styles.dropdownItem}
                           >
-                            <Timer size={16} /> Focus Timer
+                            <Timer size={16} /> {getTerm("focusTimer")}
                           </Link>
                         </li>
                         <li>
@@ -276,7 +278,7 @@ const NavBar = ({ user }) => {
                             to={`/project/${activeProject}/synapses`}
                             className={styles.dropdownItem}
                           >
-                            <Brain size={16} /> Synapses
+                            <Brain size={16} /> {getTerm("synapses")}
                           </Link>
                         </li>
                       </ul>

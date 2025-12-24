@@ -7,6 +7,7 @@ import {
   deleteTask,
 } from "../services/firebaseConfig";
 import { useProjectContext } from "../contexts/ProjectContext";
+import { useEducation } from "../contexts/EducationContext";
 import ProjectTaskItem from "./ProjectTaskItem";
 import { 
   Folder, PlusCircle, LayoutDashboard, Settings, 
@@ -25,6 +26,7 @@ const ProjectList = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const { projects, addProject, updateActiveProject, updateProjectName } =
     useProjectContext();
+  const { getTerm } = useEducation();
   const [sortBy, setSortBy] = useState("priority");
   const navigate = useNavigate();
 
@@ -98,7 +100,7 @@ const ProjectList = ({ user }) => {
     }
 
     if (!newProjectName.trim()) {
-      setError("Project name cannot be empty");
+      setError(`${getTerm("project")} name cannot be empty`);
       return;
     }
 
@@ -121,7 +123,7 @@ const ProjectList = ({ user }) => {
       window.location.href = `/project/${newProject.id}`;
     } catch (error) {
       console.error("Error in project creation:", error);
-      setError("Failed to create project. Please try again.");
+      setError(`Failed to create ${getTerm("project").toLowerCase()}. Please try again.`);
     }
   };
 
@@ -142,7 +144,7 @@ const ProjectList = ({ user }) => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editingProjectName.trim()) {
-      setError("Project name cannot be empty");
+      setError(`${getTerm("project")} name cannot be empty`);
       return;
     }
     try {
@@ -154,7 +156,7 @@ const ProjectList = ({ user }) => {
       setEditingProjectName("");
       setError("");
     } catch (error) {
-      setError("Failed to update project name. Please try again.");
+      setError(`Failed to update ${getTerm("project").toLowerCase()} name. Please try again.`);
     }
   };
 
@@ -201,7 +203,7 @@ const ProjectList = ({ user }) => {
 
   return (
     <div className="container mt-4">
-      <h1 className={moduleStyles.title}>My Projects</h1>
+      <h1 className={moduleStyles.title}>My {getTerm("projects")}</h1>
       
       <div className="row mt-4 mb-5">
         {/* Left column: New Project Form */}
@@ -209,12 +211,12 @@ const ProjectList = ({ user }) => {
           <div className={moduleStyles.container}>
             <h2 className={moduleStyles.subtitle}>
               <PlusCircle size={20} />
-              <span>Create New Project</span>
+              <span>{getTerm("createProject")}</span>
             </h2>
             <form onSubmit={handleCreateProject}>
               <div className={moduleStyles.formGroup}>
                 <label htmlFor="projectName" className={moduleStyles.label}>
-                  Project Name
+                  {getTerm("project")} Name
                 </label>
                 <input
                   type="text"
@@ -224,7 +226,7 @@ const ProjectList = ({ user }) => {
                   onChange={(e) => setNewProjectName(e.target.value)}
                   required
                   disabled={formDisabled}
-                  placeholder="Enter project name"
+                  placeholder={`Enter ${getTerm("project").toLowerCase()} name`}
                 />
               </div>
               {error && <div className={`${moduleStyles.alert} ${moduleStyles.alertDanger}`}>{error}</div>}
@@ -233,7 +235,7 @@ const ProjectList = ({ user }) => {
                 className={`${moduleStyles.button} ${moduleStyles.primaryButton}`}
                 disabled={formDisabled}
               >
-                {formDisabled ? "Initializing..." : "Create Project"}
+                {formDisabled ? "Initializing..." : getTerm("createProject")}
               </button>
             </form>
           </div>
@@ -244,9 +246,9 @@ const ProjectList = ({ user }) => {
           <div className={moduleStyles.container}>
             <h2 className={moduleStyles.subtitle}>
               <Folder size={20} />
-              <span>My Projects</span>
+              <span>My {getTerm("projects")}</span>
             </h2>
-            
+
             {projects.length > 0 ? (
               <ul className={moduleStyles.list}>
                 {projects.map((project) => (
@@ -299,7 +301,7 @@ const ProjectList = ({ user }) => {
                           <button
                             className={`${moduleStyles.iconButton}`}
                             onClick={() => handleEditClick(project)}
-                            title="Edit project"
+                            title={`Edit ${getTerm("project").toLowerCase()}`}
                           >
                             <Settings size={16} />
                           </button>
@@ -311,7 +313,7 @@ const ProjectList = ({ user }) => {
               </ul>
             ) : (
               <div className={moduleStyles.emptyState}>
-                <p>You don't have any projects yet. Create one using the form on the left!</p>
+                <p>You don't have any {getTerm("projects").toLowerCase()} yet. Create one using the form on the left!</p>
               </div>
             )}
           </div>
@@ -323,7 +325,7 @@ const ProjectList = ({ user }) => {
         <div className={moduleStyles.header}>
           <h2 className={moduleStyles.subtitle}>
             <ListTodo size={20} />
-            <span>Tasks Across All Projects</span>
+            <span>{getTerm("tasks")} Across All {getTerm("projects")}</span>
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <label htmlFor="sortTasks" className="text-muted d-none d-sm-block" style={{ fontSize: '0.875rem', marginBottom: 0 }}>
@@ -336,14 +338,14 @@ const ProjectList = ({ user }) => {
               onChange={handleSortChange}
               style={{ width: 'auto', marginBottom: 0 }}
             >
-              <option value="priority">Sort by Priority</option>
-              <option value="project">Group by Project</option>
+              <option value="priority">Sort by {getTerm("priority")}</option>
+              <option value="project">Group by {getTerm("project")}</option>
             </select>
           </div>
         </div>
 
         {loading ? (
-          <div className={moduleStyles.loading}>Loading tasks...</div>
+          <div className={moduleStyles.loading}>Loading {getTerm("tasks").toLowerCase()}...</div>
         ) : allTasks.length > 0 ? (
           <>
             {sortBy === "project" ? (
@@ -392,7 +394,7 @@ const ProjectList = ({ user }) => {
           </>
         ) : (
           <div className={moduleStyles.emptyState}>
-            <p>No tasks added yet. Create a project and add some tasks to get started!</p>
+            <p>No {getTerm("tasks").toLowerCase()} added yet. Create a {getTerm("project").toLowerCase()} and add some {getTerm("tasks").toLowerCase()} to get started!</p>
           </div>
         )}
       </div>
