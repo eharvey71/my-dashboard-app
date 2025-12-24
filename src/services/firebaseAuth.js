@@ -118,7 +118,7 @@ export const completeSignInWithEmailLink = async (email, link) => {
   }
 };
 
-export const updateUserDisplayName = async (uid, displayName) => {
+export const updateUserDisplayName = async (uid, displayName, educationMode = false) => {
   try {
     console.log("Attempting to update display name for uid:", uid);
     const userRef = doc(db, "users", uid);
@@ -134,6 +134,7 @@ export const updateUserDisplayName = async (uid, displayName) => {
         emailVerified: true,
         displayName: displayName,
         displayNameSet: true,
+        educationMode: educationMode,
         lastAccessedProject: null,
       });
     } else {
@@ -141,6 +142,7 @@ export const updateUserDisplayName = async (uid, displayName) => {
       await updateDoc(userRef, {
         displayName: displayName,
         displayNameSet: true,
+        educationMode: educationMode,
       });
     }
 
