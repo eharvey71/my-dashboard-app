@@ -9,9 +9,9 @@ import {
 import { useProjectContext } from "../contexts/ProjectContext";
 import { useEducation } from "../contexts/EducationContext";
 import ProjectTaskItem from "./ProjectTaskItem";
-import { 
-  Folder, PlusCircle, LayoutDashboard, Settings, 
-  ListTodo, SortAsc, SortDesc, PanelLeftClose
+import {
+  Folder, PlusCircle, LayoutDashboard, Settings,
+  ListTodo, SortAsc, SortDesc, PanelLeftClose, ChevronDown
 } from "lucide-react";
 import moduleStyles from "./ProjectModule.module.css";
 import styles from "./ProjectTaskItem.module.css";
