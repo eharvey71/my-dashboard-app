@@ -29,6 +29,8 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
     // Add a timestamp to use for cache busting
-    'import.meta.env.VITE_CACHE_BUST': JSON.stringify(timestamp)
+    'import.meta.env.VITE_CACHE_BUST': JSON.stringify(timestamp),
+    // Polyfill global for Pinecone SDK (Node.js compatibility)
+    'global': 'window'
   }
 });
