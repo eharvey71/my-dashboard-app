@@ -686,7 +686,7 @@ exports.analyzeSynapseContent = functions.https.onCall(
       );
     }
 
-    const { synapseContent, synapseName, analysisType = "comprehensive", analysisMode = "core" } = data;
+    const { synapseContent, synapseName, analysisType = "comprehensive", analysisMode = "core", educationMode = false, projectType = "general" } = data;
 
     try {
       // Organize content by type
@@ -752,9 +752,36 @@ ${fullContent}
         )
         .join("\n");
 
+      // Helper function to get context-aware terminology
+      const getTaskTerm = () => {
+        if (!educationMode) return "tasks";
+        switch (projectType) {
+          case "course": return "assignments";
+          case "research": return "milestones";
+          case "thesis": return "objectives";
+          default: return "tasks";
+        }
+      };
+
+      const getSpaceContext = () => {
+        if (!educationMode) return "project";
+        switch (projectType) {
+          case "course": return "course";
+          case "research": return "research project";
+          case "thesis": return "thesis";
+          case "study-group": return "study group";
+          default: return "academic project";
+        }
+      };
+
+      const taskTerm = getTaskTerm();
+      const spaceContext = getSpaceContext();
+
       // Configure the analysis based on the analysis type
       let specificFocus = "";
-      let systemPrompt = "You are an AI assistant specializing in finding meaningful patterns and connections between different types of project items. You provide deep, substantive analysis that goes beyond shallow overviews.";
+      let systemPrompt = educationMode
+        ? `You are an AI assistant specializing in academic analysis and learning. You help students and educators find meaningful patterns and connections between different types of ${spaceContext} materials. You provide deep, substantive analysis that goes beyond shallow overviews, with a focus on learning outcomes and academic insights.`
+        : "You are an AI assistant specializing in finding meaningful patterns and connections between different types of project items. You provide deep, substantive analysis that goes beyond shallow overviews.";
       let maxTokens = 2500; // Default token limit
       
       // Add debug logging to see what we're working with
@@ -772,7 +799,16 @@ ${fullContent}
       
       switch (analysisType) {
         case "relationships":
-          specificFocus = `Focus primarily on:
+          specificFocus = educationMode
+            ? `Focus primarily on this ${spaceContext}:
+1. Detailed relationship mapping between all materials - be specific and extensive, highlighting how concepts build upon each other
+2. Analyze how different content types interact with concrete examples${projectType === "course" ? ", noting prerequisite relationships and course progression" : ""}
+3. Map hierarchical or dependency relationships between materials using specific academic references${projectType === "research" || projectType === "thesis" ? ", including methodology dependencies" : ""}
+4. Identify conflicting or reinforcing concepts and explain precisely how they interact in the context of learning
+5. Provide network-style analysis of how ideas connect with substantive examples, emphasizing knowledge building${projectType === "course" ? "\n6. Connect materials to course learning objectives and outcomes" : ""}
+
+Important: Include direct references to specific content from the source materials. Don't just list relationships - explain them in detail with evidence and academic context.`
+            : `Focus primarily on:
 1. Detailed relationship mapping between all items - be specific and extensive
 2. Analyze how different content types interact with each other with concrete examples
 3. Map hierarchical or dependency relationships between items using specific references
@@ -783,31 +819,64 @@ Important: Include direct references to specific content from the source items. 
           break;
           
         case "summary":
-          specificFocus = `Focus primarily on:
+          specificFocus = educationMode
+            ? `Focus primarily on this ${spaceContext}:
+1. High-level academic summary of the key themes and learning objectives (be concise but substantive)
+2. The 3-5 most important insights from this collection with specific examples${projectType === "course" ? ", emphasizing exam-relevant content" : ""}
+3. Brief academic recommendations based on these insights, referencing specific content${projectType === "research" || projectType === "thesis" ? " and research implications" : ""}
+4. Balance conciseness with meaningful content and actionable academic detail
+
+Include specific references to the content where appropriate to maintain precision. Emphasize learning outcomes and knowledge synthesis.`
+            : `Focus primarily on:
 1. High-level executive summary of the key themes (be concise but substantive)
 2. The 3-5 most important insights from this collection with specific examples
 3. Brief recommendations based on these insights, referencing specific content
 4. Balance conciseness with meaningful content and actionable detail
 
 Include specific references to the content where appropriate to maintain precision.`;
-          systemPrompt = "You are an executive assistant providing concise yet substantive summaries of complex information.";
+          systemPrompt = educationMode
+            ? `You are an academic summarizer providing concise yet substantive summaries tailored to ${spaceContext} contexts. You emphasize learning outcomes and academic insights.`
+            : "You are an executive assistant providing concise yet substantive summaries of complex information.";
           break;
           
         case "actionItems":
-          specificFocus = `Focus primarily on:
+          specificFocus = educationMode
+            ? `Focus primarily on:
+1. Extracting and organizing all explicit and implicit ${taskTerm} and action items with concrete details relevant to this ${spaceContext}
+2. Prioritizing these ${taskTerm} by academic importance and deadlines with rationale
+3. Identifying dependencies between ${taskTerm} with specific reasoning${projectType === "course" ? ", considering prerequisite knowledge and course structure" : ""}
+4. Suggesting precise timeframes for completion where possible, considering academic calendars
+5. Identifying missing ${taskTerm} that would be logical next steps for ${spaceContext === "course" ? "course completion" : "academic progress"}
+6. For each ${taskTerm.slice(0, -1)}, include specific references to the source content
+${projectType === "research" || projectType === "thesis" ? "\n7. Consider research methodology requirements and milestone dependencies" : ""}
+
+Your response should be highly actionable for a student or educator, with clear steps and academic context for each item. Avoid vague suggestions. Provide substantive descriptions that help advance learning and academic goals.`
+            : `Focus primarily on:
 1. Extracting and organizing all explicit and implicit action items with concrete details
 2. Prioritizing these action items by apparent importance with rationale
 3. Identifying dependencies between action items with specific reasoning
 4. Suggesting precise timeframes for completion where possible
-5. Identifying missing action items that would be logical next steps 
+5. Identifying missing action items that would be logical next steps
 6. For each action item, include specific references to the source content
 
 Your response should be highly actionable, with clear steps and rationale for each item. Avoid vague suggestions. Provide substantive descriptions of each action item.`;
-          systemPrompt = "You are a project management assistant specializing in detailed action item extraction and organization.";
+          systemPrompt = educationMode
+            ? `You are an academic planning assistant specializing in detailed ${taskTerm} extraction and organization for ${spaceContext} contexts. You understand academic workflows and learning objectives.`
+            : "You are a project management assistant specializing in detailed action item extraction and organization.";
           break;
           
         case "timeline":
-          specificFocus = `Focus primarily on:
+          specificFocus = educationMode
+            ? `Focus primarily on this ${spaceContext}:
+1. Analyzing the temporal relationships between materials with specific references to ${spaceContext} progression
+2. Creating a detailed logical sequence or timeline aligned with ${projectType === "course" ? "course syllabus and semester structure" : projectType === "thesis" || projectType === "research" ? "research methodology and phases" : "learning progression"}
+3. Identifying completed work vs. upcoming ${taskTerm} with supporting evidence${projectType === "course" ? ", considering assignment due dates and exam schedules" : ""}
+4. Suggesting a chronological organization optimized for learning outcomes with rationale
+5. Noting time-sensitive ${taskTerm} and deadlines that require attention, with specific references
+6. Where appropriate, create a visual timeline representation using markdown${projectType === "course" ? " that aligns with the academic calendar" : ""}
+
+Include sufficient academic context and explanations for each element in your timeline. Consider prerequisite knowledge and skill building. Refer specifically to content when establishing chronology.`
+            : `Focus primarily on:
 1. Analyzing the temporal relationships between items with specific references
 2. Creating a detailed logical sequence or timeline of events/ideas
 3. Identifying past accomplishments vs. future plans with supporting evidence
@@ -816,11 +885,23 @@ Your response should be highly actionable, with clear steps and rationale for ea
 6. Where appropriate, create a visual timeline representation using markdown
 
 Include sufficient context and explanations for each element in your timeline. Refer specifically to content when establishing chronology.`;
-          systemPrompt = "You are a timeline analysis specialist who excels at organizing information chronologically with substantive explanations.";
+          systemPrompt = educationMode
+            ? `You are an academic timeline specialist who excels at organizing ${spaceContext} materials chronologically with substantive explanations. You understand academic calendars, prerequisite structures, and learning progressions.`
+            : "You are a timeline analysis specialist who excels at organizing information chronologically with substantive explanations.";
           break;
           
         case "learningPlan":
-          specificFocus = `Create a comprehensive learning plan / study guide based on this synapse content. Your response MUST include:
+          const learningContext = educationMode
+            ? projectType === "course"
+              ? "course study guide"
+              : projectType === "research"
+              ? "research methodology guide"
+              : projectType === "thesis"
+              ? "thesis development plan"
+              : "learning plan"
+            : "learning plan / study guide";
+
+          specificFocus = `Create a comprehensive ${learningContext} based on this synapse content. Your response MUST include:
 
 1. DETAILED CORE CONCEPTS: Identify and thoroughly explain each core concept from the source material
    - Each concept should have a thorough explanation with examples from the source
@@ -852,14 +933,46 @@ Include sufficient context and explanations for each element in your timeline. R
 
 EXTREMELY IMPORTANT: Never use generic references like "Item 1" or "Source X". Instead, always use the EXACT titles and descriptions of the source materials. If a bookmark is a website, refer to it by its actual title and URL. If it's a document, use the document title. Be highly specific about where information comes from.
 
-Your learning plan must be substantive, detailed, and directly reference the content provided. Avoid generic advice and shallow overviews. The plan should be immediately useful for someone wanting to master this subject matter. Your response should be at least 1500 words to provide sufficient depth.`;
-          systemPrompt = "You are an expert educational content designer who creates comprehensive, in-depth learning plans based on source materials. You excel at extracting knowledge from various sources and organizing it into effective learning pathways. You have deep knowledge of programming concepts and can expand on references to programming topics with detailed, accurate information, while still clearly indicating what came from the source materials and what is your expert knowledge. If the source materials are limited, you should clearly indicate that you are supplementing with your knowledge, but still create a thorough, detailed plan. When referencing content, always use specific titles and sources, not generic 'Item X' references.";
+${
+  educationMode && projectType === "course"
+    ? `
+COURSE-SPECIFIC GUIDANCE:
+- Align the learning plan with typical course objectives and outcomes
+- Structure content to support exam preparation and assignment completion
+- Include study strategies specific to course-based learning
+- Suggest how to approach lectures, readings, and course discussions
+- Provide guidance on time management within a semester structure`
+    : educationMode && (projectType === "research" || projectType === "thesis")
+    ? `
+RESEARCH-SPECIFIC GUIDANCE:
+- Structure the plan around research methodology and phases
+- Include guidance on literature review and gap analysis
+- Provide strategies for hypothesis development and testing
+- Suggest approaches to data collection and analysis
+- Include milestones for research progression and writing`
+    : ""
+}
+
+Your ${learningContext} must be substantive, detailed, and directly reference the content provided. Avoid generic advice and shallow overviews. The plan should be immediately useful for someone wanting to master this subject matter. Your response should be at least 1500 words to provide sufficient depth.`;
+          systemPrompt = educationMode
+            ? `You are an expert educational content designer specializing in ${spaceContext} contexts. You create comprehensive, in-depth ${learningContext}s based on source materials, understanding the specific needs of ${projectType === "course" ? "students taking courses" : projectType === "research" || projectType === "thesis" ? "researchers and graduate students" : "academic learners"}. You excel at extracting knowledge from various sources and organizing it into effective learning pathways. When referencing content, always use specific titles and sources, not generic references.`
+            : "You are an expert educational content designer who creates comprehensive, in-depth learning plans based on source materials. You excel at extracting knowledge from various sources and organizing it into effective learning pathways. You have deep knowledge of programming concepts and can expand on references to programming topics with detailed, accurate information, while still clearly indicating what came from the source materials and what is your expert knowledge. If the source materials are limited, you should clearly indicate that you are supplementing with your knowledge, but still create a thorough, detailed plan. When referencing content, always use specific titles and sources, not generic 'Item X' references.";
           maxTokens = 4000; // Increase token limit for learning plans
           break;
           
         case "comprehensive":
         default:
-          specificFocus = `Provide a deep, thorough analysis of this content. Focus on:
+          specificFocus = educationMode
+            ? `Provide a deep, thorough academic analysis of this ${spaceContext} content. Focus on:
+
+1. Key themes and learning objectives across these materials - explore each theme in detail with examples${projectType === "course" ? ", relating them to course outcomes" : ""}
+2. Specific relationships between different types of materials with concrete academic references
+3. Detailed insights based on the connections between these items, with emphasis on learning outcomes
+4. Potential next ${taskTerm} and academic steps directly related to these items with specific rationale
+5. Critical analysis of the content, including strengths, knowledge gaps, and areas needing clarification${projectType === "research" || projectType === "thesis" ? "\n6. Research implications and methodology considerations" : ""}${projectType === "course" ? "\n6. Study strategies and exam preparation guidance" : ""}
+
+For each point, include specific references to the source content. Avoid shallow generalizations. Your analysis should provide substantive academic value and actionable learning insights.`
+            : `Provide a deep, thorough analysis of this content. Focus on:
 
 1. Key themes and patterns across these items - explore each theme in detail with examples
 2. Specific relationships between different types of items with concrete references
@@ -908,13 +1021,35 @@ For each point, include specific references to the source content. Avoid shallow
       }
 
       // First, analyze the specific synapse content
-      const synapseAnalysisPrompt = `
+      const synapseAnalysisPrompt = educationMode
+        ? `
+You are analyzing a "synapse" - a carefully curated collection of ${spaceContext} materials that the user has intentionally grouped together for academic purposes. This synapse is named "${synapseName}" and contains the following items:
+
+${contextString}
+
+${analysisType === "learningPlan" ?
+`Your task is to create a comprehensive, detailed ${learningContext} based on this content.` :
+`Your task is to analyze these specific materials and their academic relationships in depth.`}
+
+${specificFocus}
+
+IMPORTANT ACADEMIC GUIDELINES:
+1. Be specific and substantive - avoid shallow overviews
+2. Include direct quotes or specific references from the source material
+3. Provide detailed academic explanations, not just listings or summaries
+4. Go beyond what's immediately obvious to provide valuable learning insights
+5. Structure your response in a clear, logical manner with appropriate headings${projectType === "course" ? "\n6. Consider how this relates to course learning objectives and outcomes" : ""}${projectType === "research" || projectType === "thesis" ? "\n6. Consider research implications and methodology" : ""}
+7. Emphasize actionable ${taskTerm} and next steps for academic progress
+
+Only reference the items provided above in this analysis.
+`
+        : `
 You are analyzing a "synapse" - a carefully curated collection of related items that the user has intentionally grouped together. This synapse is named "${synapseName}" and contains the following items:
 
 ${contextString}
 
-${analysisType === "learningPlan" ? 
-`Your task is to create a comprehensive, detailed learning plan based on this content.` : 
+${analysisType === "learningPlan" ?
+`Your task is to create a comprehensive, detailed learning plan based on this content.` :
 `Your task is to analyze these specific items and their relationships in depth.`}
 
 ${specificFocus}

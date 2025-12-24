@@ -319,7 +319,9 @@ const FullPageAIAssistant = ({ user }) => {
         synapseContent: filteredContents,
         synapseName: synapseName,
         analysisType: analysisType,
-        analysisMode: analysisMode
+        analysisMode: analysisMode,
+        educationMode: educationMode,
+        projectType: activeProjectType
       });
 
       // Display the response with a typing effect
