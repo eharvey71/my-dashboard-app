@@ -109,16 +109,25 @@ const updateAIResponse = async (id, updates) => {
 };
 
 // Project-related functions
-const createProject = async (userId, projectName) => {
+const createProject = async (userId, projectName, metadata = {}) => {
   const projectsCollection = collection(db, "projects");
   try {
-    const docRef = await addDoc(projectsCollection, {
+    const projectData = {
       name: projectName,
       userId,
       createdAt: new Date(),
-    });
+      // Academic metadata (optional)
+      projectType: metadata.projectType || 'general', // course, research, thesis, general
+      term: metadata.term || null, // e.g., "Fall 2024"
+      subject: metadata.subject || null, // e.g., "Computer Science"
+      instructor: metadata.instructor || null,
+      credits: metadata.credits || null,
+      courseCode: metadata.courseCode || null, // e.g., "CS101"
+    };
+
+    const docRef = await addDoc(projectsCollection, projectData);
     console.log(`Project created with ID: ${docRef.id}`);
-    return { id: docRef.id, name: projectName, userId, createdAt: new Date() };
+    return { id: docRef.id, ...projectData };
   } catch (error) {
     console.error("Error creating project:", error);
     throw error;

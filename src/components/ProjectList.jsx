@@ -26,9 +26,18 @@ const ProjectList = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const { projects, addProject, updateActiveProject, updateProjectName } =
     useProjectContext();
-  const { getTerm } = useEducation();
+  const { getTerm, educationMode } = useEducation();
   const [sortBy, setSortBy] = useState("priority");
   const navigate = useNavigate();
+
+  // Academic metadata fields
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [projectType, setProjectType] = useState('general');
+  const [term, setTerm] = useState('');
+  const [subject, setSubject] = useState('');
+  const [instructor, setInstructor] = useState('');
+  const [credits, setCredits] = useState('');
+  const [courseCode, setCourseCode] = useState('');
 
   useEffect(() => {
     const checkReady = async () => {
@@ -106,11 +115,32 @@ const ProjectList = ({ user }) => {
 
     try {
       console.log("Creating new project...");
-      const newProject = await createProject(user.uid, newProjectName.trim());
+
+      // Prepare metadata
+      const metadata = {
+        projectType,
+        term: term.trim() || null,
+        subject: subject.trim() || null,
+        instructor: instructor.trim() || null,
+        credits: credits.trim() || null,
+        courseCode: courseCode.trim() || null,
+      };
+
+      const newProject = await createProject(user.uid, newProjectName.trim(), metadata);
       console.log("Project created:", newProject);
 
       addProject(newProject);
+
+      // Reset form
       setNewProjectName("");
+      setProjectType('general');
+      setTerm('');
+      setSubject('');
+      setInstructor('');
+      setCredits('');
+      setCourseCode('');
+      setShowAdvanced(false);
+
       await updateActiveProject(newProject.id);
 
       await new Promise((resolve) => {
@@ -229,6 +259,120 @@ const ProjectList = ({ user }) => {
                   placeholder={`Enter ${getTerm("project").toLowerCase()} name`}
                 />
               </div>
+
+              {/* Advanced Options - Show in Education Mode */}
+              {educationMode && (
+                <>
+                  <button
+                    type="button"
+                    className={`${moduleStyles.button} ${moduleStyles.secondaryButton} mb-3`}
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    style={{ width: '100%' }}
+                  >
+                    {showAdvanced ? 'Hide' : 'Show'} Additional Options
+                    <ChevronDown size={16} style={{ marginLeft: '0.5rem', transform: showAdvanced ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  </button>
+
+                  {showAdvanced && (
+                    <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '4px', marginBottom: '1rem' }}>
+                      <div className={moduleStyles.formGroup}>
+                        <label htmlFor="projectType" className={moduleStyles.label}>
+                          Type
+                        </label>
+                        <select
+                          id="projectType"
+                          className={moduleStyles.input}
+                          value={projectType}
+                          onChange={(e) => setProjectType(e.target.value)}
+                          disabled={formDisabled}
+                        >
+                          <option value="general">General</option>
+                          <option value="course">Course</option>
+                          <option value="research">Research Project</option>
+                          <option value="thesis">Thesis/Dissertation</option>
+                          <option value="study-group">Study Group</option>
+                        </select>
+                      </div>
+
+                      <div className={moduleStyles.formGroup}>
+                        <label htmlFor="courseCode" className={moduleStyles.label}>
+                          Course Code (e.g., CS101)
+                        </label>
+                        <input
+                          type="text"
+                          className={moduleStyles.input}
+                          id="courseCode"
+                          value={courseCode}
+                          onChange={(e) => setCourseCode(e.target.value)}
+                          disabled={formDisabled}
+                          placeholder="Optional"
+                        />
+                      </div>
+
+                      <div className={moduleStyles.formGroup}>
+                        <label htmlFor="term" className={moduleStyles.label}>
+                          Term/Semester
+                        </label>
+                        <input
+                          type="text"
+                          className={moduleStyles.input}
+                          id="term"
+                          value={term}
+                          onChange={(e) => setTerm(e.target.value)}
+                          disabled={formDisabled}
+                          placeholder="e.g., Fall 2024"
+                        />
+                      </div>
+
+                      <div className={moduleStyles.formGroup}>
+                        <label htmlFor="subject" className={moduleStyles.label}>
+                          Subject/Department
+                        </label>
+                        <input
+                          type="text"
+                          className={moduleStyles.input}
+                          id="subject"
+                          value={subject}
+                          onChange={(e) => setSubject(e.target.value)}
+                          disabled={formDisabled}
+                          placeholder="e.g., Computer Science"
+                        />
+                      </div>
+
+                      <div className={moduleStyles.formGroup}>
+                        <label htmlFor="instructor" className={moduleStyles.label}>
+                          Instructor
+                        </label>
+                        <input
+                          type="text"
+                          className={moduleStyles.input}
+                          id="instructor"
+                          value={instructor}
+                          onChange={(e) => setInstructor(e.target.value)}
+                          disabled={formDisabled}
+                          placeholder="Optional"
+                        />
+                      </div>
+
+                      <div className={moduleStyles.formGroup}>
+                        <label htmlFor="credits" className={moduleStyles.label}>
+                          Credits
+                        </label>
+                        <input
+                          type="text"
+                          className={moduleStyles.input}
+                          id="credits"
+                          value={credits}
+                          onChange={(e) => setCredits(e.target.value)}
+                          disabled={formDisabled}
+                          placeholder="e.g., 3"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               {error && <div className={`${moduleStyles.alert} ${moduleStyles.alertDanger}`}>{error}</div>}
               <button
                 type="submit"

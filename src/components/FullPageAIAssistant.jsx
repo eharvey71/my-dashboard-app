@@ -7,6 +7,7 @@ import {
   deleteAIResponse,
 } from "../services/firebaseConfig";
 import { getSynapses, getSynapseContent } from "../services/synapseService";
+import { useEducation } from "../contexts/EducationContext";
 import styles from "./FullPageAIAssistant.module.css";
 import {
   Trash2,
@@ -137,6 +138,7 @@ const FullPageAIAssistant = ({ user }) => {
   const { projectId } = useParams();
   const location = useLocation();
   const responseContainerRef = useRef(null);
+  const { getTerm, educationMode } = useEducation();
 
   // Get synapse ID from URL query parameter
   const searchParams = new URLSearchParams(location.search);
@@ -563,14 +565,26 @@ const FullPageAIAssistant = ({ user }) => {
                   className="form-select"
                   value={analysisType}
                   onChange={(e) => setAnalysisType(e.target.value)}
-                  title="Choose what kind of analysis you want the AI to perform on your synapse content"
+                  title={`Choose what kind of analysis you want the AI to perform on your ${getTerm("synapse").toLowerCase()} content`}
                 >
-                  <option value="comprehensive" title="A thorough analysis of all content within the synapse, identifying patterns, themes, and insights across all materials">Comprehensive Analysis</option>
-                  <option value="relationships" title="Focuses on identifying connections, similarities, and contradictions between different pieces of content in your synapse">Relationship-Focused</option>
-                  <option value="summary" title="A concise overview that extracts the most essential information from all content in your synapse">Executive Summary</option>
-                  <option value="actionItems" title="Identifies concrete next steps, tasks, and actionable insights from your synapse content">Action Items Extraction</option>
-                  <option value="timeline" title="Organizes content chronologically to show the development or sequence of information in your synapse">Timeline Analysis</option>
-                  <option value="learningPlan" title="Creates a structured learning guide with resources, steps, and milestones based on your synapse content">Learning Plan/Study Guide</option>
+                  <option value="comprehensive" title={`A thorough analysis of all content within the ${getTerm("synapse").toLowerCase()}, identifying patterns, themes, and insights across all materials`}>
+                    {educationMode ? "Comprehensive Study Analysis" : "Comprehensive Analysis"}
+                  </option>
+                  <option value="relationships" title={`Focuses on identifying connections, similarities, and contradictions between different pieces of content in your ${getTerm("synapse").toLowerCase()}`}>
+                    {educationMode ? "Concept Relationships" : "Relationship-Focused"}
+                  </option>
+                  <option value="summary" title={`A concise overview that extracts the most essential information from all content in your ${getTerm("synapse").toLowerCase()}`}>
+                    {educationMode ? "Study Summary" : "Executive Summary"}
+                  </option>
+                  <option value="actionItems" title={`Identifies concrete next steps, tasks, and actionable insights from your ${getTerm("synapse").toLowerCase()} content`}>
+                    {educationMode ? "Study Action Items" : "Action Items Extraction"}
+                  </option>
+                  <option value="timeline" title={`Organizes content chronologically to show the development or sequence of information in your ${getTerm("synapse").toLowerCase()}`}>
+                    {educationMode ? "Course Timeline" : "Timeline Analysis"}
+                  </option>
+                  <option value="learningPlan" title={`Creates a structured learning guide with resources, steps, and milestones based on your ${getTerm("synapse").toLowerCase()} content`}>
+                    {educationMode ? "Study Guide & Learning Plan" : "Learning Plan/Study Guide"}
+                  </option>
                 </select>
               </div>
             </div>
