@@ -506,7 +506,7 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
           <div className={moduleStyles.emptyState}>
             {showCompleted
               ? `No ${getTerm("tasks", activeProjectType).toLowerCase()} yet. Add one above!`
-              : `All done! Let's get started by adding your next ${getTerm("task", activeProjectType).toLowerCase()}.`}
+              : `Let's get started by adding your next ${getTerm("task", activeProjectType).toLowerCase()}.`}
           </div>
         )}
       </ul>

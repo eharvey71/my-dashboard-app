@@ -8,6 +8,7 @@ import {
 } from "../services/firebaseConfig";
 import { getSynapses, getSynapseContent } from "../services/synapseService";
 import { useEducation } from "../contexts/EducationContext";
+import { useProjectContext } from "../contexts/ProjectContext";
 import styles from "./FullPageAIAssistant.module.css";
 import {
   Trash2,
@@ -139,6 +140,7 @@ const FullPageAIAssistant = ({ user }) => {
   const location = useLocation();
   const responseContainerRef = useRef(null);
   const { getTerm, educationMode } = useEducation();
+  const { activeProjectType } = useProjectContext();
 
   // Get synapse ID from URL query parameter
   const searchParams = new URLSearchParams(location.search);
@@ -576,7 +578,7 @@ const FullPageAIAssistant = ({ user }) => {
                   <option value="summary" title={`A concise overview that extracts the most essential information from all content in your ${getTerm("synapse").toLowerCase()}`}>
                     {educationMode ? "Study Summary" : "Executive Summary"}
                   </option>
-                  <option value="actionItems" title={`Identifies concrete next steps, tasks, and actionable insights from your ${getTerm("synapse").toLowerCase()} content`}>
+                  <option value="actionItems" title={`Identifies concrete next steps, ${getTerm("tasks", activeProjectType).toLowerCase()}, and actionable insights from your ${getTerm("synapse").toLowerCase()} content`}>
                     {educationMode ? "Study Action Items" : "Action Items Extraction"}
                   </option>
                   <option value="timeline" title={`Organizes content chronologically to show the development or sequence of information in your ${getTerm("synapse").toLowerCase()}`}>
@@ -688,7 +690,7 @@ const FullPageAIAssistant = ({ user }) => {
                     <small>Will create a concise summary of your entire synapse content</small>
                   )}
                   {analysisType === "actionItems" && (
-                    <small>Will extract concrete next steps and tasks from your synapse</small>
+                    <small>Will extract concrete next steps and {getTerm("tasks", activeProjectType).toLowerCase()} from your synapse</small>
                   )}
                   {analysisType === "timeline" && (
                     <small>Will organize your content to show chronological sequence and development</small>
