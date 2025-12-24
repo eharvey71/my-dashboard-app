@@ -22,7 +22,7 @@ import styles from "./NavBar.module.css";
 
 const NavBar = ({ user }) => {
   const navigate = useNavigate();
-  const { projects, activeProject, updateActiveProject, displayName } =
+  const { projects, activeProject, updateActiveProject, displayName, activeProjectType } =
     useProjectContext();
   const { getTerm } = useEducation();
   const [isToolsOpen, setIsToolsOpen] = useState(false);
@@ -218,7 +218,7 @@ const NavBar = ({ user }) => {
                             to={`/project/${activeProject}/tasks`}
                             className={styles.dropdownItem}
                           >
-                            <CheckSquare size={16} /> {getTerm("tasks")}
+                            <CheckSquare size={16} /> {getTerm("tasks", activeProjectType)}
                           </Link>
                         </li>
                         <li>
