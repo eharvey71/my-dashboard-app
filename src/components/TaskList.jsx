@@ -197,7 +197,7 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
   };
 
   if (loading) {
-    return <div className={moduleStyles.loading}>Loading tasks...</div>;
+    return <div className={moduleStyles.loading}>Loading {getTerm("tasks", activeProjectType).toLowerCase()}...</div>;
   }
 
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -278,11 +278,11 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
             }
           }}
         />
-        <button 
+        <button
           className={`${moduleStyles.actionButton} ${moduleStyles.primaryButton}`}
           onClick={handleAddTask}
         >
-          Add Task
+          {getTerm("addTask", activeProjectType)}
         </button>
       </div>
 
@@ -303,9 +303,9 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
                 <button
                   className={moduleStyles.iconButton}
                   onClick={() => handleToggleComplete(task)}
-                  title={task.completed ? "Mark as incomplete" : "Mark as complete"}
+                  title={task.completed ? `Mark as incomplete` : `Mark as complete`}
                 >
-                  {task.completed ? 
+                  {task.completed ?
                     <CheckCircle size={20} /> :
                     <Circle size={20} />
                   }
@@ -457,20 +457,20 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
               <div className={moduleStyles.listItemActions}>
                 {/* Edit button (only show when not editing) */}
                 {editingId !== task.id && (
-                  <button 
+                  <button
                     className={`${moduleStyles.iconButton} ${moduleStyles.editButton}`}
                     onClick={() => handleEdit(task)}
-                    title="Edit task"
+                    title={`Edit ${getTerm("task", activeProjectType).toLowerCase()}`}
                   >
                     <Edit size={16} />
                   </button>
                 )}
-                
+
                 {/* Delete button */}
-                <button 
+                <button
                   className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
                   onClick={() => setDeletingId(task.id)}
-                  title="Delete task"
+                  title={`Delete ${getTerm("task", activeProjectType).toLowerCase()}`}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -485,7 +485,7 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
                       className={moduleStyles.actionButton}
                       style={{ backgroundColor: '#4ade80', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
                       onClick={() => handleTaskDelete(task.id)}
-                      title="Yes, delete task"
+                      title={`Yes, delete ${getTerm("task", activeProjectType).toLowerCase()}`}
                     >
                       <Check size={14} />
                     </button>
@@ -504,9 +504,9 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
           ))
         ) : (
           <div className={moduleStyles.emptyState}>
-            {showCompleted 
-              ? "No tasks yet. Add one above!" 
-              : "No incomplete tasks. Great job!"}
+            {showCompleted
+              ? `No ${getTerm("tasks", activeProjectType).toLowerCase()} yet. Add one above!`
+              : `All done! Let's get started by adding your next ${getTerm("task", activeProjectType).toLowerCase()}.`}
           </div>
         )}
       </ul>
