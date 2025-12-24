@@ -143,7 +143,7 @@ const UserAccount = () => {
                     <option value="education">Education Mode</option>
                   </select>
                   <small className="form-text text-muted">
-                    Education Mode adapts the interface for academic use (courses, assignments, study materials)
+                    Education Mode adapts the interface for academic use (assignments, study sets, academic metadata)
                   </small>
                 </div>
                 {error && <div className="alert alert-danger">{error}</div>}

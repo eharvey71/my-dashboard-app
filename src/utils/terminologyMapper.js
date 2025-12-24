@@ -6,12 +6,12 @@
 const terminologyMap = {
   // Core entities
   project: {
-    standard: "Project",
-    education: "Course",
+    standard: "Space",
+    education: "Space",
   },
   projects: {
-    standard: "Projects",
-    education: "Courses",
+    standard: "Spaces",
+    education: "Spaces",
   },
   task: {
     standard: "Task",
@@ -56,16 +56,16 @@ const terminologyMap = {
 
   // Actions and UI elements
   createProject: {
-    standard: "Create Project",
-    education: "Add Course",
+    standard: "Create Space",
+    education: "Create Space",
   },
   projectList: {
-    standard: "Project List",
-    education: "My Courses",
+    standard: "Spaces",
+    education: "Spaces",
   },
   projectManagement: {
-    standard: "Project Management",
-    education: "Course Overview",
+    standard: "Space Management",
+    education: "Space Management",
   },
   addTask: {
     standard: "Add Task",
