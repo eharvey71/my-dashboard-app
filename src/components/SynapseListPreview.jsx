@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSynapses } from '../services/synapseService';
 import SynapseTile from './SynapseTile';
+import { useEducation } from '../contexts/EducationContext';
 import styles from './SynapseListPreview.module.css';
 import { Zap, Plus, Brain } from 'lucide-react';
 
 const SynapseListPreview = ({ user, projectId, limit = 3 }) => {
+  const { getTerm } = useEducation();
   const [synapses, setSynapses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,7 +50,7 @@ const SynapseListPreview = ({ user, projectId, limit = 3 }) => {
     navigate(`/project/${projectId}/synapses`);
   };
 
-  if (loading) return <div className={styles.loading}>Loading synapses...</div>;
+  if (loading) return <div className={styles.loading}>Loading {getTerm("synapses").toLowerCase()}...</div>;
   if (error) return <div className={styles.error}>{error}</div>;
 
   return (
@@ -56,9 +58,9 @@ const SynapseListPreview = ({ user, projectId, limit = 3 }) => {
       <div className={styles.header}>
         <h2 className={styles.title}>
           <Brain size={20} />
-          <span>Synapses</span>
+          <span>{getTerm("synapses")}</span>
         </h2>
-        <button 
+        <button
           className={styles.viewAllButton}
           onClick={() => navigate(`/project/${projectId}/synapses`)}
         >
@@ -89,13 +91,13 @@ const SynapseListPreview = ({ user, projectId, limit = 3 }) => {
         </div>
       ) : (
         <div className={styles.emptyState}>
-          <p>No synapses yet</p>
-          <button 
+          <p>No {getTerm("synapses").toLowerCase()} yet</p>
+          <button
             className={styles.addButton}
             onClick={handleAddSynapse}
           >
             <Plus size={16} />
-            Create Synapse
+            {getTerm("createSynapse")}
           </button>
         </div>
       )}

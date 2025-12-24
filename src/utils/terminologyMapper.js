@@ -31,11 +31,11 @@ const terminologyMap = {
   },
   bookmark: {
     standard: "Bookmark",
-    education: "Resource",
+    education: "Bookmark",
   },
   bookmarks: {
     standard: "Bookmarks",
-    education: "Resources",
+    education: "Bookmarks",
   },
   document: {
     standard: "Document",

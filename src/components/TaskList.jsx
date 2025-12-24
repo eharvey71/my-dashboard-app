@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from 'react-router-dom';
 import { getTasks, addTask, deleteTask, updateTask } from "../services/firebaseConfig";
-import { 
-  CheckCircle, Circle, Trash2, Calendar, Check, X, ListTodo, 
+import {
+  CheckCircle, Circle, Trash2, Calendar, Check, X, ListTodo,
   ChevronDown, Repeat, Edit
 } from "lucide-react";
+import { useEducation } from "../contexts/EducationContext";
 import styles from "./TaskList.module.css";
 import moduleStyles from "./DashboardModule.module.css";
 
 const TaskList = ({ user, projectId, limit = 5 }) => {
+  const { getTerm } = useEducation();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState("");
@@ -242,7 +244,7 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
       <div className={moduleStyles.header}>
         <h2 className={moduleStyles.title}>
           <ListTodo size={20} />
-          <span>Tasks</span>
+          <span>{getTerm("tasks")}</span>
         </h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <label className="form-check form-switch" style={{ fontSize: '0.875rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -254,9 +256,9 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
             />
             Show Completed
           </label>
-          
+
           <Link to={`/project/${projectId}/tasks`} className={moduleStyles.viewAllButton}>
-            View All Tasks
+            {getTerm("viewAllTasks")}
           </Link>
         </div>
       </div>
@@ -265,7 +267,7 @@ const TaskList = ({ user, projectId, limit = 5 }) => {
         <input
           type="text"
           className={moduleStyles.input}
-          placeholder="New Task"
+          placeholder={`New ${getTerm("task")}`}
           value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
           onKeyPress={(e) => {
