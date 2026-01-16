@@ -451,15 +451,15 @@ const FullPageAIAssistant = ({ user }) => {
       <div className="d-flex align-items-center justify-content-between mb-4">
         <div className="d-flex align-items-center gap-2">
           <Brain className="h-6 w-6" />
-          <h1>Advanced Synapse Analysis</h1>
+          <h3>Synapse Analysis</h3>
         </div>
         
         <div className={styles.tooltipContainer}>
           <div className="alert alert-info p-3 mb-0">
-            <strong>How to use the AI Assistant:</strong> 
+            <strong>How to analyze your synapse:</strong>
             <ul className="mb-0 mt-2">
-              <li><strong>Select a synapse</strong> to analyze from the dropdown</li>
-              <li><strong>Choose an analysis type</strong> depending on what insights you need</li>
+              <li><strong>Select a synapse</strong> from the dropdown</li>
+              <li><strong>Choose an analysis type</strong> based on the insights you need</li>
               <li><strong>Select a processing mode</strong>: Core (factual), Enhanced (deeper insights), or Creative (innovative perspectives)</li>
               <li><strong>Click "Analyze Synapse"</strong> to generate your analysis</li>
               <li><strong>Save</strong> useful analyses to reference later</li>
