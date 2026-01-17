@@ -71,7 +71,7 @@ export const indexContent = async (
     const embedding = await generateEmbedding(contextualizedContent);
     console.log(`Generated embedding for ${type} ${id}`);
 
-    const vectorId = `${userId}-${type}-${id}`;
+    const vectorId = `${userId}-${projectId}-${type}-${id}`;
 
     await index.upsert([
       {
@@ -94,23 +94,13 @@ export const indexContent = async (
   }
 };
 
-export const updateVector = async (userId, id, newContent, type) => {
+export const updateVector = async (userId, projectId, id, newContent, type) => {
   try {
-    //   console.log(
-    //     `Updating vector for task ${taskId} of user ${userId}. Type is ${type}`
-    //   );
-    //   console.log(`New content is ${newContent}`);
-
     await ensureInitialized();
-
-    //   if (!index) {
-    //     throw new Error("Pinecone index is not initialized");
-    //   }
 
     const embedding = await generateEmbedding(newContent);
 
-    const vectorId = `${userId}-${type}-${id}`;
-    // console.log(`Vector ID is ${vectorId}`);
+    const vectorId = `${userId}-${projectId}-${type}-${id}`;
 
     await index.upsert([
       {
@@ -118,6 +108,7 @@ export const updateVector = async (userId, id, newContent, type) => {
         values: embedding,
         metadata: {
           userId,
+          projectId,
           type,
           content: newContent,
           id,
@@ -131,23 +122,15 @@ export const updateVector = async (userId, id, newContent, type) => {
   }
 };
 
-export const deleteVector = async (userId, id, type) => {
+export const deleteVector = async (userId, projectId, id, type) => {
   try {
-    // console.log(
-    //   `Deleting vector for note ${noteId} of user ${userId}. Type is ${type}`
-    // );
-
     await ensureInitialized();
 
-    // if (!index) {
-    //   throw new Error("Pinecone index is not initialized");
-    // }
-
-    const vectorId = `${userId}-${type}-${id}`;
+    const vectorId = `${userId}-${projectId}-${type}-${id}`;
     console.log(`Attempting to delete vector with ID ${vectorId}`);
 
     await index.deleteOne(vectorId);
-    console.log(`Vector deleted for note ${type} ${id} of user ${userId}.`);
+    console.log(`Vector deleted for ${type} ${id} of user ${userId}.`);
   } catch (error) {
     console.error(`Error deleting ${type} vector:`, error);
     throw error;

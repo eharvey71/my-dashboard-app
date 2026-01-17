@@ -257,7 +257,7 @@ const updateItem = async (id, updates, type) => {
         updates.title !== currentItem.title)
     ) {
       const newContent = updates.content || updates.title;
-      await updateVector(currentItem.userId, id, newContent, type);
+      await updateVector(currentItem.userId, currentItem.projectId, id, newContent, type);
     }
 
     console.log(`${type} successfully updated:`, updates);
