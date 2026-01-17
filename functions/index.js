@@ -689,12 +689,22 @@ exports.analyzeSynapseContent = functions.https.onCall(
     const { synapseContent, synapseName, analysisType = "comprehensive", analysisMode = "core", educationMode = false, projectType = "general" } = data;
 
     try {
-      // Organize content by type
+      // Organize content by type and truncate large content to avoid token limits
+      const MAX_CONTENT_LENGTH = 3000; // Max characters per item to stay within token limits
+
       const organizedContent = synapseContent.reduce((acc, item) => {
         if (!acc[item.type]) {
           acc[item.type] = [];
         }
-        acc[item.type].push(item);
+
+        // Truncate content if it's too long
+        const truncatedItem = { ...item };
+        if (truncatedItem.content && truncatedItem.content.length > MAX_CONTENT_LENGTH) {
+          truncatedItem.content = truncatedItem.content.substring(0, MAX_CONTENT_LENGTH) + "\n\n[Content truncated due to length...]";
+          truncatedItem.wasTruncated = true;
+        }
+
+        acc[item.type].push(truncatedItem);
         return acc;
       }, {});
 
