@@ -10,9 +10,15 @@ let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 let accessToken = null;
+let initPromise = null; // Track initialization promise
 
 export const initializeGoogleDriveApi = () => {
-  return new Promise((resolve, reject) => {
+  // Return existing promise if initialization is already in progress
+  if (initPromise) {
+    return initPromise;
+  }
+
+  initPromise = new Promise((resolve, reject) => {
     const script1 = document.createElement('script');
     script1.src = 'https://apis.google.com/js/api.js';
     script1.onload = () => {
@@ -50,6 +56,8 @@ export const initializeGoogleDriveApi = () => {
       }
     });
   });
+
+  return initPromise;
 };
 
 function gapiLoaded() {
@@ -81,12 +89,21 @@ function gisLoaded() {
   });
 }
 
-export const signIn = () => {
-  return new Promise((resolve, reject) => {
-    if (!gapiInited || !gisInited) {
-      reject(new Error('Google API not initialized'));
-      return;
+export const signIn = async () => {
+  // Wait for initialization if not ready yet
+  if (!gapiInited || !gisInited) {
+    if (initPromise) {
+      try {
+        await initPromise;
+      } catch (error) {
+        throw new Error('Google API initialization failed: ' + error.message);
+      }
+    } else {
+      throw new Error('Google API not initialized. Please refresh the page.');
     }
+  }
+
+  return new Promise((resolve, reject) => {
     tokenClient.callback = async (resp) => {
       if (resp.error !== undefined) {
         reject(resp);
