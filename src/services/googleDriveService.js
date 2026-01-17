@@ -194,6 +194,8 @@ export const getFileContent = async (fileId, mimeType) => {
   await ensureValidToken();
   try {
     let response;
+
+    // Google Workspace files need to be exported
     if (mimeType === 'application/vnd.google-apps.document') {
       response = await gapi.client.drive.files.export({
         fileId: fileId,
@@ -209,9 +211,24 @@ export const getFileContent = async (fileId, mimeType) => {
         fileId: fileId,
         mimeType: 'text/plain',
       });
-    } else {
-      throw new Error('Unsupported file type');
     }
+    // Regular files (txt, pdf, docx, etc.) can be downloaded directly
+    else if (
+      mimeType === 'text/plain' ||
+      mimeType === 'text/markdown' ||
+      mimeType === 'application/pdf' ||
+      mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      mimeType === 'application/msword' ||
+      mimeType.startsWith('text/')
+    ) {
+      response = await gapi.client.drive.files.get({
+        fileId: fileId,
+        alt: 'media',
+      });
+    } else {
+      throw new Error(`Unsupported file type: ${mimeType}`);
+    }
+
     return response.body;
   } catch (err) {
     console.error('Error getting file content:', err);

@@ -117,9 +117,10 @@ exports.cleanupPineconeVectors = functions.pubsub
     const index = pc.Index(pineconeIndexName);
 
     try {
-      // Fetch all document IDs from Firestore for notes and tasks
+      // Fetch all document IDs from Firestore for notes, tasks, and documents
       const notesSnapshot = await db.collectionGroup("notes").get();
       const tasksSnapshot = await db.collectionGroup("tasks").get();
+      const documentsSnapshot = await db.collectionGroup("documents").get();
 
       const validIds = new Set([
         ...notesSnapshot.docs.map(
@@ -128,9 +129,12 @@ exports.cleanupPineconeVectors = functions.pubsub
         ...tasksSnapshot.docs.map(
           (doc) => `${doc.data().userId}-${doc.data().projectId}-${doc.id}`
         ),
+        ...documentsSnapshot.docs.map(
+          (doc) => `${doc.data().userId}-${doc.data().projectId}-${doc.id}`
+        ),
       ]);
 
-      console.log(`Found ${validIds.size} valid note/task IDs`);
+      console.log(`Found ${validIds.size} valid note/task/document IDs`);
 
       // Fetch all bookmarks from Firestore
       const bookmarksSnapshot = await db.collectionGroup("bookmarks").get();
@@ -206,7 +210,7 @@ exports.indexTaskOrNote = functions.firestore
   .document("{collectionName}/{docId}")
   .onCreate(async (snap, context) => {
     const { collectionName, docId } = context.params;
-    if (collectionName !== "tasks" && collectionName !== "notes") return;
+    if (collectionName !== "tasks" && collectionName !== "notes" && collectionName !== "documents") return;
 
     const data = snap.data();
     const { content, userId, priority, projectId } = data;
@@ -266,7 +270,7 @@ exports.retryFailedIndexing = functions.pubsub
   .schedule("every 6 hours")
   .onRun(async (context) => {
     const db = admin.firestore();
-    const collections = ["tasks", "notes"];
+    const collections = ["tasks", "notes", "documents"];
 
     for (const collectionName of collections) {
       const snapshot = await db
