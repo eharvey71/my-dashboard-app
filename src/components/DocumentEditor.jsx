@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Editor } from '@tinymce/tinymce-react';
 import { addDocument, updateDocument, deleteDocument, getDocuments } from '../services/firebaseConfig';
+import { deleteVector } from '../services/pineconeService';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { marked } from 'marked';
 import { Eye, Edit2, Save, Trash2, ArrowLeft, FileText } from 'lucide-react';
@@ -856,6 +857,7 @@ const DocumentEditor = ({ user }) => {
     if (window.confirm('Are you sure you want to delete this document?')) {
       try {
         await deleteDocument(documentId);
+        await deleteVector(user.uid, projectId, documentId, 'document');
         navigate(`/project/${projectId}/documents`);
       } catch (error) {
         console.error('Error deleting document:', error);
