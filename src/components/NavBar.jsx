@@ -270,7 +270,7 @@ const NavBar = ({ user }) => {
                             to={`/project/${activeProject}/ai-assistant`}
                             className={styles.dropdownItem}
                           >
-                            <Sparkles size={16} /> AI Assistant
+                            <Sparkles size={16} /> Neural Insights
                           </Link>
                         </li>
                         <li>
