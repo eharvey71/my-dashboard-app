@@ -461,7 +461,7 @@ const FullPageAIAssistant = ({ user }) => {
               <li><strong>Select a synapse</strong> from the dropdown</li>
               <li><strong>Choose an analysis type</strong> based on the insights you need</li>
               <li><strong>Select a processing mode</strong>: Core (factual), Enhanced (deeper insights), or Creative (innovative perspectives)</li>
-              <li><strong>Click "Analyze Synapse"</strong> to generate your analysis</li>
+              <li><strong>Click "Fire Neuron"</strong> to generate your analysis</li>
               <li><strong>Save</strong> useful analyses to reference later</li>
             </ul>
           </div>
