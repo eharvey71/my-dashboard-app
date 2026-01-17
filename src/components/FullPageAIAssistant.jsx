@@ -675,7 +675,7 @@ const FullPageAIAssistant = ({ user }) => {
                   </>
                 ) : (
                   <>
-                    Fire Synapses <Zap className="ms-1" size={18} />
+                    Fire Neuron <Zap className="ms-1" size={18} />
                   </>
                 )}
               </button>
