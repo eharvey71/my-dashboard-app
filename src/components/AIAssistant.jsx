@@ -96,7 +96,7 @@ A: I've analyzed your tasks (including their priorities), notes, and bookmarked 
   return (
     <div className="ai-assistant card">
       <div className="card-body">
-        <h3 className="card-title">Neural Insights</h3>
+        <h3 className="card-title">AI Assistant</h3>
         <textarea
           className="form-control mb-3"
           value={input}
@@ -109,7 +109,7 @@ A: I've analyzed your tasks (including their priorities), notes, and bookmarked 
           onClick={handleAnalyze}
           disabled={isTyping}
         >
-          {isTyping ? "Analyzing..." : "Fire Synapses"}
+          {isTyping ? "Analyzing..." : "Ask AI Assistant"}
         </button>
         {error && <div className="alert alert-danger">{error}</div>}
         <div

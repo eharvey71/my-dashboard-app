@@ -451,7 +451,7 @@ const FullPageAIAssistant = ({ user }) => {
       <div className="d-flex align-items-center justify-content-between mb-4">
         <div className="d-flex align-items-center gap-2">
           <Brain className="h-6 w-6" />
-          <h3>Synapse Analysis</h3>
+          <h3>Neural Insights</h3>
         </div>
         
         <div className={styles.tooltipContainer}>
@@ -675,7 +675,7 @@ const FullPageAIAssistant = ({ user }) => {
                   </>
                 ) : (
                   <>
-                    Analyze Synapse <Zap className="ms-1" size={18} />
+                    Fire Synapses <Zap className="ms-1" size={18} />
                   </>
                 )}
               </button>
