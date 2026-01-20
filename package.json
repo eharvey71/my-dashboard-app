@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0",
     "@pinecone-database/pinecone": "^2.2.2",
     "@popperjs/core": "^2.11.8",
     "@tinymce/tinymce-react": "^5.1.1",
+    "aws-amplify": "^6.3.0",
     "axios": "^1.7.2",
     "bootstrap": "^5.3.3",
     "build": "^0.1.4",
