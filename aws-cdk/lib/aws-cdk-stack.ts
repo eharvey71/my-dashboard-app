@@ -23,9 +23,11 @@ export class AwsCdkStack extends cdk.Stack {
     const projectsTable = new dynamodb.Table(this, 'ProjectsTable', {
       tableName: 'cognify-projects',
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode: dynamodb.BillingMode.PROVISIONED,
+      readCapacity: 2,
+      writeCapacity: 2,
       removalPolicy: cdk.RemovalPolicy.RETAIN, // Protect data
-      pointInTimeRecovery: true,
+      pointInTimeRecovery: false, // Disable to reduce costs (not free tier)
     });
 
     // Add GSI for querying by userId
@@ -33,15 +35,19 @@ export class AwsCdkStack extends cdk.Stack {
       indexName: 'userId-index',
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
+      readCapacity: 1,
+      writeCapacity: 1,
     });
 
     // Tasks table
     const tasksTable = new dynamodb.Table(this, 'TasksTable', {
       tableName: 'cognify-tasks',
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode: dynamodb.BillingMode.PROVISIONED,
+      readCapacity: 4,
+      writeCapacity: 4,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecovery: false,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES, // For triggering indexing
     });
 
@@ -49,15 +55,19 @@ export class AwsCdkStack extends cdk.Stack {
       indexName: 'userId-projectId-index',
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'projectId', type: dynamodb.AttributeType.STRING },
+      readCapacity: 2,
+      writeCapacity: 2,
     });
 
     // Notes table
     const notesTable = new dynamodb.Table(this, 'NotesTable', {
       tableName: 'cognify-notes',
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode: dynamodb.BillingMode.PROVISIONED,
+      readCapacity: 3,
+      writeCapacity: 3,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecovery: false,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
@@ -65,15 +75,19 @@ export class AwsCdkStack extends cdk.Stack {
       indexName: 'userId-projectId-index',
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'projectId', type: dynamodb.AttributeType.STRING },
+      readCapacity: 2,
+      writeCapacity: 2,
     });
 
     // Documents table
     const documentsTable = new dynamodb.Table(this, 'DocumentsTable', {
       tableName: 'cognify-documents',
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode: dynamodb.BillingMode.PROVISIONED,
+      readCapacity: 2,
+      writeCapacity: 2,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecovery: false,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
@@ -81,15 +95,19 @@ export class AwsCdkStack extends cdk.Stack {
       indexName: 'userId-projectId-index',
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'projectId', type: dynamodb.AttributeType.STRING },
+      readCapacity: 1,
+      writeCapacity: 1,
     });
 
     // Bookmarks table
     const bookmarksTable = new dynamodb.Table(this, 'BookmarksTable', {
       tableName: 'cognify-bookmarks',
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode: dynamodb.BillingMode.PROVISIONED,
+      readCapacity: 2,
+      writeCapacity: 2,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecovery: false,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
@@ -97,36 +115,46 @@ export class AwsCdkStack extends cdk.Stack {
       indexName: 'userId-projectId-index',
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'projectId', type: dynamodb.AttributeType.STRING },
+      readCapacity: 1,
+      writeCapacity: 1,
     });
 
     // Synapses table
     const synapsesTable = new dynamodb.Table(this, 'SynapsesTable', {
       tableName: 'cognify-synapses',
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode: dynamodb.BillingMode.PROVISIONED,
+      readCapacity: 2,
+      writeCapacity: 2,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecovery: false,
     });
 
     synapsesTable.addGlobalSecondaryIndex({
       indexName: 'userId-projectId-index',
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'projectId', type: dynamodb.AttributeType.STRING },
+      readCapacity: 1,
+      writeCapacity: 1,
     });
 
     // AI Responses table
     const aiResponsesTable = new dynamodb.Table(this, 'AIResponsesTable', {
       tableName: 'cognify-ai-responses',
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      billingMode: dynamodb.BillingMode.PROVISIONED,
+      readCapacity: 1,
+      writeCapacity: 1,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecovery: false,
     });
 
     aiResponsesTable.addGlobalSecondaryIndex({
       indexName: 'userId-projectId-index',
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'projectId', type: dynamodb.AttributeType.STRING },
+      readCapacity: 1,
+      writeCapacity: 1,
     });
 
     // ==================== Cognito User Pool ====================

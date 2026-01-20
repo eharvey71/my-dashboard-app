@@ -17,15 +17,19 @@ This directory contains AWS CDK infrastructure code to deploy the Cognify dashbo
 
 ### DynamoDB Tables
 
-All tables use on-demand billing and have Global Secondary Indexes for querying by `userId` and `projectId`:
+All tables use **provisioned billing** configured to stay within the AWS free tier (25 RCU / 25 WCU total). Each table has Global Secondary Indexes for querying by `userId` and `projectId`.
 
-1. `cognify-projects` - User projects
-2. `cognify-tasks` - Project tasks
-3. `cognify-notes` - Project notes
-4. `cognify-documents` - Project documents
-5. `cognify-bookmarks` - Project bookmarks
-6. `cognify-synapses` - Synapse collections
-7. `cognify-ai-responses` - AI response history
+**Capacity Allocation (Free Tier Optimized - Total: 25 RCU / 25 WCU):**
+
+1. `cognify-projects` - User projects (2 RCU / 2 WCU, GSI: 1/1)
+2. `cognify-tasks` - Project tasks (4 RCU / 4 WCU, GSI: 2/2)
+3. `cognify-notes` - Project notes (3 RCU / 3 WCU, GSI: 2/2)
+4. `cognify-documents` - Project documents (2 RCU / 2 WCU, GSI: 1/1)
+5. `cognify-bookmarks` - Project bookmarks (2 RCU / 2 WCU, GSI: 1/1)
+6. `cognify-synapses` - Synapse collections (2 RCU / 2 WCU, GSI: 1/1)
+7. `cognify-ai-responses` - AI response history (1 RCU / 1 WCU, GSI: 1/1)
+
+**Note:** Point-in-time recovery is disabled to avoid additional costs (not included in free tier). For low-medium usage, this capacity should be sufficient. If you exceed these limits, DynamoDB will throttle requests.
 
 ### Lambda Functions
 
@@ -247,40 +251,50 @@ const service = backend.firebase ? firebaseService : awsService;
 // Use service.addTask(), service.getTasks(), etc.
 ```
 
-## Cost Estimates
+## Cost Estimates (Free Tier Optimized)
+
+This deployment is configured to maximize use of AWS free tier services:
 
 ### DynamoDB
-- On-demand pricing: ~$1.25 per million writes, ~$0.25 per million reads
-- Storage: $0.25/GB per month
-- Expected monthly cost for low-medium usage: **$5-20**
+- **Provisioned capacity: 25 RCU / 25 WCU (Free Tier)** ✅
+- Storage: 25 GB free tier (first 25 GB)
+- Expected monthly cost: **$0** (within free tier for low-medium usage)
+- ⚠️ **Note:** If usage exceeds provisioned capacity, requests will be throttled (not charged)
 
 ### Lambda
-- First 1M requests/month: FREE
-- Additional: $0.20 per 1M requests
-- Expected monthly cost: **$0-5**
+- First 1M requests/month: **FREE** ✅
+- First 400,000 GB-seconds compute: **FREE** ✅
+- Expected monthly cost: **$0** (within free tier)
 
 ### Cognito
-- First 50,000 MAU (Monthly Active Users): FREE
+- First 50,000 MAU (Monthly Active Users): **FREE** ✅
 - Expected monthly cost: **$0**
 
 ### API Gateway
-- First 1M requests: $3.50
-- Expected monthly cost: **$3-10**
+- First 12 months: 1M API calls/month **FREE** ✅
+- After 12 months: $3.50 per million requests
+- Expected monthly cost: **$0** (first year), **$3-5** (after)
 
 ### S3 + CloudFront
-- S3 storage: $0.023/GB
-- CloudFront data transfer: $0.085/GB
-- Expected monthly cost: **$1-5**
+- S3: First 5 GB storage **FREE** (12 months) ✅
+- CloudFront: 1 TB data transfer **FREE** (always) ✅
+- Expected monthly cost: **$0-2**
 
-### Total Estimated Cost
-**$10-40/month** for low-medium usage
+### External Services (Not Free)
+- **Pinecone**: Free tier available, check pricing
+- **OpenAI**: Pay per token, varies by usage
 
-Compare to Firebase (Blaze plan):
+### Total Estimated AWS Cost
+- **First 12 months: $0-2/month** (essentially free!)
+- **After 12 months: $3-7/month** (API Gateway charges kick in)
+
+### Compare to Firebase (Blaze plan)
 - Firestore: $0.06 per 100K reads, $0.18 per 100K writes
 - Functions: $0.40 per 1M invocations
 - Hosting: $0.15/GB
+- Typical cost: **$20-50/month**
 
-AWS is typically **30-50% cheaper** for this usage pattern.
+**AWS with free tier is 90-100% cheaper in year 1, and 80-90% cheaper after!**
 
 ## Monitoring
 
