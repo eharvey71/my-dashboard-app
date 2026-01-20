@@ -1,6 +1,6 @@
 .responsesGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 20px;
   margin-top: 20px;
   margin-bottom: 20px;
@@ -23,7 +23,7 @@
 }
 
 .truncatedResponse {
-  max-height: 100px;
+  max-height: 75px;
   overflow: hidden;
 }
 
