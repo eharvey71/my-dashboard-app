@@ -449,8 +449,6 @@ export class AwsCdkStack extends cdk.Stack {
     // S3 bucket for frontend hosting
     const websiteBucket = new s3.Bucket(this, 'WebsiteBucket', {
       bucketName: `cognify-frontend-${this.account}`,
-      websiteIndexDocument: 'index.html',
-      websiteErrorDocument: 'index.html', // For SPA routing
       publicReadAccess: false,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
