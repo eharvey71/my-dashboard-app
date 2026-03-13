@@ -2,7 +2,6 @@ import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const CLIENT_ID = '890654183832-nf837a379aq9nu8h0h4ugd6lqhi66m4e.apps.googleusercontent.com';
-const API_KEY = 'GOCSPX-4oswFz1IjIcZuNDil-4NdEKRnGG';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
@@ -10,9 +9,15 @@ let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 let accessToken = null;
+let initPromise = null; // Track initialization promise
 
 export const initializeGoogleDriveApi = () => {
-  return new Promise((resolve, reject) => {
+  // Return existing promise if initialization is already in progress
+  if (initPromise) {
+    return initPromise;
+  }
+
+  initPromise = new Promise((resolve, reject) => {
     const script1 = document.createElement('script');
     script1.src = 'https://apis.google.com/js/api.js';
     script1.onload = () => {
@@ -50,6 +55,8 @@ export const initializeGoogleDriveApi = () => {
       }
     });
   });
+
+  return initPromise;
 };
 
 function gapiLoaded() {
@@ -57,7 +64,6 @@ function gapiLoaded() {
     gapi.load('client', async () => {
       try {
         await gapi.client.init({
-          apiKey: API_KEY,
           discoveryDocs: [DISCOVERY_DOC],
         });
         gapiInited = true;
@@ -81,12 +87,21 @@ function gisLoaded() {
   });
 }
 
-export const signIn = () => {
-  return new Promise((resolve, reject) => {
-    if (!gapiInited || !gisInited) {
-      reject(new Error('Google API not initialized'));
-      return;
+export const signIn = async () => {
+  // Wait for initialization if not ready yet
+  if (!gapiInited || !gisInited) {
+    if (initPromise) {
+      try {
+        await initPromise;
+      } catch (error) {
+        throw new Error('Google API initialization failed: ' + error.message);
+      }
+    } else {
+      throw new Error('Google API not initialized. Please refresh the page.');
     }
+  }
+
+  return new Promise((resolve, reject) => {
     tokenClient.callback = async (resp) => {
       if (resp.error !== undefined) {
         reject(resp);
@@ -179,6 +194,8 @@ export const getFileContent = async (fileId, mimeType) => {
   await ensureValidToken();
   try {
     let response;
+
+    // Google Workspace files need to be exported
     if (mimeType === 'application/vnd.google-apps.document') {
       response = await gapi.client.drive.files.export({
         fileId: fileId,
@@ -194,9 +211,24 @@ export const getFileContent = async (fileId, mimeType) => {
         fileId: fileId,
         mimeType: 'text/plain',
       });
-    } else {
-      throw new Error('Unsupported file type');
     }
+    // Regular files (txt, pdf, docx, etc.) can be downloaded directly
+    else if (
+      mimeType === 'text/plain' ||
+      mimeType === 'text/markdown' ||
+      mimeType === 'application/pdf' ||
+      mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      mimeType === 'application/msword' ||
+      mimeType.startsWith('text/')
+    ) {
+      response = await gapi.client.drive.files.get({
+        fileId: fileId,
+        alt: 'media',
+      });
+    } else {
+      throw new Error(`Unsupported file type: ${mimeType}`);
+    }
+
     return response.body;
   } catch (err) {
     console.error('Error getting file content:', err);

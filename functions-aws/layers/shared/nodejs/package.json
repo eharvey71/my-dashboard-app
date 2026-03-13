@@ -1,0 +1,13 @@
+{
+  "name": "cognify-shared-layer",
+  "version": "1.0.0",
+  "description": "Shared dependencies for Cognify Lambda functions",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0",
+    "@pinecone-database/pinecone": "^2.2.0",
+    "openai": "^4.20.0",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12"
+  }
+}

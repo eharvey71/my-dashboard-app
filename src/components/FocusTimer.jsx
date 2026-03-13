@@ -15,6 +15,8 @@ import {
   Cell,
 } from "recharts";
 import { useTimer } from "../contexts/TimerContext.jsx";
+import { useEducation } from "../contexts/EducationContext";
+import { useProjectContext } from "../contexts/ProjectContext";
 import styles from "./FocusTimer.module.css";
 
 const TIME_OPTIONS = [
@@ -29,6 +31,8 @@ const TIME_OPTIONS = [
 
 const FocusTimer = ({ user }) => {
   const { projectId } = useParams();
+  const { getTerm } = useEducation();
+  const { activeProjectType } = useProjectContext();
   const {
     activeTimer,
     remainingTime,
@@ -236,7 +240,7 @@ const FocusTimer = ({ user }) => {
           <div className="card mb-4">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h4 className="card-title mb-0">Tasks</h4>
+                <h4 className="card-title mb-0">{getTerm("tasks", activeProjectType)}</h4>
                 <div className="d-flex align-items-center">
                   <div className="form-check form-switch me-3">
                     <input
@@ -251,13 +255,13 @@ const FocusTimer = ({ user }) => {
                     </label>
                   </div>
                   
-                  <select 
-                    className="form-select form-select-sm" 
+                  <select
+                    className="form-select form-select-sm"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                     style={{ width: 'auto', fontSize: '0.85rem' }}
                   >
-                    <option value="priority">Sort by Priority</option>
+                    <option value="priority">Sort by {getTerm("priority")}</option>
                     <option value="name">Sort by Name</option>
                     <option value="color">Sort by Color</option>
                   </select>
@@ -346,7 +350,7 @@ const FocusTimer = ({ user }) => {
           <div className="card">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h4 className="card-title mb-0">Focus Metrics</h4>
+                <h4 className="card-title mb-0">{getTerm("focusTimer")} Metrics</h4>
                 <div className="d-flex flex-column" style={{ gap: '0.5rem' }}>
                   <div className="form-check form-switch">
                     <input
@@ -357,7 +361,7 @@ const FocusTimer = ({ user }) => {
                       onChange={() => setShowDeletedTasks(!showDeletedTasks)}
                     />
                     <label className="form-check-label" htmlFor="showDeletedTasksSwitch" style={{ fontSize: '0.85rem' }}>
-                      Show Deleted Tasks
+                      Show Deleted {getTerm("tasks", activeProjectType)}
                     </label>
                   </div>
                   <div className="form-check form-switch">
@@ -369,7 +373,7 @@ const FocusTimer = ({ user }) => {
                       onChange={() => setShowCompletedTasks(!showCompletedTasks)}
                     />
                     <label className="form-check-label" htmlFor="analyticsShowCompletedSwitch" style={{ fontSize: '0.85rem' }}>
-                      Show Completed Tasks
+                      Show Completed {getTerm("tasks", activeProjectType)}
                     </label>
                   </div>
                 </div>
@@ -392,7 +396,7 @@ const FocusTimer = ({ user }) => {
               <table className={styles.analyticsTable}>
                 <thead>
                   <tr>
-                    <th>Task</th>
+                    <th>{getTerm("task", activeProjectType)}</th>
                     <th>Time Spent</th>
                   </tr>
                 </thead>

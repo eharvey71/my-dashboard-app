@@ -12,12 +12,16 @@ import {
   Cell,
 } from 'recharts';
 import { useTimer } from '../contexts/TimerContext.jsx';
+import { useEducation } from '../contexts/EducationContext';
+import { useProjectContext } from '../contexts/ProjectContext';
 import { BarChart3 } from 'lucide-react';
 import moduleStyles from './DashboardModule.module.css';
 import styles from './FocusTimer.module.css';
 
 const FocusMetrics = ({ user, projectId, limit = 5 }) => {
   const { formatTime } = useTimer();
+  const { getTerm } = useEducation();
+  const { activeProjectType } = useProjectContext();
   const [analytics, setAnalytics] = useState({});
   const [loading, setLoading] = useState(true);
   const [showDeletedTasks, setShowDeletedTasks] = useState(false);
@@ -104,7 +108,7 @@ const FocusMetrics = ({ user, projectId, limit = 5 }) => {
   };
 
   if (loading) {
-    return <div className={moduleStyles.loading}>Loading focus metrics...</div>;
+    return <div className={moduleStyles.loading}>Loading {getTerm("focusTimer").toLowerCase()} metrics...</div>;
   }
 
   return (
@@ -112,7 +116,7 @@ const FocusMetrics = ({ user, projectId, limit = 5 }) => {
       <div className={moduleStyles.header}>
         <h2 className={moduleStyles.title}>
           <BarChart3 size={20} />
-          <span>Focus Metrics</span>
+          <span>{getTerm("focusTimer")} Metrics</span>
         </h2>
         <div className="d-flex align-items-center gap-2">
           <div className="form-check form-switch" style={{ fontSize: '0.875rem' }}>
@@ -153,7 +157,7 @@ const FocusMetrics = ({ user, projectId, limit = 5 }) => {
           <table className={styles.analyticsTable}>
             <thead>
               <tr>
-                <th>Task</th>
+                <th>{getTerm("task", activeProjectType)}</th>
                 <th>Time Spent</th>
               </tr>
             </thead>
@@ -176,7 +180,7 @@ const FocusMetrics = ({ user, projectId, limit = 5 }) => {
         </>
       ) : (
         <div className={moduleStyles.emptyState}>
-          No focus data yet. Use the timer to track time spent on tasks.
+          No {getTerm("focusTimer").toLowerCase()} data yet. Use the timer to track time spent on {getTerm("tasks", activeProjectType).toLowerCase()}.
         </div>
       )}
     </div>

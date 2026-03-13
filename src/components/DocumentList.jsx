@@ -160,7 +160,7 @@ const DocumentList = ({ user }) => {
   const handleDelete = async (id) => {
     try {
       await deleteDocument(id);
-      await deleteVector(user.uid, id, 'document');
+      await deleteVector(user.uid, projectId, id, 'document');
       setDocuments(documents.filter(doc => doc.id !== id));
     } catch (error) {
       console.error('Error deleting document:', error);

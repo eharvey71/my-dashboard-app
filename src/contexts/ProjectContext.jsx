@@ -15,6 +15,7 @@ export const useProjectContext = () => useContext(ProjectContext);
 export const ProjectProvider = ({ children, user }) => {
   const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProject] = useState(null);
+  const [activeProjectType, setActiveProjectType] = useState('general');
   const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
@@ -48,6 +49,28 @@ export const ProjectProvider = ({ children, user }) => {
       setDisplayName("");
     }
   }, [user]);
+
+  // Load active project type when activeProject changes
+  useEffect(() => {
+    const loadProjectType = async () => {
+      if (activeProject) {
+        try {
+          const projectRef = doc(db, "projects", activeProject);
+          const projectDoc = await getDoc(projectRef);
+          if (projectDoc.exists()) {
+            const projectData = projectDoc.data();
+            setActiveProjectType(projectData.projectType || 'general');
+          }
+        } catch (error) {
+          console.error("Error loading project type:", error);
+          setActiveProjectType('general');
+        }
+      } else {
+        setActiveProjectType('general');
+      }
+    };
+    loadProjectType();
+  }, [activeProject]);
 
   const updateDisplayName = (newName) => {
     setDisplayName(newName);
@@ -83,6 +106,7 @@ export const ProjectProvider = ({ children, user }) => {
         projects,
         addProject,
         activeProject,
+        activeProjectType,
         updateActiveProject,
         updateProjectName,
         displayName,

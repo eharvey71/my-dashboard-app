@@ -7,6 +7,8 @@ import {
   deleteAIResponse,
 } from "../services/firebaseConfig";
 import { getSynapses, getSynapseContent } from "../services/synapseService";
+import { useEducation } from "../contexts/EducationContext";
+import { useProjectContext } from "../contexts/ProjectContext";
 import styles from "./FullPageAIAssistant.module.css";
 import {
   Trash2,
@@ -137,6 +139,8 @@ const FullPageAIAssistant = ({ user }) => {
   const { projectId } = useParams();
   const location = useLocation();
   const responseContainerRef = useRef(null);
+  const { getTerm, educationMode } = useEducation();
+  const { activeProjectType } = useProjectContext();
 
   // Get synapse ID from URL query parameter
   const searchParams = new URLSearchParams(location.search);
@@ -315,7 +319,9 @@ const FullPageAIAssistant = ({ user }) => {
         synapseContent: filteredContents,
         synapseName: synapseName,
         analysisType: analysisType,
-        analysisMode: analysisMode
+        analysisMode: analysisMode,
+        educationMode: educationMode,
+        projectType: activeProjectType
       });
 
       // Display the response with a typing effect
@@ -445,17 +451,17 @@ const FullPageAIAssistant = ({ user }) => {
       <div className="d-flex align-items-center justify-content-between mb-4">
         <div className="d-flex align-items-center gap-2">
           <Brain className="h-6 w-6" />
-          <h1>Advanced Synapse Analysis</h1>
+          <h3>Neural Insights</h3>
         </div>
         
         <div className={styles.tooltipContainer}>
           <div className="alert alert-info p-3 mb-0">
-            <strong>How to use the AI Assistant:</strong> 
+            <strong>How to analyze your synapse:</strong>
             <ul className="mb-0 mt-2">
-              <li><strong>Select a synapse</strong> to analyze from the dropdown</li>
-              <li><strong>Choose an analysis type</strong> depending on what insights you need</li>
+              <li><strong>Select a synapse</strong> from the dropdown</li>
+              <li><strong>Choose an analysis type</strong> based on the insights you need</li>
               <li><strong>Select a processing mode</strong>: Core (factual), Enhanced (deeper insights), or Creative (innovative perspectives)</li>
-              <li><strong>Click "Analyze Synapse"</strong> to generate your analysis</li>
+              <li><strong>Click "Fire Neuron"</strong> to generate your analysis</li>
               <li><strong>Save</strong> useful analyses to reference later</li>
             </ul>
           </div>
@@ -563,14 +569,26 @@ const FullPageAIAssistant = ({ user }) => {
                   className="form-select"
                   value={analysisType}
                   onChange={(e) => setAnalysisType(e.target.value)}
-                  title="Choose what kind of analysis you want the AI to perform on your synapse content"
+                  title={`Choose what kind of analysis you want the AI to perform on your ${getTerm("synapse").toLowerCase()} content`}
                 >
-                  <option value="comprehensive" title="A thorough analysis of all content within the synapse, identifying patterns, themes, and insights across all materials">Comprehensive Analysis</option>
-                  <option value="relationships" title="Focuses on identifying connections, similarities, and contradictions between different pieces of content in your synapse">Relationship-Focused</option>
-                  <option value="summary" title="A concise overview that extracts the most essential information from all content in your synapse">Executive Summary</option>
-                  <option value="actionItems" title="Identifies concrete next steps, tasks, and actionable insights from your synapse content">Action Items Extraction</option>
-                  <option value="timeline" title="Organizes content chronologically to show the development or sequence of information in your synapse">Timeline Analysis</option>
-                  <option value="learningPlan" title="Creates a structured learning guide with resources, steps, and milestones based on your synapse content">Learning Plan/Study Guide</option>
+                  <option value="comprehensive" title={`A thorough analysis of all content within the ${getTerm("synapse").toLowerCase()}, identifying patterns, themes, and insights across all materials`}>
+                    {educationMode ? "Comprehensive Study Analysis" : "Comprehensive Analysis"}
+                  </option>
+                  <option value="relationships" title={`Focuses on identifying connections, similarities, and contradictions between different pieces of content in your ${getTerm("synapse").toLowerCase()}`}>
+                    {educationMode ? "Concept Relationships" : "Relationship-Focused"}
+                  </option>
+                  <option value="summary" title={`A concise overview that extracts the most essential information from all content in your ${getTerm("synapse").toLowerCase()}`}>
+                    {educationMode ? "Study Summary" : "Executive Summary"}
+                  </option>
+                  <option value="actionItems" title={`Identifies concrete next steps, ${getTerm("tasks", activeProjectType).toLowerCase()}, and actionable insights from your ${getTerm("synapse").toLowerCase()} content`}>
+                    {educationMode ? "Study Action Items" : "Action Items Extraction"}
+                  </option>
+                  <option value="timeline" title={`Organizes content chronologically to show the development or sequence of information in your ${getTerm("synapse").toLowerCase()}`}>
+                    {educationMode ? "Course Timeline" : "Timeline Analysis"}
+                  </option>
+                  <option value="learningPlan" title={`Creates a structured learning guide with resources, steps, and milestones based on your ${getTerm("synapse").toLowerCase()} content`}>
+                    {educationMode ? "Study Guide & Learning Plan" : "Learning Plan/Study Guide"}
+                  </option>
                 </select>
               </div>
             </div>
@@ -657,7 +675,7 @@ const FullPageAIAssistant = ({ user }) => {
                   </>
                 ) : (
                   <>
-                    Analyze Synapse <Zap className="ms-1" size={18} />
+                    Fire Neuron <Zap className="ms-1" size={18} />
                   </>
                 )}
               </button>
@@ -674,7 +692,7 @@ const FullPageAIAssistant = ({ user }) => {
                     <small>Will create a concise summary of your entire synapse content</small>
                   )}
                   {analysisType === "actionItems" && (
-                    <small>Will extract concrete next steps and tasks from your synapse</small>
+                    <small>Will extract concrete next steps and {getTerm("tasks", activeProjectType).toLowerCase()} from your synapse</small>
                   )}
                   {analysisType === "timeline" && (
                     <small>Will organize your content to show chronological sequence and development</small>
