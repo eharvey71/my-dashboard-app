@@ -1,8 +1,16 @@
-import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
-const CLIENT_ID = '890654183832-nf837a379aq9nu8h0h4ugd6lqhi66m4e.apps.googleusercontent.com';
-const API_KEY = 'GOCSPX-4oswFz1IjIcZuNDil-4NdEKRnGG';
+// The OAuth client ID is a public identifier and is safe in the bundle.
+// It previously sat next to a GOCSPX- OAuth *client secret* that was passed to
+// gapi.client.init as `apiKey`. That was both a leak and a category error: gapi
+// wants a browser API key there, never a client secret. Authorized Drive calls
+// are covered by the OAuth token from initTokenClient, so the API key is
+// optional - set VITE_GOOGLE_API_KEY only if you have a referrer-restricted
+// browser key.
+const CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  '890654183832-nf837a379aq9nu8h0h4ugd6lqhi66m4e.apps.googleusercontent.com';
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || null;
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
@@ -57,7 +65,7 @@ function gapiLoaded() {
     gapi.load('client', async () => {
       try {
         await gapi.client.init({
-          apiKey: API_KEY,
+          ...(API_KEY ? { apiKey: API_KEY } : {}),
           discoveryDocs: [DISCOVERY_DOC],
         });
         gapiInited = true;

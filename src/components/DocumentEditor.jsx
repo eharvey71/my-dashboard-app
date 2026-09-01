@@ -997,7 +997,7 @@ const DocumentEditor = ({ user }) => {
       ) : (
         <div className={styles.editorWrapper}>
           <Editor
-            apiKey="g4hs9khfgw1uugaf6xwxnbr465wiilodw9q7ztifembowdp5"
+            apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
             initialValue=""
             onInit={(evt, editor) => {
               editorRef.current = editor;

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from 'react-router-dom';
 import { getNotes, addNote, deleteNote, addDocument } from "../services/firebaseConfig";
-import { indexContent } from "../services/pineconeService";
 import { Trash2, Check, X, ArrowUpRight, FileText, Clipboard, Clock } from 'lucide-react';
 import styles from "./Notes.module.css";
 import moduleStyles from "./DashboardModule.module.css";
@@ -56,16 +55,7 @@ const Notes = ({ user, projectId, limit = 5 }) => {
       setNotes((prevNotes) => [noteWithValidDate, ...prevNotes]);
       setNewNote('');
 
-      if (!noteWithValidDate.indexedInPinecone) {
-        try {
-          await indexContent(user.uid, projectId, noteWithValidDate.content, 'note', noteWithValidDate.id);
-          setNotes(prevNotes => prevNotes.map(note =>
-            note.id === noteWithValidDate.id ? { ...note, indexedInPinecone: true } : note
-          ));
-        } catch (pineconeError) {
-          console.error("Error indexing note in Pinecone:", pineconeError);
-        }
-      }
+      // Indexing is handled by the indexTaskOrNote Firestore trigger.
     } catch (error) {
       console.error("Error adding note:", error);
       setError("Failed to add note");

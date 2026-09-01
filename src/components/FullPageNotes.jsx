@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getNotes, addNote, deleteNote, addDocument } from "../services/firebaseConfig";
-import { indexContent } from "../services/pineconeService";
 import { Trash2, Check, X, ArrowUpRight, Clipboard } from 'lucide-react';
 import moduleStyles from './DashboardModule.module.css';
 import styles from './FullPageNotes.module.css';
@@ -118,21 +117,8 @@ const FullPageNotes = ({ user }) => {
   
       setNotes((prevNotes) => [noteWithValidDate, ...prevNotes]);
       setNewNote('');
-  
-      if (!noteWithValidDate.indexedInPinecone) {
-        setError('Note added, but not indexed in Pinecone. Retrying...');
-  
-        try {
-          await indexContent(user.uid, projectId, noteWithValidDate.content, 'note', noteWithValidDate.id);
-          setNotes(prevNotes => prevNotes.map(note =>
-            note.id === noteWithValidDate.id ? { ...note, indexedInPinecone: true } : note
-          ));
-          setError(null);
-        } catch (pineconeError) {
-          console.error("Error re-indexing note in Pinecone:", pineconeError);
-          setError("Failed to index note in Pinecone. Some features may be limited.");
-        }
-      }
+
+      // Indexing is handled by the indexTaskOrNote Firestore trigger.
     } catch (error) {
       console.error("Error adding note:", error);
       setError("Failed to add note");

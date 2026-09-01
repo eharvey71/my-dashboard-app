@@ -160,7 +160,7 @@ const DocumentList = ({ user }) => {
   const handleDelete = async (id) => {
     try {
       await deleteDocument(id);
-      await deleteVector(user.uid, id, 'document');
+      await deleteVector(projectId, id, 'document');
       setDocuments(documents.filter(doc => doc.id !== id));
     } catch (error) {
       console.error('Error deleting document:', error);
@@ -193,7 +193,7 @@ const DocumentList = ({ user }) => {
       
       if (newDoc && newDoc.id && newDoc.updatedAt) {
         setDocuments(prevDocuments => [newDoc, ...prevDocuments]);
-        await indexContent(user.uid, projectId, file.content, 'document', newDoc.id, `Google Drive Document: ${file.name}`, 'Google Drive');
+        await indexContent(projectId, file.content, 'document', newDoc.id, `Google Drive Document: ${file.name}`, 'Google Drive');
       } else {
         throw new Error('Invalid document structure returned from addDocumentFromGoogleDrive');
       }

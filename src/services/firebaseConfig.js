@@ -1,6 +1,4 @@
-import { initializeApp } from "firebase/app";
 import {
-  getFirestore,
   collection,
   getDocs,
   addDoc,
@@ -15,24 +13,10 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { updateVector } from "./pineconeService";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "./firebaseApp";
 import formatUrl from "../utils/urlFormatter";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
-  authDomain: "mydashboard-ff9ae.firebaseapp.com",
-  databaseURL: "https://mydashboard-ff9ae-default-rtdb.firebaseio.com",
-  projectId: "mydashboard-ff9ae",
-  storageBucket: "mydashboard-ff9ae.appspot.com",
-  messagingSenderId: "856197649644",
-  appId: "1:856197649644:web:48150da4f5db80617b41c9",
-  measurementId: "G-NPL3YL1MBE",
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const functions = getFunctions(app);
 
 const addAIResponse = async (
   userId,
@@ -248,7 +232,7 @@ const updateItem = async (id, updates, type) => {
         updates.title !== currentItem.title)
     ) {
       const newContent = updates.content || updates.title;
-      await updateVector(currentItem.userId, id, newContent, type);
+      await updateVector(currentItem.projectId, id, newContent, type);
     }
 
     console.log(`${type} successfully updated:`, updates);

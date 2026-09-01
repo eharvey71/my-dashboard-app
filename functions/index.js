@@ -1,5 +1,6 @@
 // functions/index.js
 const functions = require("firebase-functions");
+const { defineSecret, defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const axios = require("axios");
 const cheerio = require("cheerio");
@@ -8,33 +9,63 @@ const OpenAI = require("openai");
 
 admin.initializeApp();
 
-// PROD
-const openaiApiKey = functions.config().openai?.key;
-const pineconeApiKey = functions.config().pinecone?.key;
-const pineconeIndexName = functions.config().pinecone?.index;
+// Secrets are resolved at call time, never at module load. Set them with:
+//   firebase functions:secrets:set OPENAI_API_KEY
+//   firebase functions:secrets:set PINECONE_API_KEY
+//   firebase functions:secrets:set LINKPREVIEW_API_KEY
+const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
+const PINECONE_API_KEY = defineSecret("PINECONE_API_KEY");
+const LINKPREVIEW_API_KEY = defineSecret("LINKPREVIEW_API_KEY");
 
-// DEV
-//const openaiApiKey = process.env.OPENAI_API_KEY;
-//const pineconeApiKey = process.env.PINECONE_API_KEY;
-//const pineconeIndexName = process.env.PINECONE_INDEX_NAME;
+// Not a secret - overridable via functions/.env
+const PINECONE_INDEX_NAME = defineString("PINECONE_INDEX_NAME", {
+  default: "user-data-index",
+});
 
-// Check if required environment variables are available
-if (!openaiApiKey || !pineconeApiKey || !pineconeIndexName) {
-  console.error(
-    "Missing required environment variables. Please set OPENAI_API_KEY, PINECONE_API_KEY, and PINECONE_INDEX_NAME."
-  );
-  process.exit(1);
+// Secret sets bound to each function via runWith.
+const AI_SECRETS = { secrets: [OPENAI_API_KEY, PINECONE_API_KEY] };
+const LINK_SECRETS = { secrets: [LINKPREVIEW_API_KEY] };
+
+let openaiClient = null;
+let pineconeClient = null;
+
+function requireSecret(param, name) {
+  const value = param.value();
+  if (!value) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      `${name} is not configured. Set it with: firebase functions:secrets:set ${name}`
+    );
+  }
+  return value;
 }
 
-const openai = new OpenAI({
-  apiKey: openaiApiKey,
-});
+function getOpenAI() {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: requireSecret(OPENAI_API_KEY, "OPENAI_API_KEY"),
+    });
+  }
+  return openaiClient;
+}
 
-const pc = new Pinecone({
-  apiKey: pineconeApiKey,
-});
+function getPineconeIndex() {
+  if (!pineconeClient) {
+    pineconeClient = new Pinecone({
+      apiKey: requireSecret(PINECONE_API_KEY, "PINECONE_API_KEY"),
+    });
+  }
+  return pineconeClient.Index(PINECONE_INDEX_NAME.value());
+}
 
-exports.scrapeAndIndexBookmark = functions.firestore
+// Single source of truth for Pinecone vector IDs. The client used to build a
+// different ID (${userId}-${type}-${id}) than the Firestore triggers did,
+// which meant every note was stored twice and deletes orphaned one copy.
+function vectorId(userId, projectId, type, id) {
+  return `${userId}-${projectId}-${type}-${id}`;
+}
+
+exports.scrapeAndIndexBookmark = functions.runWith(AI_SECRETS).firestore
   .document("bookmarks/{bookmarkId}")
   .onCreate(async (snap, context) => {
     const bookmark = snap.data();
@@ -62,21 +93,14 @@ exports.scrapeAndIndexBookmark = functions.firestore
         chunks.push(cleanedText.slice(i, i + chunkSize));
       }
 
-      // Initialize Pinecone index
-      if (!pineconeApiKey || !pineconeIndexName) {
-        throw new Error(
-          "Pinecone configuration is incomplete. Please check your Firebase Functions config."
-        );
-      }
-
-      const index = pc.Index(pineconeIndexName);
+      const index = getPineconeIndex();
 
       // Create embeddings and index chunks
       for (let i = 0; i < chunks.length; i++) {
         const embedding = await createEmbedding(chunks[i]);
         await index.upsert([
           {
-            id: `${userId}-${projectId}-bookmark-${context.params.bookmarkId}-${i}`,
+            id: `${vectorId(userId, projectId, "bookmark", context.params.bookmarkId)}-${i}`,
             values: embedding,
             metadata: {
               userId,
@@ -102,7 +126,7 @@ exports.scrapeAndIndexBookmark = functions.firestore
   });
 
 async function createEmbedding(text) {
-  const response = await openai.embeddings.create({
+  const response = await getOpenAI().embeddings.create({
     model: "text-embedding-ada-002",
     input: text,
   });
@@ -110,11 +134,11 @@ async function createEmbedding(text) {
   return response.data[0].embedding;
 }
 
-exports.cleanupPineconeVectors = functions.pubsub
+exports.cleanupPineconeVectors = functions.runWith(AI_SECRETS).pubsub
   .schedule("every 12 hours")
   .onRun(async (context) => {
     const db = admin.firestore();
-    const index = pc.Index(pineconeIndexName);
+    const index = getPineconeIndex();
 
     try {
       // Fetch all document IDs from Firestore for notes and tasks
@@ -202,7 +226,7 @@ exports.cleanupPineconeVectors = functions.pubsub
     }
   });
 
-exports.indexTaskOrNote = functions.firestore
+exports.indexTaskOrNote = functions.runWith(AI_SECRETS).firestore
   .document("{collectionName}/{docId}")
   .onCreate(async (snap, context) => {
     const { collectionName, docId } = context.params;
@@ -218,7 +242,7 @@ exports.indexTaskOrNote = functions.firestore
 
     try {
       // Initialize Pinecone index
-      const index = pc.Index(pineconeIndexName);
+      const index = getPineconeIndex();
 
       let metadata = {
         userId,
@@ -237,7 +261,7 @@ exports.indexTaskOrNote = functions.firestore
       // Index the task or note
       await index.upsert([
         {
-          id: `${userId}-${projectId}-${collectionName.slice(0, -1)}-${docId}`,
+          id: vectorId(userId, projectId, collectionName.slice(0, -1), docId),
           values: embedding,
           metadata: metadata,
         },
@@ -262,7 +286,7 @@ exports.indexTaskOrNote = functions.firestore
     }
   });
 
-exports.retryFailedIndexing = functions.pubsub
+exports.retryFailedIndexing = functions.runWith(AI_SECRETS).pubsub
   .schedule("every 6 hours")
   .onRun(async (context) => {
     const db = admin.firestore();
@@ -277,7 +301,7 @@ exports.retryFailedIndexing = functions.pubsub
       for (const doc of snapshot.docs) {
         const data = doc.data();
         try {
-          const index = pc.Index(pineconeIndexName);
+          const index = getPineconeIndex();
           const embedding = await createEmbedding(data.content);
 
           await index.upsert([
@@ -308,7 +332,7 @@ exports.retryFailedIndexing = functions.pubsub
     }
   });
 
-exports.queryPinecone = functions.https.onCall(async (data, context) => {
+exports.queryPinecone = functions.runWith(AI_SECRETS).https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",
@@ -327,7 +351,7 @@ exports.queryPinecone = functions.https.onCall(async (data, context) => {
   }
 
   try {
-    const index = pc.Index(pineconeIndexName);
+    const index = getPineconeIndex();
 
     let queryVector;
     try {
@@ -370,7 +394,7 @@ exports.queryPinecone = functions.https.onCall(async (data, context) => {
   }
 });
 
-exports.analyzeContent = functions.https.onCall(async (data, context) => {
+exports.analyzeContent = functions.runWith(AI_SECRETS).https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",
@@ -381,7 +405,7 @@ exports.analyzeContent = functions.https.onCall(async (data, context) => {
   const prompt = data.prompt;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: "You are a helpful assistant." },
@@ -402,7 +426,7 @@ exports.analyzeContent = functions.https.onCall(async (data, context) => {
   }
 });
 
-exports.generateSuggestions = functions.https.onCall(async (data, context) => {
+exports.generateSuggestions = functions.runWith(AI_SECRETS).https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",
@@ -452,7 +476,7 @@ exports.generateSuggestions = functions.https.onCall(async (data, context) => {
 
   try {
     // Use OpenAI to generate suggestions based on the project content
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
@@ -677,7 +701,7 @@ exports.convertTasksToDocument = functions.https.onCall(async (data, context) =>
   }
 });
 
-exports.analyzeSynapseContent = functions.https.onCall(
+exports.analyzeSynapseContent = functions.runWith(AI_SECRETS).https.onCall(
   async (data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError(
@@ -933,7 +957,7 @@ Only reference the items provided above in this analysis.
       
       // If using core mode, just do a single analysis
       if (!includesBroaderAnalysis) {
-        const analysis = await openai.chat.completions.create({
+        const analysis = await getOpenAI().chat.completions.create({
           model: model,
           messages: [
             { role: "system", content: systemPrompt },
@@ -969,7 +993,7 @@ Important: Your response should be substantive and directly reference the source
 
         // Make both API calls concurrently
         const [synapseAnalysis, broaderAnalysis] = await Promise.all([
-          openai.chat.completions.create({
+          getOpenAI().chat.completions.create({
             model: model,
             messages: [
               { role: "system", content: systemPrompt },
@@ -978,7 +1002,7 @@ Important: Your response should be substantive and directly reference the source
             temperature: temperature,
             max_tokens: maxTokens, // Use the type-specific token limit
           }),
-          openai.chat.completions.create({
+          getOpenAI().chat.completions.create({
             model: "gpt-4", // Always use GPT-4 for broader analysis
             messages: [
               {
@@ -1042,7 +1066,7 @@ ${contextString.substring(0, 1000)}...
 `;
 
         try {
-          const creativeResponse = await openai.chat.completions.create({
+          const creativeResponse = await getOpenAI().chat.completions.create({
             model: "gpt-4",
             messages: [
               { 
@@ -1074,3 +1098,171 @@ ${creativeResponse.choices[0].message.content.trim()}`;
     }
   }
 );
+
+// ---------------------------------------------------------------------------
+// Vector maintenance callables.
+//
+// These replace the browser-side pineconeService, which shipped a live Pinecone
+// key and an OpenAI key in the bundle. Vector IDs come from vectorId() so the
+// client and the Firestore triggers agree on a single scheme.
+// ---------------------------------------------------------------------------
+
+function requireAuth(context) {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "You must be signed in to perform this action."
+    );
+  }
+  return context.auth.uid;
+}
+
+function requireFields(data, fields) {
+  for (const field of fields) {
+    if (!data || !data[field]) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        `Missing required field: ${field}`
+      );
+    }
+  }
+}
+
+exports.indexContent = functions
+  .runWith(AI_SECRETS)
+  .https.onCall(async (data, context) => {
+    // The caller's own uid owns the vector - never trust a userId from the client.
+    const userId = requireAuth(context);
+    requireFields(data, ["projectId", "content", "type", "id"]);
+
+    const { projectId, content, type, id } = data;
+    const additionalContext = data.additionalContext || "";
+    const source = data.source || "native";
+
+    try {
+      const contextualizedContent = `${type.toUpperCase()}: ${content}\nContext: ${additionalContext}\nSource: ${source}`;
+      const embedding = await createEmbedding(contextualizedContent);
+      const index = getPineconeIndex();
+
+      await index.upsert([
+        {
+          id: vectorId(userId, projectId, type, id),
+          values: embedding,
+          metadata: {
+            userId,
+            projectId,
+            type,
+            content: contextualizedContent,
+            id,
+            source,
+          },
+        },
+      ]);
+
+      return { success: true };
+    } catch (error) {
+      console.error(`Error indexing ${type} ${id}:`, error);
+      throw new functions.https.HttpsError("internal", `Error indexing ${type}`);
+    }
+  });
+
+exports.updateVector = functions
+  .runWith(AI_SECRETS)
+  .https.onCall(async (data, context) => {
+    const userId = requireAuth(context);
+    requireFields(data, ["projectId", "content", "type", "id"]);
+
+    const { projectId, content, type, id } = data;
+
+    try {
+      const embedding = await createEmbedding(content);
+      const index = getPineconeIndex();
+
+      await index.upsert([
+        {
+          id: vectorId(userId, projectId, type, id),
+          values: embedding,
+          metadata: { userId, projectId, type, content, id },
+        },
+      ]);
+
+      return { success: true };
+    } catch (error) {
+      console.error(`Error updating ${type} vector ${id}:`, error);
+      throw new functions.https.HttpsError(
+        "internal",
+        `Error updating ${type} vector`
+      );
+    }
+  });
+
+exports.deleteVector = functions
+  .runWith(AI_SECRETS)
+  .https.onCall(async (data, context) => {
+    const userId = requireAuth(context);
+    requireFields(data, ["projectId", "type", "id"]);
+
+    const { projectId, type, id } = data;
+
+    try {
+      const index = getPineconeIndex();
+      await index.deleteOne(vectorId(userId, projectId, type, id));
+      return { success: true };
+    } catch (error) {
+      console.error(`Error deleting ${type} vector ${id}:`, error);
+      throw new functions.https.HttpsError(
+        "internal",
+        `Error deleting ${type} vector`
+      );
+    }
+  });
+
+// ---------------------------------------------------------------------------
+// Bookmark link metadata. Replaces the browser-side LinkPreview call, which
+// exposed the LinkPreview key to anyone who opened devtools.
+// ---------------------------------------------------------------------------
+
+exports.fetchLinkMetadata = functions
+  .runWith(LINK_SECRETS)
+  .https.onCall(async (data, context) => {
+    requireAuth(context);
+    requireFields(data, ["url"]);
+
+    let parsed;
+    try {
+      parsed = new URL(data.url);
+    } catch {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid URL.");
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Only http and https URLs are supported."
+      );
+    }
+
+    // Resolve the secret outside the try so a misconfiguration surfaces as a
+    // real error rather than being swallowed by the graceful-degradation catch.
+    const apiKey = requireSecret(LINKPREVIEW_API_KEY, "LINKPREVIEW_API_KEY");
+
+    try {
+      const response = await axios.post(
+        "https://api.linkpreview.net",
+        { q: parsed.toString() },
+        {
+          headers: { "X-Linkpreview-Api-Key": apiKey },
+          timeout: 10000,
+        }
+      );
+
+      return {
+        title: response.data.title || null,
+        description: response.data.description || "",
+        image: response.data.image || null,
+      };
+    } catch (error) {
+      // A preview failure is not fatal - the client falls back to a favicon.
+      console.warn(`Link metadata lookup failed for ${parsed.hostname}:`, error.message);
+      return { title: null, description: "", image: null };
+    }
+  });

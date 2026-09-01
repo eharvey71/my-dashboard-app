@@ -1,6 +1,4 @@
-import { initializeApp } from "firebase/app";
 import {
-  getAuth,
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
@@ -8,27 +6,15 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import {
-  getFirestore,
   doc,
   getDoc,
   setDoc,
   updateDoc,
 } from "firebase/firestore";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBfYQ8Heb8C3tEzeKhGnEvRga-KEHj326g",
-  authDomain: "mydashboard-ff9ae.firebaseapp.com",
-  databaseURL: "https://mydashboard-ff9ae-default-rtdb.firebaseio.com",
-  projectId: "mydashboard-ff9ae",
-  storageBucket: "mydashboard-ff9ae.appspot.com",
-  messagingSenderId: "856197649644",
-  appId: "1:856197649644:web:48150da4f5db80617b41c9",
-  measurementId: "G-NPL3YL1MBE",
-};
+import { auth, db } from "./firebaseApp";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-export const db = getFirestore(app);
+export { db };
 
 const actionCodeSettings = {
   url: `${window.location.origin}/auth/email-link`,

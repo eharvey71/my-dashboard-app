@@ -1,0 +1,63 @@
+rules_version = '2';
+
+// Cognify is single-tenant per user: every document belongs to exactly one
+// account. The client writes to Firestore directly, so these rules - not the
+// `where("userId", "==", uid)` filters in src/services - are what actually
+// enforces ownership. A query filter is a convention; this is the boundary.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Owner of the document already stored.
+    function owns(resource) {
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Owner of the document being written.
+    function ownsIncoming() {
+      return signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // userId must never be reassigned to someone else.
+    function ownerUnchanged() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    // A user's own profile document, keyed by uid.
+    match /users/{userId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Projects carry userId but no projectId (they are the project).
+    match /projects/{projectId} {
+      allow create: if ownsIncoming();
+      allow read, delete: if owns(resource);
+      allow update: if owns(resource) && ownerUnchanged();
+    }
+
+    // Project-scoped content. Identical shape for each collection: a userId and
+    // a projectId on every document.
+    match /{collection}/{docId} {
+      allow create: if ownsIncoming()
+        && collection in ['tasks', 'notes', 'bookmarks', 'documents',
+                          'synapses', 'aiResponses']
+        && request.resource.data.projectId is string;
+      allow read, delete: if owns(resource)
+        && collection in ['tasks', 'notes', 'bookmarks', 'documents',
+                          'synapses', 'aiResponses'];
+      allow update: if owns(resource) && ownerUnchanged()
+        && collection in ['tasks', 'notes', 'bookmarks', 'documents',
+                          'synapses', 'aiResponses'];
+    }
+
+    // Analytics documents are keyed "{userId}_{projectId}" and carry no userId
+    // field, so ownership comes from the document ID.
+    match /analytics/{analyticsId} {
+      allow read, write: if signedIn()
+        && analyticsId.split('_')[0] == request.auth.uid;
+    }
+  }
+}
