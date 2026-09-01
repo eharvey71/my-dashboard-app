@@ -7,7 +7,6 @@ import {
 } from "react-router-dom";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import TimerProviderWithOverlay from "./components/TimerProviderWithOverlay";
-import { initializeGoogleDriveApi } from "./services/googleDriveService";
 import NavBar from "./components/NavBar";
 import EmailLinkHandler from "./components/EmailLinkHandler";
 import SetupProfile from "./components/SetupProfile";
@@ -24,13 +23,9 @@ import Synapse from "./components/Synapse";
 import { db } from "./services/firebaseConfig";
 import { auth, onAuthStateChanged } from "./services/firebaseAuth";
 import { doc, getDoc } from "firebase/firestore";
-import {
-  getUserProjects,
-  getLastAccessedProject,
-} from "./services/firebaseConfig";
+import { getUserProjects } from "./services/firebaseConfig";
 import AuthEntry from "./components/AuthEntry";
 import UserAccount from "./components/UserAccount";
-import { Timer } from "lucide-react";
 import LoadingComponent from "./components/LoadingComponent";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -43,7 +38,6 @@ const initialState = {
   loading: true,
   initialized: false,
   googleDriveSignedIn: false,
-  googleDriveInitialized: false,
   displayNameSet: false,
 };
 
@@ -57,18 +51,21 @@ const App = () => {
   const initializeUserData = useCallback(async (user) => {
     if (user) {
       try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
+        // Independent reads - issue them together rather than in series.
+        const [userDoc, projects] = await Promise.all([
+          getDoc(doc(db, "users", user.uid)),
+          getUserProjects(user.uid),
+        ]);
+
         const userData = userDoc.exists() ? userDoc.data() : {};
         const displayNameSet = userData.displayNameSet || false;
-
-        const projects = await getUserProjects(user.uid);
         const hasProjects = projects.length > 0;
 
-        let lastAccessedProject = null;
-        if (hasProjects) {
-          lastAccessedProject = await getLastAccessedProject(user.uid);
-          lastAccessedProject = lastAccessedProject || projects[0].id;
-        }
+        // lastAccessedProject lives on the user document already fetched above.
+        // This used to be a third round trip that re-read the same document.
+        const lastAccessedProject = hasProjects
+          ? userData.lastAccessedProject || projects[0].id
+          : null;
 
         setState((prevState) => ({
           ...prevState,
@@ -84,15 +81,6 @@ const App = () => {
           loading: false,
           initialized: true,
         }));
-
-        // Redirect to profile setup if display name not set
-        if (
-          user &&
-          !displayNameSet &&
-          window.location.pathname !== "/setup-profile"
-        ) {
-          window.location.href = "/setup-profile";
-        }
       } catch (error) {
         console.error("Error initializing user data:", error);
         setState((prevState) => ({
@@ -102,12 +90,11 @@ const App = () => {
         }));
       }
     } else {
-      setState((prevState) => ({
+      setState({
         ...initialState,
         loading: false,
         initialized: true,
-        googleDriveInitialized: prevState.googleDriveInitialized,
-      }));
+      });
     }
   }, []);
 
@@ -121,26 +108,6 @@ const App = () => {
     return () => unsubscribe();
   }, [initializeUserData]);
 
-  useEffect(() => {
-    const initGoogleDrive = async () => {
-      try {
-        await initializeGoogleDriveApi();
-        setState((prevState) => ({
-          ...prevState,
-          googleDriveInitialized: true,
-        }));
-      } catch (error) {
-        console.error("Failed to initialize Google Drive API:", error);
-        setState((prevState) => ({
-          ...prevState,
-          googleDriveInitialized: true,
-        }));
-      }
-    };
-
-    initGoogleDrive();
-  }, []);
-
   const getRedirectPath = () => {
     if (!state.user) return "/login";
     if (!state.displayNameSet) return "/setup-profile";
@@ -150,7 +117,7 @@ const App = () => {
     return "/projects";
   };
 
-  if (state.loading || !state.googleDriveInitialized) {
+  if (state.loading) {
     // Use LoadingComponent with fullHeight for better mobile experience
     return <React.Suspense fallback={<div>Loading...</div>}>
       <LoadingComponent message="Loading application..." fullHeight={true} />
@@ -214,7 +181,9 @@ const App = () => {
                   <Route
                     path="/projects"
                     element={
-                      state.user ? (
+                      state.user && !state.displayNameSet ? (
+                        <Navigate to="/setup-profile" replace />
+                      ) : state.user ? (
                         <Suspense fallback={<LoadingComponent message="Loading projects..." fullHeight={true} />}>
                           <ProjectList
                             user={state.user}
@@ -234,7 +203,9 @@ const App = () => {
                   <Route
                     path="/account"
                     element={
-                      state.user ? (
+                      state.user && !state.displayNameSet ? (
+                        <Navigate to="/setup-profile" replace />
+                      ) : state.user ? (
                         <Suspense fallback={<LoadingComponent message="Loading account..." fullHeight={true} />}>
                           <UserAccount user={state.user} />
                         </Suspense>
@@ -337,6 +308,10 @@ const App = () => {
                       />
                     </>
                   ) : null}
+                  <Route
+                    path="*"
+                    element={<Navigate to={getRedirectPath()} replace />}
+                  />
                 </Routes>
               </div>
             </ErrorBoundary>

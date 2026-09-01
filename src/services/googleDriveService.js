@@ -1,4 +1,5 @@
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebaseApp";
 
 // The OAuth client ID is a public identifier and is safe in the bundle.
 // It previously sat next to a GOCSPX- OAuth *client secret* that was passed to
@@ -13,95 +14,108 @@ const CLIENT_ID =
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || null;
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+const TOKEN_STORAGE_KEY = 'googleDriveToken';
 
 let tokenClient;
-let gapiInited = false;
-let gisInited = false;
 let accessToken = null;
+let initPromise = null;
 
-export const initializeGoogleDriveApi = () => {
-  return new Promise((resolve, reject) => {
-    const script1 = document.createElement('script');
-    script1.src = 'https://apis.google.com/js/api.js';
-    script1.onload = () => {
-      gapiLoaded()
-        .then(() => {
-          const script2 = document.createElement('script');
-          script2.src = 'https://accounts.google.com/gsi/client';
-          script2.onload = () => {
-            gisLoaded()
-              .then(() => {
-                // Check for existing token in storage
-                const storedToken = localStorage.getItem('googleDriveToken');
-                if (storedToken) {
-                  accessToken = JSON.parse(storedToken);
-                  gapi.client.setToken({ access_token: accessToken });
-                }
-                resolve();
-              })
-              .catch(reject);
-          };
-          document.body.appendChild(script2);
-        })
-        .catch(reject);
-    };
-    document.body.appendChild(script1);
+const loadScript = (src) =>
+  new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      resolve();
+      return;
+    }
 
-    // Set up Firebase Auth listener
-    const auth = getAuth();
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        // User logged out, clear the token
-        localStorage.removeItem('googleDriveToken');
-        accessToken = null;
-        gapi.client.setToken(null);
-      }
-    });
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.body.appendChild(script);
   });
-};
 
-function gapiLoaded() {
-  return new Promise((resolve, reject) => {
+const loadGapiClient = () =>
+  new Promise((resolve, reject) => {
     gapi.load('client', async () => {
       try {
         await gapi.client.init({
           ...(API_KEY ? { apiKey: API_KEY } : {}),
           discoveryDocs: [DISCOVERY_DOC],
         });
-        gapiInited = true;
         resolve();
       } catch (err) {
         reject(err);
       }
     });
   });
-}
 
-function gisLoaded() {
-  return new Promise((resolve) => {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      callback: '', // defined later
+/**
+ * Load the Google Drive APIs, at most once per page.
+ *
+ * This used to run at app startup with App.jsx refusing to render until it
+ * resolved, so every user waited on Google's servers before seeing anything -
+ * including users who never open a Drive file. It is now called on demand by
+ * the functions below, and the two script loads run concurrently instead of
+ * the second waiting on the first plus the discovery-document fetch.
+ */
+export const ensureGoogleDriveApi = () => {
+  if (!initPromise) {
+    initPromise = (async () => {
+      // Independent downloads - no reason to serialise them.
+      await Promise.all([
+        loadScript('https://apis.google.com/js/api.js'),
+        loadScript('https://accounts.google.com/gsi/client'),
+      ]);
+
+      await loadGapiClient();
+
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: '', // defined per sign-in below
+      });
+
+      const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (storedToken) {
+        accessToken = JSON.parse(storedToken);
+        gapi.client.setToken({ access_token: accessToken });
+      }
+    })().catch((error) => {
+      // Let the next caller retry rather than caching the failure forever.
+      initPromise = null;
+      throw error;
     });
-    gisInited = true;
-    resolve();
-  });
-}
+  }
 
-export const signIn = () => {
+  return initPromise;
+};
+
+// Drop the Drive token when the Firebase user signs out. Registered at module
+// load because it costs nothing and must not depend on whether the Drive API
+// was ever initialised.
+onAuthStateChanged(auth, (user) => {
+  if (user) return;
+
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  accessToken = null;
+  if (typeof gapi !== 'undefined' && gapi.client) {
+    gapi.client.setToken(null);
+  }
+});
+
+export const signIn = async () => {
+  await ensureGoogleDriveApi();
+
   return new Promise((resolve, reject) => {
-    if (!gapiInited || !gisInited) {
-      reject(new Error('Google API not initialized'));
-      return;
-    }
     tokenClient.callback = async (resp) => {
       if (resp.error !== undefined) {
         reject(resp);
         return;
       }
       accessToken = resp.access_token;
-      localStorage.setItem('googleDriveToken', JSON.stringify(accessToken));
+      localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(accessToken));
       resolve(accessToken);
     };
     if (gapi.client.getToken() === null) {
@@ -113,17 +127,24 @@ export const signIn = () => {
 };
 
 export const signOut = () => {
+  // Always clear local state, even if the Drive API was never loaded.
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  accessToken = null;
+
+  if (typeof gapi === 'undefined' || !gapi.client) return;
+
   const token = gapi.client.getToken();
   if (token !== null) {
     google.accounts.oauth2.revoke(token.access_token);
     gapi.client.setToken('');
-    localStorage.removeItem('googleDriveToken');
-    accessToken = null;
   }
 };
 
+// Synchronous, and callable before the Drive API has loaded - it only needs to
+// know whether we hold a token, which survives in localStorage.
 export const isSignedIn = () => {
-  return accessToken !== null;
+  if (accessToken) return true;
+  return localStorage.getItem(TOKEN_STORAGE_KEY) !== null;
 };
 
 export const getAccessToken = () => {
@@ -131,8 +152,10 @@ export const getAccessToken = () => {
 };
 
 export const ensureValidToken = async () => {
+  await ensureGoogleDriveApi();
+
   if (!accessToken) {
-    const storedToken = localStorage.getItem('googleDriveToken');
+    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
     if (storedToken) {
       accessToken = JSON.parse(storedToken);
       gapi.client.setToken({ access_token: accessToken });
@@ -151,7 +174,7 @@ export const ensureValidToken = async () => {
         await signIn();
       } catch (refreshError) {
         // Unable to refresh, user needs to sign in again
-        localStorage.removeItem('googleDriveToken');
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
         accessToken = null;
         gapi.client.setToken(null);
         throw new Error('Google Drive session expired. Please sign in again.');
