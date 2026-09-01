@@ -24,7 +24,7 @@ const Note = ({ note, onDeleteNote, onExpandNote }) => {
   return (
     <div className={styles.noteCard}>
       <p className={styles.noteContent}>{note.content.trim()}</p>
-      {!note.indexedInPinecone && <span className={styles.notIndexed}>(Indexing for AI might be delayed)</span>}
+      {!note.embedded && <span className={styles.notIndexed}>(Indexing for AI might be delayed)</span>}
       <div className={styles.noteFooter}>
         <small className={styles.noteDate}>
           {note.createdAt instanceof Date ? note.createdAt.toLocaleString() : 'Invalid Date'}

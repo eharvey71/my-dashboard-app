@@ -11,7 +11,7 @@ const AIAssistant = ({ user, projectId }) => {
   const responseContainerRef = useRef(null);
 
   const functions = getFunctions();
-  const queryPinecone = httpsCallable(functions, "queryPinecone");
+  const querySimilarContent = httpsCallable(functions, "querySimilarContent");
   const analyzeContent = httpsCallable(functions, "analyzeContent");
 
   useEffect(() => {
@@ -25,7 +25,7 @@ const AIAssistant = ({ user, projectId }) => {
     setIsTyping(true);
     setError(null);
     try {
-      const userContentResult = await queryPinecone({
+      const userContentResult = await querySimilarContent({
         query: input,
         userId: user.uid,
         projectId: projectId,

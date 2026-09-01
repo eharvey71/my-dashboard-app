@@ -53,6 +53,14 @@ service cloud.firestore {
                           'synapses', 'aiResponses'];
     }
 
+    // Bookmark chunks: scraped page text plus its embedding, one doc per chunk.
+    // Written only by the scrapeAndIndexBookmark trigger (Admin SDK, which
+    // bypasses rules); clients may read their own but never write.
+    match /bookmarks/{bookmarkId}/chunks/{chunkId} {
+      allow read: if owns(resource);
+      allow write: if false;
+    }
+
     // Analytics documents are keyed "{userId}_{projectId}" and carry no userId
     // field, so ownership comes from the document ID.
     match /analytics/{analyticsId} {

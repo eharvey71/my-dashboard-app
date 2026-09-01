@@ -1,33 +1,35 @@
 // functions/index.js
 const functions = require("firebase-functions");
-const { defineSecret, defineString } = require("firebase-functions/params");
+const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const { Pinecone } = require("@pinecone-database/pinecone");
 const OpenAI = require("openai");
+const { FieldValue } = require("firebase-admin/firestore");
 
 admin.initializeApp();
 
 // Secrets are resolved at call time, never at module load. Set them with:
 //   firebase functions:secrets:set OPENAI_API_KEY
-//   firebase functions:secrets:set PINECONE_API_KEY
 //   firebase functions:secrets:set LINKPREVIEW_API_KEY
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
-const PINECONE_API_KEY = defineSecret("PINECONE_API_KEY");
 const LINKPREVIEW_API_KEY = defineSecret("LINKPREVIEW_API_KEY");
 
-// Not a secret - overridable via functions/.env
-const PINECONE_INDEX_NAME = defineString("PINECONE_INDEX_NAME", {
-  default: "user-data-index",
-});
-
 // Secret sets bound to each function via runWith.
-const AI_SECRETS = { secrets: [OPENAI_API_KEY, PINECONE_API_KEY] };
+const AI_SECRETS = { secrets: [OPENAI_API_KEY] };
 const LINK_SECRETS = { secrets: [LINKPREVIEW_API_KEY] };
 
+// Collections whose documents carry their own embedding, one vector each.
+const SEARCHABLE = ["notes", "tasks", "documents"];
+
+// Bookmarks are scraped page text, too long for a single vector, so their
+// chunks live in a subcollection: bookmarks/{id}/chunks/{index}.
+const BOOKMARK_CHUNKS = "chunks";
+
+const EMBEDDING_MODEL = "text-embedding-ada-002";
+
 let openaiClient = null;
-let pineconeClient = null;
 
 function requireSecret(param, name) {
   const value = param.value();
@@ -49,340 +51,283 @@ function getOpenAI() {
   return openaiClient;
 }
 
-function getPineconeIndex() {
-  if (!pineconeClient) {
-    pineconeClient = new Pinecone({
-      apiKey: requireSecret(PINECONE_API_KEY, "PINECONE_API_KEY"),
-    });
-  }
-  return pineconeClient.Index(PINECONE_INDEX_NAME.value());
-}
-
-// Single source of truth for Pinecone vector IDs. The client used to build a
-// different ID (${userId}-${type}-${id}) than the Firestore triggers did,
-// which meant every note was stored twice and deletes orphaned one copy.
-function vectorId(userId, projectId, type, id) {
-  return `${userId}-${projectId}-${type}-${id}`;
-}
-
-exports.scrapeAndIndexBookmark = functions.runWith(AI_SECRETS).firestore
-  .document("bookmarks/{bookmarkId}")
-  .onCreate(async (snap, context) => {
-    const bookmark = snap.data();
-    const { url, userId, projectId } = bookmark;
-
-    if (!projectId) {
-      console.error(
-        `No projectId found for bookmark ${context.params.bookmarkId}`
-      );
-      return;
-    }
-
-    try {
-      // Scrape website content
-      const response = await axios.get(url);
-      const html = response.data;
-      const $ = cheerio.load(html);
-      const bodyText = $("body").text().trim();
-      const cleanedText = bodyText.replace(/\s+/g, " ").trim();
-
-      // Chunk the text
-      const chunkSize = 1000;
-      const chunks = [];
-      for (let i = 0; i < cleanedText.length; i += chunkSize) {
-        chunks.push(cleanedText.slice(i, i + chunkSize));
-      }
-
-      const index = getPineconeIndex();
-
-      // Create embeddings and index chunks
-      for (let i = 0; i < chunks.length; i++) {
-        const embedding = await createEmbedding(chunks[i]);
-        await index.upsert([
-          {
-            id: `${vectorId(userId, projectId, "bookmark", context.params.bookmarkId)}-${i}`,
-            values: embedding,
-            metadata: {
-              userId,
-              projectId,
-              type: "bookmark",
-              content: chunks[i],
-              url,
-              chunkIndex: i,
-            },
-          },
-        ]);
-      }
-
-      // Update bookmark document to indicate successful indexing
-      await snap.ref.update({ indexed: true });
-
-      console.log(`Successfully scraped and indexed bookmark: ${url}`);
-    } catch (error) {
-      console.error(`Error processing bookmark ${url}:`, error);
-      // You might want to update the bookmark document to indicate failed indexing
-      await snap.ref.update({ indexed: false, error: error.message });
-    }
-  });
-
 async function createEmbedding(text) {
   const response = await getOpenAI().embeddings.create({
-    model: "text-embedding-ada-002",
+    model: EMBEDDING_MODEL,
     input: text,
   });
 
   return response.data[0].embedding;
 }
 
-exports.cleanupPineconeVectors = functions.runWith(AI_SECRETS).pubsub
-  .schedule("every 12 hours")
-  .onRun(async () => {
-    const db = admin.firestore();
-    const index = getPineconeIndex();
+// Marks which content an embedding was computed from. The indexing trigger
+// writes the embedding back onto the same document, which re-fires the trigger;
+// comparing this hash is what stops that from looping forever.
+function contentHash(text) {
+  return crypto.createHash("sha256").update(text).digest("hex");
+}
 
-    try {
-      // Every collection that gets indexed. "documents" used to be missing
-      // here: document vectors fell through to the note/task branch below,
-      // never matched, and were deleted on every run - so Google Drive imports
-      // lost their embeddings within 12 hours of being indexed.
-      const CHUNKED = ["bookmarks"];
-      const INDEXED = ["notes", "tasks", "documents", ...CHUNKED];
+// findNearest in @google-cloud/firestore 7.x returns matches but not their
+// distances, so ranking across several collections has to be done here. Both
+// vectors come from the same embedding model and are already unit-length in
+// practice, but normalising keeps this correct regardless.
+function cosineSimilarity(a, b) {
+  let dot = 0;
+  let magA = 0;
+  let magB = 0;
 
-      // Exact vector IDs for unchunked types, and ID prefixes for chunked ones
-      // (bookmarks are stored as `${prefix}-${chunkIndex}`).
-      const validIds = new Set();
-      const validPrefixes = new Set();
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
 
-      for (const collectionName of INDEXED) {
-        const snapshot = await db.collection(collectionName).get();
-        const type = collectionName.slice(0, -1);
+  const denom = Math.sqrt(magA) * Math.sqrt(magB);
+  return denom === 0 ? 0 : dot / denom;
+}
 
-        for (const doc of snapshot.docs) {
-          const { userId, projectId } = doc.data();
-          if (!userId || !projectId) continue;
+// ---------------------------------------------------------------------------
+// Indexing
+//
+// Embeddings live on the document they describe rather than in a separate
+// vector store. Deleting a note deletes its embedding; there is nothing left to
+// reconcile, which is what the old cleanupPineconeVectors and
+// retryFailedIndexing jobs existed to do.
+// ---------------------------------------------------------------------------
 
-          const id = vectorId(userId, projectId, type, doc.id);
-          if (CHUNKED.includes(collectionName)) {
-            validPrefixes.add(id);
-          } else {
-            validIds.add(id);
-          }
-        }
-      }
-
-      console.log(
-        `Found ${validIds.size} unchunked and ${validPrefixes.size} chunked source documents`
-      );
-
-      // Enumerate vectors with listPaginated. The previous implementation
-      // queried with an all-zero vector and topK 10000, which is not a reliable
-      // enumeration (nearest-to-zero under cosine is arbitrary) and exceeds the
-      // topK cap for metadata-bearing queries.
-      const idsToDelete = [];
-      let paginationToken;
-
-      do {
-        const page = await index.listPaginated({
-          limit: 100,
-          ...(paginationToken ? { paginationToken } : {}),
-        });
-
-        for (const vector of page.vectors || []) {
-          if (validIds.has(vector.id)) continue;
-
-          // Chunked IDs end in -<chunkIndex>; strip it and check the prefix.
-          const prefix = vector.id.replace(/-\d+$/, "");
-          if (prefix !== vector.id && validPrefixes.has(prefix)) continue;
-
-          idsToDelete.push(vector.id);
-        }
-
-        paginationToken = page.pagination?.next;
-      } while (paginationToken);
-
-      console.log(`Identified ${idsToDelete.length} orphaned vectors to delete`);
-
-      const batchSize = 1000;
-      for (let i = 0; i < idsToDelete.length; i += batchSize) {
-        const batch = idsToDelete.slice(i, i + batchSize);
-        await index.deleteMany(batch);
-        console.log(`Deleted batch of ${batch.length} vectors`);
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error in cleanupPineconeVectors:", error);
-      return null;
-    }
-  });
-
-exports.indexTaskOrNote = functions.runWith(AI_SECRETS).firestore
-  .document("{collectionName}/{docId}")
-  .onCreate(async (snap, context) => {
+exports.indexSearchableContent = functions
+  .runWith(AI_SECRETS)
+  .firestore.document("{collectionName}/{docId}")
+  .onWrite(async (change, context) => {
     const { collectionName, docId } = context.params;
-    if (collectionName !== "tasks" && collectionName !== "notes") return;
+    if (!SEARCHABLE.includes(collectionName)) return null;
 
-    const data = snap.data();
-    const { content, userId, priority, projectId } = data;
+    // Deletes need no work - the embedding went with the document.
+    if (!change.after.exists) return null;
 
-    if (!projectId) {
-      console.error(`No projectId found for ${collectionName} ${docId}`);
-      return;
-    }
+    const data = change.after.data();
+    const content = data.content || data.title || "";
+    const { userId, projectId } = data;
+
+    if (!content.trim() || !userId || !projectId) return null;
+
+    const hash = contentHash(content);
+
+    // Already embedded from exactly this content: this is our own write-back.
+    if (data.embeddedHash === hash) return null;
+
+    // Already failed on exactly this content. Writing the failure marker
+    // re-fires this trigger, so without this guard a permanent failure (a
+    // revoked API key, say) would retry forever at one OpenAI call per pass.
+    // Editing the document clears the guard by changing the hash.
+    if (data.embedFailedHash === hash) return null;
 
     try {
-      // Initialize Pinecone index
-      const index = getPineconeIndex();
-
-      let metadata = {
-        userId,
-        projectId,
-        type: collectionName.slice(0, -1),
-        content,
-      };
-
-      if (collectionName === "tasks" && priority) {
-        metadata.priority = priority;
-      }
-
-      // Create embedding
       const embedding = await createEmbedding(content);
 
-      // Index the task or note
-      await index.upsert([
-        {
-          id: vectorId(userId, projectId, collectionName.slice(0, -1), docId),
-          values: embedding,
-          metadata: metadata,
-        },
-      ]);
+      await change.after.ref.update({
+        embedding: FieldValue.vector(embedding),
+        embeddedHash: hash,
+        embeddedAt: FieldValue.serverTimestamp(),
+        embedded: true,
+        embedFailedHash: FieldValue.delete(),
+        embeddingError: FieldValue.delete(),
+      });
 
-      // Update document to indicate successful indexing
-      await snap.ref.update({ indexedInPinecone: true });
+      console.log(`Embedded ${collectionName}/${docId}`);
+    } catch (error) {
+      console.error(`Error embedding ${collectionName}/${docId}:`, error);
+      await change.after.ref.update({
+        embedded: false,
+        embedFailedHash: hash,
+        embeddingError: error.message,
+      });
+    }
 
+    return null;
+  });
+
+exports.scrapeAndIndexBookmark = functions
+  .runWith(AI_SECRETS)
+  .firestore.document("bookmarks/{bookmarkId}")
+  .onCreate(async (snap, context) => {
+    const { url, userId, projectId } = snap.data();
+
+    if (!projectId) {
+      console.error(`No projectId on bookmark ${context.params.bookmarkId}`);
+      return null;
+    }
+
+    try {
+      const response = await axios.get(url, { timeout: 15000 });
+      const $ = cheerio.load(response.data);
+      const cleanedText = $("body").text().replace(/\s+/g, " ").trim();
+
+      const chunkSize = 1000;
+      const chunks = [];
+      for (let i = 0; i < cleanedText.length; i += chunkSize) {
+        chunks.push(cleanedText.slice(i, i + chunkSize));
+      }
+
+      const chunksRef = snap.ref.collection(BOOKMARK_CHUNKS);
+
+      for (let i = 0; i < chunks.length; i++) {
+        const embedding = await createEmbedding(chunks[i]);
+
+        // userId and projectId are denormalised onto each chunk so the
+        // collection-group vector query can pre-filter on them.
+        await chunksRef.doc(String(i)).set({
+          userId,
+          projectId,
+          url,
+          chunkIndex: i,
+          content: chunks[i],
+          embedding: FieldValue.vector(embedding),
+        });
+      }
+
+      await snap.ref.update({ embedded: true, chunkCount: chunks.length });
       console.log(
-        `Successfully indexed ${collectionName.slice(
-          0,
-          -1
-        )} with ID: ${docId} for project: ${projectId}`
+        `Indexed bookmark ${context.params.bookmarkId} in ${chunks.length} chunks`
       );
     } catch (error) {
       console.error(
-        `Error indexing ${collectionName.slice(0, -1)} ${docId}:`,
+        `Error indexing bookmark ${context.params.bookmarkId}:`,
         error
       );
-      // Update document to indicate failed indexing
-      await snap.ref.update({ indexedInPinecone: false, error: error.message });
+      await snap.ref.update({ embedded: false, embeddingError: error.message });
     }
+
+    return null;
   });
 
-exports.retryFailedIndexing = functions.runWith(AI_SECRETS).pubsub
-  .schedule("every 6 hours")
-  .onRun(async (context) => {
-    const db = admin.firestore();
-    const collections = ["tasks", "notes"];
+// Firestore does not cascade deletes into subcollections, so bookmark chunks
+// are the one case that still needs explicit cleanup - triggered by the delete
+// itself rather than by a scheduled reconciliation sweep.
+exports.cleanupBookmarkChunks = functions.firestore
+  .document("bookmarks/{bookmarkId}")
+  .onDelete(async (snap, context) => {
+    const chunks = await snap.ref.collection(BOOKMARK_CHUNKS).get();
+    if (chunks.empty) return null;
 
-    for (const collectionName of collections) {
-      const snapshot = await db
-        .collection(collectionName)
-        .where("indexedInPinecone", "==", false)
-        .get();
+    const batch = admin.firestore().batch();
+    chunks.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
 
-      for (const doc of snapshot.docs) {
-        const data = doc.data();
-        try {
-          const index = getPineconeIndex();
-          const embedding = await createEmbedding(data.content);
+    console.log(
+      `Deleted ${chunks.size} chunks for bookmark ${context.params.bookmarkId}`
+    );
+    return null;
+  });
 
-          await index.upsert([
-            {
-              id: `${data.userId}-${collectionName.slice(0, -1)}-${doc.id}`,
-              values: embedding,
-              metadata: {
-                userId: data.userId,
-                type: collectionName.slice(0, -1),
-                content: data.content,
-              },
-            },
-          ]);
+// ---------------------------------------------------------------------------
+// Semantic search
+// ---------------------------------------------------------------------------
 
-          await doc.ref.update({ indexedInPinecone: true });
-          console.log(
-            `Successfully re-indexed ${collectionName.slice(0, -1)} with ID: ${
-              doc.id
-            }`
-          );
-        } catch (error) {
-          console.error(
-            `Error re-indexing ${collectionName.slice(0, -1)} ${doc.id}:`,
-            error
-          );
+exports.querySimilarContent = functions
+  .runWith(AI_SECRETS)
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "You must be signed in to search."
+      );
+    }
+
+    const userId = context.auth.uid;
+    const { query, projectId } = data;
+
+    if (!query || !projectId) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Both query and projectId are required."
+      );
+    }
+
+    const limit = Math.min(data.limit || 20, 100);
+
+    try {
+      const queryVector = await createEmbedding(query);
+      const db = admin.firestore();
+
+      // Each collection is searched separately - findNearest runs against one
+      // vector index at a time - then merged and ranked here.
+      const searches = SEARCHABLE.map((collectionName) =>
+        db
+          .collection(collectionName)
+          .where("userId", "==", userId)
+          .where("projectId", "==", projectId)
+          .findNearest("embedding", queryVector, {
+            limit,
+            distanceMeasure: "COSINE",
+          })
+          .get()
+          .then((snapshot) => ({ collectionName, snapshot }))
+      );
+
+      searches.push(
+        db
+          .collectionGroup(BOOKMARK_CHUNKS)
+          .where("userId", "==", userId)
+          .where("projectId", "==", projectId)
+          .findNearest("embedding", queryVector, {
+            limit,
+            distanceMeasure: "COSINE",
+          })
+          .get()
+          .then((snapshot) => ({ collectionName: "bookmarks", snapshot }))
+      );
+
+      const results = await Promise.all(
+        searches.map((p) =>
+          p.catch((error) => {
+            // A missing vector index fails only its own collection; the rest of
+            // the search still returns something useful.
+            console.error(
+              "Vector search failed for one collection:",
+              error.message
+            );
+            return null;
+          })
+        )
+      );
+
+      const matches = [];
+
+      for (const result of results) {
+        if (!result) continue;
+
+        for (const doc of result.snapshot.docs) {
+          const docData = doc.data();
+          if (!docData.embedding) continue;
+
+          matches.push({
+            type: result.collectionName.slice(0, -1),
+            content: docData.content || docData.title || "",
+            priority: docData.priority,
+            score: cosineSimilarity(queryVector, docData.embedding.toArray()),
+          });
         }
       }
+
+      matches.sort((a, b) => b.score - a.score);
+
+      const relevantContent = matches
+        .slice(0, limit)
+        .map((match) => {
+          const priority = match.priority
+            ? ` (Priority: ${match.priority})`
+            : "";
+          return `[${match.type.toUpperCase()}${priority}]: ${match.content}`;
+        })
+        .join("\n\n");
+
+      return { relevantContent };
+    } catch (error) {
+      console.error("Error running semantic search:", error);
+      throw new functions.https.HttpsError("internal", "Error running search");
     }
   });
-
-exports.queryPinecone = functions.runWith(AI_SECRETS).https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "The function must be called while authenticated."
-    );
-  }
-
-  const userId = context.auth.uid;
-  const { query, projectId } = data;
-
-  if (!projectId) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "The function must be called with a projectId."
-    );
-  }
-
-  try {
-    const index = getPineconeIndex();
-
-    let queryVector;
-    try {
-      queryVector = await createEmbedding(query);
-    } catch (error) {
-      console.error("Error generating embedding for query:", error);
-      queryVector = null;
-    }
-
-    const queryRequest = {
-      topK: 20,
-      filter: { userId: userId, projectId: projectId },
-      includeMetadata: true,
-    };
-
-    if (queryVector) {
-      queryRequest.vector = queryVector;
-    }
-
-    const queryResponse = await index.query(queryRequest);
-
-    const relevantContent = queryResponse.matches
-      .map((match) => {
-        const type = match.metadata.type.toUpperCase();
-        const priority = match.metadata.priority
-          ? ` (Priority: ${match.metadata.priority})`
-          : "";
-        return `[${type}${priority}]: ${match.metadata.content}`;
-      })
-      .join("\n\n");
-
-    return { relevantContent };
-  } catch (error) {
-    console.error("Error querying Pinecone:", error);
-    throw new functions.https.HttpsError(
-      "internal",
-      "Error querying Pinecone",
-      error
-    );
-  }
-});
 
 exports.analyzeContent = functions.runWith(AI_SECRETS).https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -654,7 +599,7 @@ exports.convertTasksToDocument = functions.https.onCall(async (data, context) =>
       createdAt: new Date(),
       updatedAt: new Date(),
       source: "task-conversion",
-      indexedInPinecone: false
+      embedded: false
     });
     
     // If requested, archive/delete the tasks
@@ -1090,11 +1035,7 @@ ${creativeResponse.choices[0].message.content.trim()}`;
 );
 
 // ---------------------------------------------------------------------------
-// Vector maintenance callables.
-//
-// These replace the browser-side pineconeService, which shipped a live Pinecone
-// key and an OpenAI key in the bundle. Vector IDs come from vectorId() so the
-// client and the Firestore triggers agree on a single scheme.
+// Shared callable guards
 // ---------------------------------------------------------------------------
 
 function requireAuth(context) {
@@ -1117,95 +1058,6 @@ function requireFields(data, fields) {
     }
   }
 }
-
-exports.indexContent = functions
-  .runWith(AI_SECRETS)
-  .https.onCall(async (data, context) => {
-    // The caller's own uid owns the vector - never trust a userId from the client.
-    const userId = requireAuth(context);
-    requireFields(data, ["projectId", "content", "type", "id"]);
-
-    const { projectId, content, type, id } = data;
-    const additionalContext = data.additionalContext || "";
-    const source = data.source || "native";
-
-    try {
-      const contextualizedContent = `${type.toUpperCase()}: ${content}\nContext: ${additionalContext}\nSource: ${source}`;
-      const embedding = await createEmbedding(contextualizedContent);
-      const index = getPineconeIndex();
-
-      await index.upsert([
-        {
-          id: vectorId(userId, projectId, type, id),
-          values: embedding,
-          metadata: {
-            userId,
-            projectId,
-            type,
-            content: contextualizedContent,
-            id,
-            source,
-          },
-        },
-      ]);
-
-      return { success: true };
-    } catch (error) {
-      console.error(`Error indexing ${type} ${id}:`, error);
-      throw new functions.https.HttpsError("internal", `Error indexing ${type}`);
-    }
-  });
-
-exports.updateVector = functions
-  .runWith(AI_SECRETS)
-  .https.onCall(async (data, context) => {
-    const userId = requireAuth(context);
-    requireFields(data, ["projectId", "content", "type", "id"]);
-
-    const { projectId, content, type, id } = data;
-
-    try {
-      const embedding = await createEmbedding(content);
-      const index = getPineconeIndex();
-
-      await index.upsert([
-        {
-          id: vectorId(userId, projectId, type, id),
-          values: embedding,
-          metadata: { userId, projectId, type, content, id },
-        },
-      ]);
-
-      return { success: true };
-    } catch (error) {
-      console.error(`Error updating ${type} vector ${id}:`, error);
-      throw new functions.https.HttpsError(
-        "internal",
-        `Error updating ${type} vector`
-      );
-    }
-  });
-
-exports.deleteVector = functions
-  .runWith(AI_SECRETS)
-  .https.onCall(async (data, context) => {
-    const userId = requireAuth(context);
-    requireFields(data, ["projectId", "type", "id"]);
-
-    const { projectId, type, id } = data;
-
-    try {
-      const index = getPineconeIndex();
-      await index.deleteOne(vectorId(userId, projectId, type, id));
-      return { success: true };
-    } catch (error) {
-      console.error(`Error deleting ${type} vector ${id}:`, error);
-      throw new functions.https.HttpsError(
-        "internal",
-        `Error deleting ${type} vector`
-      );
-    }
-  });
 
 // ---------------------------------------------------------------------------
 // Bookmark link metadata. Replaces the browser-side LinkPreview call, which

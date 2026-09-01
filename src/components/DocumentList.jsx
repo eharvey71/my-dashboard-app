@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDocuments, deleteDocument, addDocumentFromGoogleDrive } from '../services/firebaseConfig';
-import { indexContent, deleteVector } from '../services/pineconeService';
 import { Trash2, Edit, PlusCircle, File, ExternalLink, LogIn, LogOut, Eye, Check, X } from 'lucide-react';
 import { signIn, signOut, isSignedIn, openGoogleDriveDocument, ensureValidToken } from '../services/googleDriveService';
 import moduleStyles from './DashboardModule.module.css';
@@ -160,7 +159,6 @@ const DocumentList = ({ user }) => {
   const handleDelete = async (id) => {
     try {
       await deleteDocument(id);
-      await deleteVector(projectId, id, 'document');
       setDocuments(documents.filter(doc => doc.id !== id));
     } catch (error) {
       console.error('Error deleting document:', error);
@@ -193,7 +191,7 @@ const DocumentList = ({ user }) => {
       
       if (newDoc && newDoc.id && newDoc.updatedAt) {
         setDocuments(prevDocuments => [newDoc, ...prevDocuments]);
-        await indexContent(projectId, file.content, 'document', newDoc.id, `Google Drive Document: ${file.name}`, 'Google Drive');
+        // Embedding is handled by the indexSearchableContent trigger.
       } else {
         throw new Error('Invalid document structure returned from addDocumentFromGoogleDrive');
       }

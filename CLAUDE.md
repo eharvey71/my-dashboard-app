@@ -13,8 +13,9 @@ notes, bookmarks, documents) that is handed to an LLM as a working context. The 
 Assistant answers against a Synapse rather than against the whole workspace, and
 answers can be saved back as `aiResponses` and re-included in later prompts.
 
-Content is also indexed into Pinecone (embeddings) by Cloud Functions, giving a
-RAG path (`queryPinecone`) alongside the explicit Synapse path.
+Content is also embedded by Cloud Functions and stored **on the Firestore
+document it describes**, giving a semantic-search path (`querySimilarContent`)
+alongside the explicit Synapse path.
 
 ## Stack
 
@@ -22,9 +23,9 @@ RAG path (`queryPinecone`) alongside the explicit Synapse path.
 |---|---|
 | Build | Vite 5, ESM (`"type": "module"`) |
 | UI | React 18, React Router 6, Bootstrap 5 + CSS Modules, `lucide-react` icons |
-| Data/auth | Firebase v10 (Firestore, Auth, Callable Functions), `react-firebase-hooks` |
+| Data/auth | Firebase v10 (Firestore + vector search, Auth, Callable Functions), `react-firebase-hooks` |
 | Backend | Firebase Cloud Functions, Node 20, 1st-gen API (`firebase-functions` v5) |
-| AI | OpenAI (`gpt-3.5-turbo` / `gpt-4`, `text-embedding-ada-002`), Pinecone |
+| AI | OpenAI (`gpt-3.5-turbo` / `gpt-4`, `text-embedding-ada-002`) |
 | Editor | TinyMCE via `@tinymce/tinymce-react`, `marked` / `react-markdown` |
 | Charts / DnD | `recharts`, `react-beautiful-dnd` |
 | Hosting | Firebase Hosting, SPA rewrite to `/index.html`, serves `dist/` |
@@ -74,7 +75,6 @@ src/
     firebaseConfig.js     ALL Firestore CRUD (the hub)
     firebaseAuth.js       Auth helpers
     synapseService.js     Synapse CRUD + content hydration
-    pineconeService.js    Callable wrappers: indexContent/updateVector/deleteVector
     externalServices.js   Bookmark metadata via the fetchLinkMetadata callable
     googleDriveService.js gapi/GIS picker for importing Drive docs
   utils/versionManager.js Cache-bust + "stuck loading" auto-reload heuristics
@@ -108,31 +108,59 @@ with thin typed wrappers (`addTask`, `getNotes`, …) on top.
 
 ### Cloud Functions
 
-Triggers: `scrapeAndIndexBookmark` (bookmark onCreate → scrape → chunk → embed →
-Pinecone), `indexTaskOrNote`, scheduled `cleanupPineconeVectors` and
-`retryFailedIndexing`.
+Triggers: `indexSearchableContent` (onWrite over `{collectionName}/{docId}`,
+embeds notes/tasks/documents), `scrapeAndIndexBookmark` (bookmark onCreate →
+scrape → chunk → embed), `cleanupBookmarkChunks` (bookmark onDelete).
 
-Callables: `queryPinecone`, `analyzeContent`, `generateSuggestions`,
-`convertTasksToDocument`, `analyzeSynapseContent`, plus `indexContent`,
-`updateVector`, `deleteVector`, `fetchLinkMetadata`. All callables check
-`context.auth` and throw `functions.https.HttpsError` on failure. Callables that
-take a `userId` derive it from `context.auth.uid` — never from the payload.
+Callables: `querySimilarContent`, `analyzeContent`, `generateSuggestions`,
+`convertTasksToDocument`, `analyzeSynapseContent`, `fetchLinkMetadata`. All
+callables check `context.auth` and throw `functions.https.HttpsError` on
+failure, and derive `userId` from `context.auth.uid` — never from the payload.
 
 Secrets use `defineSecret` from `firebase-functions/params`, bound per function
 via `runWith(AI_SECRETS)` / `runWith(LINK_SECRETS)` and resolved at call time:
 
 ```bash
 firebase functions:secrets:set OPENAI_API_KEY
-firebase functions:secrets:set PINECONE_API_KEY
 firebase functions:secrets:set LINKPREVIEW_API_KEY
 ```
 
-`PINECONE_INDEX_NAME` is a non-secret `defineString` (default `user-data-index`),
-overridable via `functions/.env`.
+### Embeddings and search
 
-All Pinecone vector IDs come from the `vectorId()` helper —
-`${userId}-${projectId}-${type}-${id}` — so triggers and callables agree.
-Bookmarks are chunked and append `-${i}`.
+Embeddings live **on the document they describe**, in an `embedding` field of
+Firestore's `VectorValue` type. Deleting a note deletes its embedding; there is
+no second store to reconcile. Supporting fields:
+
+| Field | Meaning |
+|---|---|
+| `embedding` | `FieldValue.vector([...])`, 1536 dims (ada-002) |
+| `embeddedHash` | sha256 of the content the vector was built from |
+| `embedFailedHash` | sha256 of content that failed to embed |
+| `embedded` | boolean, surfaced in the notes UI |
+
+`indexSearchableContent` writes the embedding back onto the same document,
+which re-fires the trigger. **Both hash fields are loop guards** — the trigger
+returns early when either matches the current content. Never remove those
+checks; without them a permanent failure retries forever at one OpenAI call
+per pass.
+
+Bookmarks are the exception: scraped page text is too long for one vector, so
+chunks live in `bookmarks/{id}/chunks/{index}`, each carrying a denormalised
+`userId`/`projectId` so the collection-group query can pre-filter. Firestore
+does not cascade deletes into subcollections, which is why
+`cleanupBookmarkChunks` exists.
+
+**Vector indexes are created with `gcloud`, not `firebase.json`** — run
+`scripts/create-vector-indexes.sh` once per environment. A missing index makes
+that one collection silently return nothing (the query catches and logs it, so
+the rest of the search still works).
+
+`querySimilarContent` runs one `findNearest` per collection, then ranks the
+merged results by cosine similarity computed in-process — `findNearest` in
+`@google-cloud/firestore` 7.x returns matches without their distances.
+
+`scripts/backfill-embeddings.js` embeds pre-existing content. It is idempotent
+(skips anything whose `embeddedHash` already matches) and supports `--dry-run`.
 
 ## Conventions
 
@@ -143,7 +171,9 @@ Bookmarks are chunked and append `-${i}`.
 - Path aliases exist: `@` → `src/`, `services` → `src/services/` (rarely used;
   most imports are relative).
 - Every Firestore query must filter by `userId` **and** `projectId`.
-- Prefer callable Cloud Functions over calling OpenAI/Pinecone from the browser.
+- Prefer callable Cloud Functions over calling OpenAI from the browser.
+- Adding a searchable collection means adding it to `SEARCHABLE` in
+  `functions/index.js` **and** creating its vector index via the script.
 
 ## Known issues
 
@@ -155,11 +185,13 @@ deliberately over incidentally.
    keys remain in commits up to `b6e291e`. **Rotation at each provider is the
    fix** — deleting them from source does not revoke them. The Firebase web
    `apiKey` in `firebaseApp.js` is public by design and is fine.
-2. **`firestore.rules` has never been deployed.** The file now exists and is
+2. **`firestore.rules` has never been deployed, and vector indexes are not created.** The rules file now exists and is
    registered in `firebase.json`, but it was reconstructed from the data model,
    not exported from the console — the live rules may differ. Test it in the
    emulator or the console Rules Playground before `firebase deploy --only
-   firestore:rules`, or you can lock yourself out.
+   firestore:rules`, or you can lock yourself out. Separately,
+   `scripts/create-vector-indexes.sh` has never been run against a real project
+   — until it is, `querySimilarContent` returns nothing.
 3. **`main.jsx` uses `ReactDOM.render`**, the React 17 API. React 18 runs in
    legacy mode — no concurrent features, and `StrictMode` behaves differently.
    Migrating to `createRoot` may surface double-invoke effects and
@@ -169,34 +201,32 @@ deliberately over incidentally.
    component eagerly, so the `Suspense` boundaries are inert and the main chunk
    is **~1.59 MB** (505 kB gzipped). `src/lazyComponents.js` was written to fix
    this and never wired up — finishing it is the cheapest large win available.
-5. **Lint backlog:** ~317 `react/prop-types`, ~91 `no-unused-vars`,
+5. **Lint backlog:** ~317 `react/prop-types`, ~88 `no-unused-vars`,
    10 `react-hooks/exhaustive-deps`. `no-undef` is now clean.
-6. **Documents have no indexing trigger.** Tasks and notes are indexed by the
-   `indexTaskOrNote` Firestore trigger, but documents are only indexed when
-   imported from Google Drive, via an explicit `indexContent` call in
-   `DocumentList.jsx`. Documents created in the editor are never embedded, so
-   they are invisible to `queryPinecone`.
-7. **Dead / unreferenced files:** `lazyComponents.js`, `Signup.orig.js`,
+6. **Dead / unreferenced files:** `lazyComponents.js`, `Signup.orig.js`,
    `Signup.jsx`, `Login.jsx`, `MinimalLogin.jsx`, `Bookmark.jsx`,
    `CreateProject.jsx`, `EmailVerification.jsx`, `Journal.jsx`,
    `PomodoroTimer.jsx`, `TypingIndicator.jsx`. `AIAssistant.jsx` and
    `CustomAPIModule.jsx` are imported-but-commented-out in `Dashboard.jsx`.
    `axios` remains a frontend dependency solely for `CustomAPIModule.jsx`.
-8. **No tests, no CI.** No test runner is installed and there is no `.github/`.
-9. **`App.jsx` redirects with `window.location.href`** for the profile-setup
+7. **No tests, no CI.** No test runner is installed and there is no `.github/`.
+8. **`App.jsx` redirects with `window.location.href`** for the profile-setup
    hop, which does a full page reload inside a React Router app.
 
 ### Recently fixed — do not "re-fix"
 
+- Pinecone is gone. Embeddings moved onto the Firestore documents themselves,
+  which removed `cleanupPineconeVectors`, `retryFailedIndexing`, the
+  `PINECONE_API_KEY` secret, and the whole orphaned-vector problem class.
 - Client-side OpenAI/Pinecone/LinkPreview calls are now Cloud Functions
-  callables; `aiService.js` is gone.
+  callables; `aiService.js` and `pineconeService.js` are gone.
+- Documents are now embedded on write, including ones created in the editor.
 - `functions.config()` replaced with `defineSecret`; the load-time
   `process.exit(1)` is gone.
-- Pinecone vector IDs are unified through `vectorId()`. Notes used to be
-  double-indexed under two different ID schemes, with deletes orphaning one
-  copy. Client-side note indexing was removed (the trigger covers it).
-- The broken `deleteVectors` (`while (true)`, bogus `cursor` param, `undefined`
-  dimension) is deleted.
+- Three different Pinecone vector-ID schemes (client, trigger, retry job) meant
+  duplicate and orphaned vectors, and `cleanupPineconeVectors` deleted every
+  document embedding on every run. All moot now, but do not reintroduce a
+  second store without a plan for reconciliation.
 - `versionManager.js` no longer reloads on the word "Loading"; it checks whether
   `#root` mounted and retries at most once per session.
 - `public/index.html` (Firebase scaffold) deleted.

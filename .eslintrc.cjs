@@ -20,8 +20,9 @@ module.exports = {
       env: { node: true },
     },
     {
-      // Cloud Functions are CommonJS running on Node, not browser ESM.
-      files: ['functions/**/*.js'],
+      // Cloud Functions and maintenance scripts are CommonJS on Node,
+      // not browser ESM.
+      files: ['functions/**/*.js', 'scripts/**/*.js'],
       env: { node: true, browser: false },
       parserOptions: { sourceType: 'script' },
     },

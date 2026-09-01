@@ -12,7 +12,6 @@ import {
   Timestamp,
   orderBy,
 } from "firebase/firestore";
-import { updateVector } from "./pineconeService";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./firebaseApp";
 import formatUrl from "../utils/urlFormatter";
@@ -143,7 +142,7 @@ const addItem = async (
       createdAt: new Date(),
       userId,
       projectId,
-      indexedInPinecone: false,
+      embedded: false,
       ...(type === "task"
         ? {
             completed: false,
@@ -168,7 +167,7 @@ const addItem = async (
       createdAt: new Date(),
       userId,
       projectId,
-      indexedInPinecone: false,
+      embedded: false,
       ...(type === "task"
         ? {
             completed: false,
@@ -226,14 +225,7 @@ const updateItem = async (id, updates, type) => {
 
     await updateDoc(itemDoc, updates);
 
-    if (
-      (updates.content || updates.title) &&
-      (updates.content !== currentItem.content ||
-        updates.title !== currentItem.title)
-    ) {
-      const newContent = updates.content || updates.title;
-      await updateVector(currentItem.projectId, id, newContent, type);
-    }
+    // Re-embedding is handled by the indexSearchableContent trigger.
 
     console.log(`${type} successfully updated:`, updates);
   } catch (error) {
@@ -356,7 +348,7 @@ const addBookmark = async (url, title, image, userId, projectId) => {
     image,
     userId,
     projectId,
-    indexedInPinecone: false,
+    embedded: false,
   };
 
   console.log("Attempting to add bookmark with data:", bookmarkData);
@@ -517,7 +509,7 @@ const getLastAccessedProject = async (userId) => {
 };
 
 // Cloud functions
-const queryPinecone = httpsCallable(functions, "queryPinecone");
+const querySimilarContent = httpsCallable(functions, "querySimilarContent");
 const analyzeContent = httpsCallable(functions, "analyzeContent");
 
 export {
@@ -536,7 +528,7 @@ export {
   addBookmark,
   deleteBookmark,
   updateBookmark,
-  queryPinecone,
+  querySimilarContent,
   analyzeContent,
   updateAnalytics,
   getAnalytics,

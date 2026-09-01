@@ -153,7 +153,7 @@ const Notes = ({ user, projectId, limit = 5 }) => {
                       <span className={moduleStyles.timestamp}>
                         {note.createdAt.toLocaleString()}
                       </span>
-                      {!note.indexedInPinecone && (
+                      {!note.embedded && (
                         <small style={{ color: '#f59e0b', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           <Clock size={12} /> Indexing for AI might be delayed
                         </small>
