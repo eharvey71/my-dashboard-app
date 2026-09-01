@@ -50,22 +50,59 @@ export const injectVersionInfo = () => {
       }
     }, true); // Use capture to get the event before it reaches other handlers
     
-    // Additional fix for mobile-specific issues where errors aren't properly caught
-    const detectMobileStuckLoading = () => {
-      const MAX_LOADING_TIME = 8000; // 8 seconds should be enough for initial loading
-      
-      setTimeout(() => {
-        // If we're still showing loading after timeout, we'll force a clean reload
-        if (document.body.textContent.includes('Loading')) {
-          console.warn('Application appears stuck on loading. Attempting to force reload with cache clearing.');
-          // Add cache busting parameters and reload
-          window.location.href = addVersionToUrl(window.location.href);
-        }
-      }, MAX_LOADING_TIME);
+    // Recover from a boot that never mounts (typically a stale cached chunk on
+    // mobile). The previous version of this checked whether the page text
+    // contained the word "Loading", which matches any note, task or document
+    // with that word in it - and reloaded, forever. Two guards now:
+    //   1. Look at whether React actually mounted, not at page text.
+    //   2. Reload at most once per session, tracked in sessionStorage, so a
+    //      genuinely broken build shows an error instead of looping.
+    const RELOAD_MARKER = '__cognify_boot_reload__';
+    const MAX_BOOT_TIME = 8000;
+
+    const alreadyRetried = () => {
+      try {
+        return sessionStorage.getItem(RELOAD_MARKER) === '1';
+      } catch {
+        // Private mode / blocked storage: assume retried, i.e. never reload.
+        return true;
+      }
     };
-    
-    // Execute the stuck loading detection
-    detectMobileStuckLoading();
+
+    const markRetried = () => {
+      try {
+        sessionStorage.setItem(RELOAD_MARKER, '1');
+      } catch {
+        // Ignore - the reload below is then best-effort and one-shot anyway.
+      }
+    };
+
+    const detectStuckBoot = () => {
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        const mounted = root && root.childElementCount > 0;
+
+        if (mounted || alreadyRetried()) return;
+
+        console.warn('App did not mount within %dms; reloading once with cache busting.', MAX_BOOT_TIME);
+        markRetried();
+        window.location.href = addVersionToUrl(window.location.href);
+      }, MAX_BOOT_TIME);
+    };
+
+    // Once the app mounts, clear the marker so a later session can retry again.
+    window.addEventListener('load', () => {
+      const root = document.getElementById('root');
+      if (root && root.childElementCount > 0) {
+        try {
+          sessionStorage.removeItem(RELOAD_MARKER);
+        } catch {
+          // Ignore.
+        }
+      }
+    });
+
+    detectStuckBoot();
   }
 };
 
