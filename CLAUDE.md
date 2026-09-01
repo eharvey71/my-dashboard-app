@@ -54,8 +54,9 @@ pinned `^8.57.0` (e.g. a globally installed binary), it will fail with
 `./node_modules/.bin/eslint . --ext js,jsx`.
 
 `npm run lint` uses `--max-warnings 0` and **currently fails** — the repo has a
-large standing backlog (~461 errors / 12 warnings). See "Known issues" before
-assuming a lint failure is something you introduced.
+large standing backlog (~419 errors / 12 warnings, almost all `react/prop-types`
+and `no-unused-vars`). See "Known issues" before assuming a lint failure is
+something you introduced.
 
 ## Layout
 
@@ -69,12 +70,12 @@ src/
     ProjectContext.jsx    Current project + project list
     TimerContext.jsx      Focus/Pomodoro timer state, shared with TimerOverlay
   services/
-    firebaseConfig.js     Firebase init + ALL Firestore CRUD (570 lines, the hub)
-    firebaseAuth.js       Auth helpers; re-initializes its own Firebase app
+    firebaseApp.js        The single initializeApp; exports app/db/functions/auth
+    firebaseConfig.js     ALL Firestore CRUD (the hub)
+    firebaseAuth.js       Auth helpers
     synapseService.js     Synapse CRUD + content hydration
-    pineconeService.js    Direct browser -> Pinecone calls (see security note)
-    aiService.js          Direct browser -> OpenAI embeddings (see security note)
-    externalServices.js   LinkPreview.net bookmark metadata
+    pineconeService.js    Callable wrappers: indexContent/updateVector/deleteVector
+    externalServices.js   Bookmark metadata via the fetchLinkMetadata callable
     googleDriveService.js gapi/GIS picker for importing Drive docs
   utils/versionManager.js Cache-bust + "stuck loading" auto-reload heuristics
 functions/index.js        1076 lines, all Cloud Functions in one file
@@ -112,11 +113,26 @@ Pinecone), `indexTaskOrNote`, scheduled `cleanupPineconeVectors` and
 `retryFailedIndexing`.
 
 Callables: `queryPinecone`, `analyzeContent`, `generateSuggestions`,
-`convertTasksToDocument`, `analyzeSynapseContent`. All callables check
-`context.auth` and throw `functions.https.HttpsError` on failure.
+`convertTasksToDocument`, `analyzeSynapseContent`, plus `indexContent`,
+`updateVector`, `deleteVector`, `fetchLinkMetadata`. All callables check
+`context.auth` and throw `functions.https.HttpsError` on failure. Callables that
+take a `userId` derive it from `context.auth.uid` — never from the payload.
 
-Secrets come from `functions.config().openai.key` / `.pinecone.key` / `.pinecone.index`.
-The module **calls `process.exit(1)` at load time** if any are missing.
+Secrets use `defineSecret` from `firebase-functions/params`, bound per function
+via `runWith(AI_SECRETS)` / `runWith(LINK_SECRETS)` and resolved at call time:
+
+```bash
+firebase functions:secrets:set OPENAI_API_KEY
+firebase functions:secrets:set PINECONE_API_KEY
+firebase functions:secrets:set LINKPREVIEW_API_KEY
+```
+
+`PINECONE_INDEX_NAME` is a non-secret `defineString` (default `user-data-index`),
+overridable via `functions/.env`.
+
+All Pinecone vector IDs come from the `vectorId()` helper —
+`${userId}-${projectId}-${type}-${id}` — so triggers and callables agree.
+Bookmarks are chunked and append `-${i}`.
 
 ## Conventions
 
@@ -129,50 +145,62 @@ The module **calls `process.exit(1)` at load time** if any are missing.
 - Every Firestore query must filter by `userId` **and** `projectId`.
 - Prefer callable Cloud Functions over calling OpenAI/Pinecone from the browser.
 
-## Known issues (as of the last commit, `b6e291e`)
+## Known issues
 
 These are pre-existing. Do not treat them as regressions, and prefer fixing them
 deliberately over incidentally.
 
-1. **Committed secrets.** Live-looking keys are hardcoded in the repo:
-   `src/services/aiService.js` (OpenAI `sk-proj-…`), `pineconeService.js` (Pinecone),
-   `googleDriveService.js` (a Google OAuth **client secret**, `GOCSPX-…`, wrongly
-   passed as `apiKey`), `externalServices.js` (LinkPreview), and a TinyMCE key in
-   `DocumentEditor.jsx`. They are in git history, so rotation — not deletion — is
-   the fix. The Firebase web `apiKey` in `firebaseConfig.js`/`firebaseAuth.js` is
-   public by design and is fine.
-2. **No `firestore.rules` in the repo** and no `firestore` block in `firebase.json`.
-   Rules are only whatever is live in the console — unversioned and unreviewable.
-   Since the client writes directly to Firestore, this is the security boundary.
-3. **`main.jsx` uses `ReactDOM.render`**, the React 17 API. React 18 runs in legacy
-   mode — no concurrent features, and `StrictMode` behaves differently. Migrating to
-   `createRoot` may surface double-invoke effects and `react-beautiful-dnd` breakage
-   (that library is unmaintained and StrictMode-incompatible).
+1. **Leaked keys are still live in git history.** They were removed from `HEAD`,
+   but the OpenAI, Pinecone, LinkPreview, Google OAuth client secret, and TinyMCE
+   keys remain in commits up to `b6e291e`. **Rotation at each provider is the
+   fix** — deleting them from source does not revoke them. The Firebase web
+   `apiKey` in `firebaseApp.js` is public by design and is fine.
+2. **`firestore.rules` has never been deployed.** The file now exists and is
+   registered in `firebase.json`, but it was reconstructed from the data model,
+   not exported from the console — the live rules may differ. Test it in the
+   emulator or the console Rules Playground before `firebase deploy --only
+   firestore:rules`, or you can lock yourself out.
+3. **`main.jsx` uses `ReactDOM.render`**, the React 17 API. React 18 runs in
+   legacy mode — no concurrent features, and `StrictMode` behaves differently.
+   Migrating to `createRoot` may surface double-invoke effects and
+   `react-beautiful-dnd` breakage (that library is unmaintained and
+   StrictMode-incompatible; `Synapse.jsx` is what will break).
 4. **No code splitting.** `App.jsx` wraps routes in `Suspense` but imports every
-   component eagerly, so the `Suspense` boundaries are inert and the main chunk is
-   **~1.94 MB** (595 kB gzipped). `src/lazyComponents.js` was written to fix this
-   and never wired up.
-5. **Lint backlog:** 321 `react/prop-types`, 94 `no-unused-vars`, 34 `no-undef`
-   (all `gapi`/`google` globals, plus `__dirname` in `vite.config.js`),
-   10 `react-hooks/exhaustive-deps`.
-6. **`versionManager.js` reload heuristics are risky.** After 8 s it reloads the page
-   if `document.body.textContent.includes('Loading')` — any page with the word
-   "Loading" in it can trigger a reload loop.
-7. **`public/index.html` is the stock Firebase Hosting scaffold.** Vite copies
-   `public/` into `dist/`; the real `index.html` currently wins, but the file is a
-   deployment footgun and should be deleted.
-8. **Dead / unreferenced files:** `lazyComponents.js`, `Signup.orig.js`, `Signup.jsx`,
-   `Login.jsx`, `MinimalLogin.jsx`, `Bookmark.jsx`, `CreateProject.jsx`,
-   `EmailVerification.jsx`, `Journal.jsx`, `PomodoroTimer.jsx`, `TypingIndicator.jsx`.
-   `AIAssistant.jsx` and `CustomAPIModule.jsx` are imported-but-commented-out in
-   `Dashboard.jsx`.
-9. **`pineconeService.deleteVectors` is broken** — `while (true)` with an unused
-   `filterCondition`, and Pinecone `query()` has no `cursor` parameter.
-10. **Stray root deps:** `build@^0.1.4` (unused) and `firebase-functions` in the
-    frontend `dependencies`.
-11. **Two Firebase app initializations** — `firebaseConfig.js` and `firebaseAuth.js`
-    each call `initializeApp` with the same config.
-12. **No tests, no CI.** No test runner is installed and there is no `.github/`.
+   component eagerly, so the `Suspense` boundaries are inert and the main chunk
+   is **~1.59 MB** (505 kB gzipped). `src/lazyComponents.js` was written to fix
+   this and never wired up — finishing it is the cheapest large win available.
+5. **Lint backlog:** ~317 `react/prop-types`, ~91 `no-unused-vars`,
+   10 `react-hooks/exhaustive-deps`. `no-undef` is now clean.
+6. **Documents have no indexing trigger.** Tasks and notes are indexed by the
+   `indexTaskOrNote` Firestore trigger, but documents are only indexed when
+   imported from Google Drive, via an explicit `indexContent` call in
+   `DocumentList.jsx`. Documents created in the editor are never embedded, so
+   they are invisible to `queryPinecone`.
+7. **Dead / unreferenced files:** `lazyComponents.js`, `Signup.orig.js`,
+   `Signup.jsx`, `Login.jsx`, `MinimalLogin.jsx`, `Bookmark.jsx`,
+   `CreateProject.jsx`, `EmailVerification.jsx`, `Journal.jsx`,
+   `PomodoroTimer.jsx`, `TypingIndicator.jsx`. `AIAssistant.jsx` and
+   `CustomAPIModule.jsx` are imported-but-commented-out in `Dashboard.jsx`.
+   `axios` remains a frontend dependency solely for `CustomAPIModule.jsx`.
+8. **No tests, no CI.** No test runner is installed and there is no `.github/`.
+9. **`App.jsx` redirects with `window.location.href`** for the profile-setup
+   hop, which does a full page reload inside a React Router app.
+
+### Recently fixed — do not "re-fix"
+
+- Client-side OpenAI/Pinecone/LinkPreview calls are now Cloud Functions
+  callables; `aiService.js` is gone.
+- `functions.config()` replaced with `defineSecret`; the load-time
+  `process.exit(1)` is gone.
+- Pinecone vector IDs are unified through `vectorId()`. Notes used to be
+  double-indexed under two different ID schemes, with deletes orphaning one
+  copy. Client-side note indexing was removed (the trigger covers it).
+- The broken `deleteVectors` (`while (true)`, bogus `cursor` param, `undefined`
+  dimension) is deleted.
+- `versionManager.js` no longer reloads on the word "Loading"; it checks whether
+  `#root` mounted and retries at most once per session.
+- `public/index.html` (Firebase scaffold) deleted.
+- One `initializeApp` in `firebaseApp.js` instead of two.
 
 ## Working agreements
 
