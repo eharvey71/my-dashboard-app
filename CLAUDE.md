@@ -93,10 +93,18 @@ All app routes are project-scoped:
 /project/:projectId/ai-assistant/:synapseId
 ```
 
-`App.jsx` boot order: `onAuthStateChanged` → load user doc + projects → redirect via
-`getRedirectPath()` (`/login` → `/setup-profile` → `/projects` → last project).
-Protected routes are only *mounted* when `user && displayNameSet`, so an unknown
-path for a signed-out user renders nothing rather than redirecting.
+`App.jsx` boot order: `onAuthStateChanged` → user doc + projects **in parallel**
+→ redirect via `getRedirectPath()` (`/login` → `/setup-profile` → `/projects` →
+last project). Protected routes are only *mounted* when `user && displayNameSet`;
+a catch-all `path="*"` route sends anything unmatched back through
+`getRedirectPath()`.
+
+**Nothing external belongs on that path.** First render used to wait on
+`googleDriveInitialized`, which meant five serial round trips to Google before
+any pixel appeared. Google Drive now loads on demand via
+`ensureGoogleDriveApi()` (memoised; entry points await it). Keep it that way —
+if you add a startup dependency, put it behind the first render, not in front
+of it.
 
 ### Firestore collections
 
@@ -210,8 +218,6 @@ deliberately over incidentally.
    `CustomAPIModule.jsx` are imported-but-commented-out in `Dashboard.jsx`.
    `axios` remains a frontend dependency solely for `CustomAPIModule.jsx`.
 7. **No tests, no CI.** No test runner is installed and there is no `.github/`.
-8. **`App.jsx` redirects with `window.location.href`** for the profile-setup
-   hop, which does a full page reload inside a React Router app.
 
 ### Recently fixed — do not "re-fix"
 
@@ -231,6 +237,10 @@ deliberately over incidentally.
   `#root` mounted and retries at most once per session.
 - `public/index.html` (Firebase scaffold) deleted.
 - One `initializeApp` in `firebaseApp.js` instead of two.
+- First render no longer blocks on the Google Drive API, boot does two parallel
+  Firestore reads instead of three serial ones (`getLastAccessedProject` was
+  re-reading the user document already in memory), and the profile-setup hop no
+  longer does a `window.location.href` full page reload.
 
 ## Working agreements
 
