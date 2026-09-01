@@ -136,87 +136,77 @@ async function createEmbedding(text) {
 
 exports.cleanupPineconeVectors = functions.runWith(AI_SECRETS).pubsub
   .schedule("every 12 hours")
-  .onRun(async (context) => {
+  .onRun(async () => {
     const db = admin.firestore();
     const index = getPineconeIndex();
 
     try {
-      // Fetch all document IDs from Firestore for notes and tasks
-      const notesSnapshot = await db.collectionGroup("notes").get();
-      const tasksSnapshot = await db.collectionGroup("tasks").get();
+      // Every collection that gets indexed. "documents" used to be missing
+      // here: document vectors fell through to the note/task branch below,
+      // never matched, and were deleted on every run - so Google Drive imports
+      // lost their embeddings within 12 hours of being indexed.
+      const CHUNKED = ["bookmarks"];
+      const INDEXED = ["notes", "tasks", "documents", ...CHUNKED];
 
-      const validIds = new Set([
-        ...notesSnapshot.docs.map(
-          (doc) => `${doc.data().userId}-${doc.data().projectId}-${doc.id}`
-        ),
-        ...tasksSnapshot.docs.map(
-          (doc) => `${doc.data().userId}-${doc.data().projectId}-${doc.id}`
-        ),
-      ]);
+      // Exact vector IDs for unchunked types, and ID prefixes for chunked ones
+      // (bookmarks are stored as `${prefix}-${chunkIndex}`).
+      const validIds = new Set();
+      const validPrefixes = new Set();
 
-      console.log(`Found ${validIds.size} valid note/task IDs`);
+      for (const collectionName of INDEXED) {
+        const snapshot = await db.collection(collectionName).get();
+        const type = collectionName.slice(0, -1);
 
-      // Fetch all bookmarks from Firestore
-      const bookmarksSnapshot = await db.collectionGroup("bookmarks").get();
-      const validBookmarks = new Set(
-        bookmarksSnapshot.docs.map(
-          (doc) =>
-            `${doc.data().userId}-${doc.data().projectId}-${doc.id}-${
-              doc.data().url
-            }`
-        )
-      );
+        for (const doc of snapshot.docs) {
+          const { userId, projectId } = doc.data();
+          if (!userId || !projectId) continue;
 
-      console.log(`Found ${validBookmarks.size} valid bookmark IDs`);
-
-      // Fetch all vector IDs from Pinecone
-      const queryResponse = await index.query({
-        vector: Array(1536).fill(0), // Assuming 1536 is your vector dimension
-        topK: 10000, // Adjust based on your expected maximum number of vectors
-        includeMetadata: true,
-      });
+          const id = vectorId(userId, projectId, type, doc.id);
+          if (CHUNKED.includes(collectionName)) {
+            validPrefixes.add(id);
+          } else {
+            validIds.add(id);
+          }
+        }
+      }
 
       console.log(
-        `Retrieved ${queryResponse.matches.length} vectors from Pinecone`
+        `Found ${validIds.size} unchunked and ${validPrefixes.size} chunked source documents`
       );
 
+      // Enumerate vectors with listPaginated. The previous implementation
+      // queried with an all-zero vector and topK 10000, which is not a reliable
+      // enumeration (nearest-to-zero under cosine is arbitrary) and exceeds the
+      // topK cap for metadata-bearing queries.
       const idsToDelete = [];
+      let paginationToken;
 
-      queryResponse.matches.forEach((match) => {
-        const [userId, projectId, type, docId, ...rest] = match.id.split("-");
+      do {
+        const page = await index.listPaginated({
+          limit: 100,
+          ...(paginationToken ? { paginationToken } : {}),
+        });
 
-        if (type === "bookmark") {
-          // For bookmarks, check against the URL in metadata
-          if (
-            !validBookmarks.has(
-              `${userId}-${projectId}-${docId}-${match.metadata.url}`
-            )
-          ) {
-            idsToDelete.push(match.id);
-          }
-        } else {
-          // For notes and tasks, check against the document ID
-          if (!validIds.has(`${userId}-${projectId}-${docId}`)) {
-            idsToDelete.push(match.id);
-          }
+        for (const vector of page.vectors || []) {
+          if (validIds.has(vector.id)) continue;
+
+          // Chunked IDs end in -<chunkIndex>; strip it and check the prefix.
+          const prefix = vector.id.replace(/-\d+$/, "");
+          if (prefix !== vector.id && validPrefixes.has(prefix)) continue;
+
+          idsToDelete.push(vector.id);
         }
-      });
 
-      console.log(`Identified ${idsToDelete.length} vectors to delete`);
+        paginationToken = page.pagination?.next;
+      } while (paginationToken);
 
-      if (idsToDelete.length > 0) {
-        // Implement batch deletion
-        const batchSize = 1000;
-        for (let i = 0; i < idsToDelete.length; i += batchSize) {
-          const batch = idsToDelete.slice(i, i + batchSize);
-          await index.deleteMany(batch);
-          console.log(`Deleted batch of ${batch.length} vectors from Pinecone`);
-        }
-        console.log(
-          `Successfully deleted all ${idsToDelete.length} vectors from Pinecone`
-        );
-      } else {
-        console.log("No vectors to delete");
+      console.log(`Identified ${idsToDelete.length} orphaned vectors to delete`);
+
+      const batchSize = 1000;
+      for (let i = 0; i < idsToDelete.length; i += batchSize) {
+        const batch = idsToDelete.slice(i, i + batchSize);
+        await index.deleteMany(batch);
+        console.log(`Deleted batch of ${batch.length} vectors`);
       }
 
       return null;
