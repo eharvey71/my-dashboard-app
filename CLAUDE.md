@@ -70,6 +70,7 @@ src/
   contexts/
     ProjectContext.jsx    Current project + project list
     TimerContext.jsx      Focus/Pomodoro timer state, shared with TimerOverlay
+                          (clock-derived — see "Focus timer" below)
   services/
     firebaseApp.js        The single initializeApp; exports app/db/functions/auth
     firebaseConfig.js     ALL Firestore CRUD (the hub)
@@ -174,6 +175,20 @@ survived the migration and the embedding backfill skips them all.
 `functions/scripts/backfill-embeddings.cjs` embeds pre-existing content. It is idempotent
 (skips anything whose `embeddedHash` already matches) and supports `--dry-run`.
 
+### Focus timer
+
+`TimerContext` derives elapsed and remaining time from wall-clock timestamps —
+`activeTimer.startedAt` for the running segment plus `accumulatedMs` banked from
+earlier ones. The one-second interval exists **only** to trigger a re-render;
+it holds no state.
+
+Do not go back to accumulating seconds per tick. That version drifted whenever
+the browser throttled the interval in a background tab, and persisting the
+counters each tick meant three synchronous `localStorage` writes per second,
+which was enough to visibly stall Safari — every route sat on its loading state
+while a timer ran. Only `activeTimer` and the idle preview duration are
+persisted, and only when they change.
+
 ## Conventions
 
 - Function components + hooks only; no class components except `ErrorBoundary`.
@@ -197,13 +212,12 @@ deliberately over incidentally.
    keys remain in commits up to `b6e291e`. **Rotation at each provider is the
    fix** — deleting them from source does not revoke them. The Firebase web
    `apiKey` in `firebaseApp.js` is public by design and is fine.
-2. **`firestore.rules` has never been deployed, and vector indexes are not created.** The rules file now exists and is
-   registered in `firebase.json`, but it was reconstructed from the data model,
-   not exported from the console — the live rules may differ. Test it in the
-   emulator or the console Rules Playground before `firebase deploy --only
-   firestore:rules`, or you can lock yourself out. Separately,
-   `scripts/create-vector-indexes.sh` has never been run against a real project
-   — until it is, `querySimilarContent` returns nothing.
+2. **Eight empty documents fail the ownership rules.** One `{}` document exists
+   in each of `tasks`, `notes`, `bookmarks`, `documents`, `synapses`,
+   `aiResponses`, `projects` and `analytics`. They have no `userId`, so the
+   deployed rules deny them — harmless, since every query filters on `userId`
+   and they were never returned anyway. `functions/scripts/check-ownership-fields.cjs`
+   lists them.
 3. **`main.jsx` uses `ReactDOM.render`**, the React 17 API. React 18 runs in
    legacy mode — no concurrent features, and `StrictMode` behaves differently.
    Migrating to `createRoot` may surface double-invoke effects and
