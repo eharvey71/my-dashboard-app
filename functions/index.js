@@ -690,9 +690,38 @@ exports.analyzeSynapseContent = functions.runWith(AI_SECRETS).https.onCall(
       );
     }
 
-    const { synapseContent, synapseName, analysisType = "comprehensive", analysisMode = "core" } = data;
+    const {
+      synapseContent,
+      synapseName,
+      analysisType = "comprehensive",
+      analysisMode = "core",
+      educationMode = false,
+      projectType = "general",
+    } = data;
 
     try {
+      // Education mode reframes the analysis for academic work. The terms have
+      // to match what the UI shows, or the answer talks about "tasks" while the
+      // screen says "assignments".
+      const TASK_TERMS = {
+        course: "assignments",
+        research: "milestones",
+        thesis: "objectives",
+      };
+      const SPACE_TERMS = {
+        course: "course",
+        research: "research project",
+        thesis: "thesis",
+        "study-group": "study group",
+      };
+
+      const taskTerm = educationMode
+        ? TASK_TERMS[projectType] || "tasks"
+        : "tasks";
+      const spaceContext = educationMode
+        ? SPACE_TERMS[projectType] || "academic project"
+        : "project";
+
       // Pull in the scraped page text for any bookmarks in this synapse.
       const hydratedContent = await hydrateBookmarkText(
         synapseContent,
@@ -789,7 +818,9 @@ ${promptContext}`;
 
       // Configure the analysis based on the analysis type
       let specificFocus = "";
-      let systemPrompt = "You are an AI assistant specializing in finding meaningful patterns and connections between different types of project items. You provide deep, substantive analysis that goes beyond shallow overviews.";
+      let systemPrompt = educationMode
+        ? `You are an AI assistant specializing in academic analysis and learning. You help students and educators find meaningful patterns and connections between different types of ${spaceContext} materials, including ${taskTerm}. You provide deep, substantive analysis that goes beyond shallow overviews, with a focus on learning outcomes and academic insights.`
+        : "You are an AI assistant specializing in finding meaningful patterns and connections between different types of project items. You provide deep, substantive analysis that goes beyond shallow overviews.";
       
       // Add debug logging to see what we're working with
       console.log("Synapse Content Analysis - Input Data:", JSON.stringify({

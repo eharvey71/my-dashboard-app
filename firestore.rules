@@ -71,7 +71,7 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.auth.uid == userId
                     && request.resource.data.email == request.auth.token.email
-                    && request.resource.data.keys().hasOnly(['email', 'displayName', 'emailVerified', 'lastAccessedProject', 'displayNameSet', 'city', 'timezone', 'unit']);
+                    && request.resource.data.keys().hasOnly(['email', 'displayName', 'emailVerified', 'lastAccessedProject', 'displayNameSet', 'educationMode', 'city', 'timezone', 'unit']);
 
       allow update: if request.auth != null
                     && request.auth.uid == userId

@@ -2,21 +2,25 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getTasks, addTask, deleteTask } from "../services/firebaseConfig";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { useEducation } from "../contexts/EducationContext";
+import { useProjectContext } from "../contexts/ProjectContext";
 import Task from "./Task";
 import moduleStyles from "./DashboardModule.module.css";
 import styles from "./FullPageTasks.module.css";
-import { 
-  ListTodo, 
-  FileText, 
-  Save, 
-  Trash2, 
-  Archive, 
-  AlertCircle 
+import {
+  ListTodo,
+  FileText,
+  Save,
+  Trash2,
+  Archive,
+  AlertCircle
 } from "lucide-react";
 
 const FullPageTasks = ({ user }) => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const { getTerm } = useEducation();
+  const { activeProjectType } = useProjectContext();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState("");
@@ -108,7 +112,7 @@ const FullPageTasks = ({ user }) => {
   };
 
   if (loading) {
-    return <div className={moduleStyles.loading}>Loading tasks...</div>;
+    return <div className={moduleStyles.loading}>Loading {getTerm("tasks", activeProjectType).toLowerCase()}...</div>;
   }
 
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -139,7 +143,7 @@ const FullPageTasks = ({ user }) => {
         <div className={moduleStyles.header}>
           <h2 className={moduleStyles.title}>
             <ListTodo size={20} />
-            <span>All Project Tasks</span>
+            <span>All {getTerm("tasks", activeProjectType)}</span>
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <label className="form-check form-switch" style={{ fontSize: '0.875rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -167,7 +171,7 @@ const FullPageTasks = ({ user }) => {
           <input
             type="text"
             className={moduleStyles.input}
-            placeholder="New Task"
+            placeholder={`New ${getTerm("task", activeProjectType)}`}
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
             onKeyPress={(e) => {
@@ -176,11 +180,11 @@ const FullPageTasks = ({ user }) => {
               }
             }}
           />
-          <button 
+          <button
             className={`${moduleStyles.actionButton} ${moduleStyles.primaryButton}`}
             onClick={handleAddTask}
           >
-            Add Task
+            {getTerm("addTask", activeProjectType)}
           </button>
         </div>
 
@@ -199,9 +203,9 @@ const FullPageTasks = ({ user }) => {
             ))
           ) : (
             <div className={moduleStyles.emptyState}>
-              {showCompleted 
-                ? "No tasks yet. Add one above!" 
-                : "No incomplete tasks. Great job!"}
+              {showCompleted
+                ? `No ${getTerm("tasks", activeProjectType).toLowerCase()} yet. Add one above!`
+                : `No incomplete ${getTerm("tasks", activeProjectType).toLowerCase()}. Great job!`}
             </div>
           )}
         </ul>
@@ -212,7 +216,7 @@ const FullPageTasks = ({ user }) => {
             <div className="modal-dialog">
               <div className="modal-content">
                 <div className="modal-header">
-                  <h5 className="modal-title">Convert Tasks to Document</h5>
+                  <h5 className="modal-title">Convert {getTerm("tasks", activeProjectType)} to Document</h5>
                   <button
                     type="button"
                     className="btn-close"
@@ -227,7 +231,7 @@ const FullPageTasks = ({ user }) => {
                   {!conversionResult ? (
                     <>
                       <p>
-                        This will create a new document containing all your tasks, organized by status and priority.
+                        This will create a new document containing all your {getTerm("tasks", activeProjectType).toLowerCase()}, organized by status and priority.
                         The document will be formatted with markdown and will be available in your documents section.
                       </p>
                       <div className="mb-3">
@@ -253,7 +257,7 @@ const FullPageTasks = ({ user }) => {
                           disabled={isConverting}
                         />
                         <label className="form-check-label" htmlFor="archiveCompleted">
-                          Archive completed tasks after conversion
+                          Archive completed {getTerm("tasks", activeProjectType).toLowerCase()} after conversion
                         </label>
                       </div>
                       {error && (
@@ -272,13 +276,13 @@ const FullPageTasks = ({ user }) => {
                         <h4>Conversion Successful!</h4>
                       </div>
                       <p>
-                        Your tasks have been successfully converted to a document titled:
+                        Your {getTerm("tasks", activeProjectType).toLowerCase()} have been successfully converted to a document titled:
                         <strong className="d-block mt-2">{conversionResult.documentTitle}</strong>
                       </p>
                       {conversionResult.archivedCount > 0 && (
                         <p className="text-muted">
                           <Archive size={16} className="me-1" />
-                          {conversionResult.archivedCount} tasks have been archived.
+                          {conversionResult.archivedCount} {getTerm("tasks", activeProjectType).toLowerCase()} have been archived.
                         </p>
                       )}
                     </div>
@@ -309,7 +313,7 @@ const FullPageTasks = ({ user }) => {
                         ) : (
                           <>
                             <FileText size={16} />
-                            Convert Tasks
+                            Convert {getTerm("tasks", activeProjectType)}
                           </>
                         )}
                       </button>

@@ -12,6 +12,7 @@ import styles from "./AuthForms.module.css";
 
 const SetupProfile = () => {
   const [displayName, setDisplayName] = useState("");
+  const [educationMode, setEducationMode] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -56,7 +57,8 @@ const SetupProfile = () => {
       );
       const result = await updateUserDisplayName(
         auth.currentUser.uid,
-        displayName.trim()
+        displayName.trim(),
+        educationMode
       );
 
       if (result.success) {
@@ -131,6 +133,25 @@ const SetupProfile = () => {
                     required
                   />
                 </div>
+
+                <div className="mb-3">
+                  <label htmlFor="appMode" className="form-label">
+                    Application Mode:
+                  </label>
+                  <select
+                    id="appMode"
+                    className="form-select"
+                    value={educationMode ? "education" : "standard"}
+                    onChange={(e) => setEducationMode(e.target.value === "education")}
+                  >
+                    <option value="standard">Standard Mode</option>
+                    <option value="education">Education Mode</option>
+                  </select>
+                  <small className="form-text text-muted">
+                    Education Mode is designed for students and educators, with features tailored for courses, research, and academic work.
+                  </small>
+                </div>
+
                 {error && <p className="text-danger">{error}</p>}
                 <button
                   type="submit"

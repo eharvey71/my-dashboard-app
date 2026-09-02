@@ -92,16 +92,26 @@ const updateAIResponse = async (id, updates) => {
 };
 
 // Project-related functions
-const createProject = async (userId, projectName) => {
+const createProject = async (userId, projectName, metadata = {}) => {
   const projectsCollection = collection(db, "projects");
   try {
-    const docRef = await addDoc(projectsCollection, {
+    const projectData = {
       name: projectName,
       userId,
       createdAt: new Date(),
-    });
+      // Academic metadata. projectType drives context-aware terminology -
+      // a "task" is an assignment in a course and a milestone in research.
+      projectType: metadata.projectType || "general",
+      term: metadata.term || null,
+      subject: metadata.subject || null,
+      instructor: metadata.instructor || null,
+      credits: metadata.credits || null,
+      courseCode: metadata.courseCode || null,
+    };
+
+    const docRef = await addDoc(projectsCollection, projectData);
     console.log(`Project created with ID: ${docRef.id}`);
-    return { id: docRef.id, name: projectName, userId, createdAt: new Date() };
+    return { id: docRef.id, ...projectData };
   } catch (error) {
     console.error("Error creating project:", error);
     throw error;

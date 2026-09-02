@@ -6,6 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ProjectProvider } from "./contexts/ProjectContext";
+import { EducationProvider } from "./contexts/EducationContext";
 import TimerProviderWithOverlay from "./components/TimerProviderWithOverlay";
 import NavBar from "./components/NavBar";
 // Route components are loaded on demand. The Suspense boundaries below have
@@ -40,6 +41,7 @@ export const AppContext = createContext();
 const initialState = {
   user: null,
   hasProjects: false,
+  educationMode: false,
   lastAccessedProject: null,
   loading: true,
   initialized: false,
@@ -82,6 +84,7 @@ const App = () => {
             unit: userData.unit || "imperial",
           },
           displayNameSet,
+          educationMode: userData.educationMode || false,
           hasProjects,
           lastAccessedProject,
           loading: false,
@@ -140,8 +143,9 @@ const App = () => {
           user: state.user,
         }}
       >
-        <ProjectProvider user={state.user}>
-          <TimerProviderWithOverlay>
+        <EducationProvider educationMode={state.educationMode}>
+          <ProjectProvider user={state.user}>
+            <TimerProviderWithOverlay>
             <ErrorBoundary>
               <NavBar user={state.user} />
               <div className="main-container">
@@ -321,8 +325,9 @@ const App = () => {
                 </Routes>
               </div>
             </ErrorBoundary>
-          </TimerProviderWithOverlay>
-        </ProjectProvider>
+            </TimerProviderWithOverlay>
+          </ProjectProvider>
+        </EducationProvider>
       </AppContext.Provider>
     </Router>
   );

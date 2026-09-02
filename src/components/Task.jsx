@@ -1,12 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { updateTask, addTask } from "../services/firebaseConfig";
-import { 
-  Trash2, Check, X, ChevronDown, Repeat, Edit, Circle, CheckCircle 
+import {
+  Trash2, Check, X, ChevronDown, Repeat, Edit, Circle, CheckCircle
 } from "lucide-react";
+import { useEducation } from "../contexts/EducationContext";
+import { useProjectContext } from "../contexts/ProjectContext";
 import taskStyles from "./Task.module.css";
 import moduleStyles from "./DashboardModule.module.css";
 
 const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
+  const { getTerm } = useEducation();
+  const { activeProjectType } = useProjectContext();
   const [editTaskTitle, setEditTaskTitle] = useState(task.title || task.content);
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -184,7 +188,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
             type="checkbox"
             checked={task.completed}
             onChange={handleToggleComplete}
-            title={task.completed ? "Mark as incomplete" : "Mark as complete"}
+            title={task.completed ? `Mark as incomplete` : `Mark as complete`}
           />
         </div>
 
@@ -333,20 +337,20 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
       <div className={moduleStyles.listItemActions}>
         {/* Edit button (only show when not editing) */}
         {!isEditing && (
-          <button 
+          <button
             className={`${moduleStyles.iconButton} ${moduleStyles.editButton}`}
             onClick={handleUpdateTask}
-            title="Edit task"
+            title={`Edit ${getTerm("task", activeProjectType).toLowerCase()}`}
           >
             <Edit size={16} />
           </button>
         )}
         
         {/* Delete button */}
-        <button 
+        <button
           className={`${moduleStyles.iconButton} ${moduleStyles.deleteButton}`}
           onClick={handleDeleteClick}
-          title="Delete task"
+          title={`Delete ${getTerm("task", activeProjectType).toLowerCase()}`}
         >
           <Trash2 size={16} />
         </button>
@@ -361,7 +365,7 @@ const Task = ({ task, onTaskUpdate, onTaskDelete, isFullPage = false }) => {
               className={moduleStyles.actionButton}
               style={{ backgroundColor: '#4ade80', color: 'white', padding: '0.25rem 0.5rem', margin: '0 0.25rem' }}
               onClick={handleConfirmDelete}
-              title="Yes, delete task"
+              title={`Yes, delete ${getTerm("task", activeProjectType).toLowerCase()}`}
             >
               <Check size={14} />
             </button>
