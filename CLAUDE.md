@@ -63,9 +63,9 @@ something you introduced.
 
 ```
 src/
-  App.jsx                 Auth gate + all routing (no route-level code splitting)
+  App.jsx                 Auth gate + all routing
   main.jsx                ReactDOM.render entry (legacy React 17 API — see below)
-  lazyComponents.js       DEAD CODE: lazy wrappers, never imported anywhere
+  lazyComponents.js       React.lazy wrappers for every route component
   components/             ~45 components, colocated *.module.css
   contexts/
     ProjectContext.jsx    Current project + project list
@@ -223,13 +223,13 @@ deliberately over incidentally.
    Migrating to `createRoot` may surface double-invoke effects and
    `react-beautiful-dnd` breakage (that library is unmaintained and
    StrictMode-incompatible; `Synapse.jsx` is what will break).
-4. **No code splitting.** `App.jsx` wraps routes in `Suspense` but imports every
-   component eagerly, so the `Suspense` boundaries are inert and the main chunk
-   is **~1.59 MB** (505 kB gzipped). `src/lazyComponents.js` was written to fix
-   this and never wired up — finishing it is the cheapest large win available.
+4. **Recharts loads on the dashboard.** Route components are lazy-loaded via
+   `src/lazyComponents.js`, but `FocusMetrics` sits on the dashboard and imports
+   `recharts` (97 kB gzipped), so route-level splitting cannot move it. Lazy-
+   loading that component inside `Dashboard` would.
 5. **Lint backlog:** ~317 `react/prop-types`, ~88 `no-unused-vars`,
    10 `react-hooks/exhaustive-deps`. `no-undef` is now clean.
-6. **Dead / unreferenced files:** `lazyComponents.js`, `Signup.orig.js`,
+6. **Dead / unreferenced files:** `Signup.orig.js`,
    `Signup.jsx`, `Login.jsx`, `MinimalLogin.jsx`, `Bookmark.jsx`,
    `CreateProject.jsx`, `EmailVerification.jsx`, `Journal.jsx`,
    `PomodoroTimer.jsx`, `TypingIndicator.jsx`. `AIAssistant.jsx` and
@@ -255,6 +255,7 @@ deliberately over incidentally.
   `#root` mounted and retries at most once per session.
 - `public/index.html` (Firebase scaffold) deleted.
 - One `initializeApp` in `firebaseApp.js` instead of two.
+- Route components are code-split; first load is ~201 kB gzipped, down from 656.
 - First render no longer blocks on the Google Drive API, boot does two parallel
   Firestore reads instead of three serial ones (`getLastAccessedProject` was
   re-reading the user document already in memory), and the profile-setup hop no
