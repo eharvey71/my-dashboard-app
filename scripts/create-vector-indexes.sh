@@ -5,34 +5,58 @@
 # collections that are missing an index.
 #
 # Each index must match the query exactly: the same equality filters, in order,
-# followed by the vector field.
-set -euo pipefail
+# followed by the vector field. Re-running is safe - indexes that already exist
+# are reported and skipped.
+set -uo pipefail
 
 PROJECT="${1:-mydashboard-ff9ae}"
 DIMENSION=1536   # text-embedding-ada-002
+FAILED=0
 
-for COLLECTION in notes tasks documents; do
-  echo "Creating vector index for ${COLLECTION}..."
-  gcloud firestore indexes composite create \
+create_index() {
+  local collection="$1"
+  local scope="$2"
+
+  echo "Creating vector index for ${collection} (${scope})..."
+
+  local output
+  output=$(gcloud firestore indexes composite create \
     --project="${PROJECT}" \
-    --collection-group="${COLLECTION}" \
-    --query-scope=COLLECTION \
+    --collection-group="${collection}" \
+    --query-scope="${scope}" \
     --field-config=field-path=userId,order=ASCENDING \
     --field-config=field-path=projectId,order=ASCENDING \
-    --field-config="field-path=embedding,vector-config={\"dimension\":\"${DIMENSION}\",\"flat\":\"{}\"}"
+    --field-config="field-path=embedding,vector-config={\"dimension\":\"${DIMENSION}\",\"flat\":\"{}\"}" \
+    2>&1)
+  local status=$?
+
+  if [ $status -eq 0 ]; then
+    echo "  created."
+  elif grep -q "ALREADY_EXISTS" <<<"${output}"; then
+    echo "  already exists, skipping."
+  else
+    echo "  FAILED:"
+    echo "${output}" | sed 's/^/    /'
+    FAILED=1
+  fi
+}
+
+for COLLECTION in notes tasks documents; do
+  create_index "${COLLECTION}" COLLECTION
 done
 
 # Bookmark chunks are queried with a collection-group query, so this index uses
 # COLLECTION_GROUP scope rather than COLLECTION.
-echo "Creating vector index for bookmark chunks..."
-gcloud firestore indexes composite create \
-  --project="${PROJECT}" \
-  --collection-group=chunks \
-  --query-scope=COLLECTION_GROUP \
-  --field-config=field-path=userId,order=ASCENDING \
-  --field-config=field-path=projectId,order=ASCENDING \
-  --field-config="field-path=embedding,vector-config={\"dimension\":\"${DIMENSION}\",\"flat\":\"{}\"}"
+create_index chunks COLLECTION_GROUP
 
 echo
+if [ $FAILED -ne 0 ]; then
+  echo "One or more indexes failed - see above."
+else
+  echo "All indexes created or already present."
+fi
+
 echo "Index builds are asynchronous. Check status with:"
 echo "  gcloud firestore indexes composite list --project=${PROJECT}"
+
+exit $FAILED
