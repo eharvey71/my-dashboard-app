@@ -8,10 +8,13 @@
  * reports what would break, and writes nothing.
  *
  *   node functions/scripts/check-ownership-fields.cjs --project=mydashboard-ff9ae
+ *
+ * Pass --show to print the offending documents' contents.
  */
 const admin = require("firebase-admin");
 
 const projectArg = process.argv.find((a) => a.startsWith("--project="));
+const show = process.argv.includes("--show");
 admin.initializeApp(projectArg ? { projectId: projectArg.split("=")[1] } : {});
 const db = admin.firestore();
 
@@ -29,7 +32,10 @@ const NEEDS_BOTH = ["tasks", "notes", "bookmarks", "documents", "synapses", "aiR
     });
 
     console.log(`${name}: ${snapshot.size} docs, ${bad.length} missing userId/projectId`);
-    bad.slice(0, 10).forEach((d) => console.log(`    ${name}/${d.id}`));
+    bad.slice(0, 10).forEach((d) => {
+      console.log(`    ${name}/${d.id}`);
+      if (show) console.log(`      ${JSON.stringify(d.data()).slice(0, 400)}`);
+    });
     if (bad.length > 10) console.log(`    ...and ${bad.length - 10} more`);
     problems += bad.length;
   }
@@ -37,7 +43,10 @@ const NEEDS_BOTH = ["tasks", "notes", "bookmarks", "documents", "synapses", "aiR
   const analytics = await db.collection("analytics").get();
   const badIds = analytics.docs.filter((d) => !d.id.includes("_"));
   console.log(`analytics: ${analytics.size} docs, ${badIds.length} not keyed {userId}_{projectId}`);
-  badIds.slice(0, 10).forEach((d) => console.log(`    analytics/${d.id}`));
+  badIds.slice(0, 10).forEach((d) => {
+    console.log(`    analytics/${d.id}`);
+    if (show) console.log(`      ${JSON.stringify(d.data()).slice(0, 400)}`);
+  });
   problems += badIds.length;
 
   console.log(
