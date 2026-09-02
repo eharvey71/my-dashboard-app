@@ -20,7 +20,10 @@ create_index() {
   echo "Creating vector index for ${collection} (${scope})..."
 
   local output
+  # --async returns as soon as the build is queued. Without it gcloud blocks
+  # until the index finishes building, which can take many minutes per index.
   output=$(gcloud firestore indexes composite create \
+    --async \
     --project="${PROJECT}" \
     --collection-group="${collection}" \
     --query-scope="${scope}" \
@@ -31,7 +34,7 @@ create_index() {
   local status=$?
 
   if [ $status -eq 0 ]; then
-    echo "  created."
+    echo "  build queued."
   elif grep -q "ALREADY_EXISTS" <<<"${output}"; then
     echo "  already exists, skipping."
   else
@@ -53,7 +56,7 @@ echo
 if [ $FAILED -ne 0 ]; then
   echo "One or more indexes failed - see above."
 else
-  echo "All indexes created or already present."
+  echo "All index builds queued or already present."
 fi
 
 echo "Index builds are asynchronous. Check status with:"
