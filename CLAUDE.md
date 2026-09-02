@@ -25,7 +25,7 @@ alongside the explicit Synapse path.
 | UI | React 18, React Router 6, Bootstrap 5 + CSS Modules, `lucide-react` icons |
 | Data/auth | Firebase v10 (Firestore + vector search, Auth, Callable Functions), `react-firebase-hooks` |
 | Backend | Firebase Cloud Functions, Node 20, 1st-gen API (`firebase-functions` v5) |
-| AI | OpenAI (`gpt-3.5-turbo` / `gpt-4`, `text-embedding-ada-002`) |
+| AI | Claude (`claude-opus-5`) for chat; OpenAI (`text-embedding-ada-002`) for embeddings |
 | Editor | TinyMCE via `@tinymce/tinymce-react`, `marked` / `react-markdown` |
 | Charts / DnD | `recharts`, `react-beautiful-dnd` |
 | Hosting | Firebase Hosting, SPA rewrite to `/index.html`, serves `dist/` |
@@ -79,7 +79,8 @@ src/
     externalServices.js   Bookmark metadata via the fetchLinkMetadata callable
     googleDriveService.js gapi/GIS picker for importing Drive docs
   utils/versionManager.js Cache-bust + "stuck loading" auto-reload heuristics
-functions/index.js        1076 lines, all Cloud Functions in one file
+functions/index.js        all Cloud Functions in one file
+functions/llm.js          provider router: which model answers which job
 ```
 
 ### Routes
@@ -130,6 +131,7 @@ Secrets use `defineSecret` from `firebase-functions/params`, bound per function
 via `runWith(AI_SECRETS)` / `runWith(LINK_SECRETS)` and resolved at call time:
 
 ```bash
+firebase functions:secrets:set ANTHROPIC_API_KEY
 firebase functions:secrets:set OPENAI_API_KEY
 firebase functions:secrets:set LINKPREVIEW_API_KEY
 ```
@@ -198,7 +200,12 @@ persisted, and only when they change.
 - Path aliases exist: `@` → `src/`, `services` → `src/services/` (rarely used;
   most imports are relative).
 - Every Firestore query must filter by `userId` **and** `projectId`.
-- Prefer callable Cloud Functions over calling OpenAI from the browser.
+- Prefer callable Cloud Functions over calling a model provider from the browser.
+- Model choice lives in the `ROUTES` table in `functions/llm.js`, not at call
+  sites. Chat goes to Claude; embeddings stay on OpenAI because Anthropic has
+  no embeddings endpoint.
+- Current Claude models **reject `temperature`, `top_p` and `top_k` with a 400**.
+  Use `output_config.effort` instead.
 - Adding a searchable collection means adding it to `SEARCHABLE` in
   `functions/index.js` **and** creating its vector index via the script.
 

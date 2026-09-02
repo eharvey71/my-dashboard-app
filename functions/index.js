@@ -5,7 +5,7 @@ const admin = require("firebase-admin");
 const crypto = require("crypto");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const OpenAI = require("openai");
+const llm = require("./llm");
 const { FieldValue } = require("firebase-admin/firestore");
 
 admin.initializeApp();
@@ -14,10 +14,11 @@ admin.initializeApp();
 //   firebase functions:secrets:set OPENAI_API_KEY
 //   firebase functions:secrets:set LINKPREVIEW_API_KEY
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
+const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 const LINKPREVIEW_API_KEY = defineSecret("LINKPREVIEW_API_KEY");
 
 // Secret sets bound to each function via runWith.
-const AI_SECRETS = { secrets: [OPENAI_API_KEY] };
+const AI_SECRETS = { secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY] };
 const LINK_SECRETS = { secrets: [LINKPREVIEW_API_KEY] };
 
 // Collections whose documents carry their own embedding, one vector each.
@@ -27,9 +28,6 @@ const SEARCHABLE = ["notes", "tasks", "documents"];
 // chunks live in a subcollection: bookmarks/{id}/chunks/{index}.
 const BOOKMARK_CHUNKS = "chunks";
 
-const EMBEDDING_MODEL = "text-embedding-ada-002";
-
-let openaiClient = null;
 
 function requireSecret(param, name) {
   const value = param.value();
@@ -42,22 +40,20 @@ function requireSecret(param, name) {
   return value;
 }
 
-function getOpenAI() {
-  if (!openaiClient) {
-    openaiClient = new OpenAI({
-      apiKey: requireSecret(OPENAI_API_KEY, "OPENAI_API_KEY"),
-    });
-  }
-  return openaiClient;
+// Keys are resolved per call - defineSecret values are only available at
+// request time, never at module load.
+function llmKeys() {
+  return {
+    openai: requireSecret(OPENAI_API_KEY, "OPENAI_API_KEY"),
+    anthropic: requireSecret(ANTHROPIC_API_KEY, "ANTHROPIC_API_KEY"),
+  };
 }
 
 async function createEmbedding(text) {
-  const response = await getOpenAI().embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: text,
-  });
-
-  return response.data[0].embedding;
+  return llm.createEmbedding(
+    text,
+    requireSecret(OPENAI_API_KEY, "OPENAI_API_KEY")
+  );
 }
 
 // Marks which content an embedding was computed from. The indexing trigger
@@ -230,15 +226,13 @@ exports.cleanupBookmarkChunks = functions.firestore
 // to infer a whole article from its title and domain.
 // ---------------------------------------------------------------------------
 
-// Bounded because gpt-4's context window is 8K tokens shared with the output.
-// Raise these once the analysis moves to a model with real headroom.
-const BOOKMARK_TEXT_BUDGET = 8000;
-const BOOKMARK_TEXT_PER_ITEM = 4000;
-
-// Backstop for the assembled prompt. gpt-4's 8K window is shared between input
-// and a max_tokens output of up to 4000, so the context has to stay well under
-// it or the call fails outright rather than degrading. Roughly 4K tokens.
-const MAX_CONTEXT_CHARS = 16000;
+// These were tiny because gpt-4's context window is 8K tokens shared with the
+// output. Claude Opus 5 has a 1M window, so the binding constraint is now cost
+// rather than capacity - roughly 30K tokens of context per call, and far less
+// than that on a cache hit. Raise them if synapses routinely get truncated.
+const BOOKMARK_TEXT_BUDGET = 80000;
+const BOOKMARK_TEXT_PER_ITEM = 20000;
+const MAX_CONTEXT_CHARS = 120000;
 
 async function hydrateBookmarkText(items, userId) {
   const bookmarks = items.filter((item) => item.type === "bookmark" && item.id);
@@ -405,17 +399,13 @@ exports.analyzeContent = functions.runWith(AI_SECRETS).https.onCall(async (data,
   const prompt = data.prompt;
 
   try {
-    const response = await getOpenAI().chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: "You are a helpful assistant." },
-        { role: "user", content: prompt },
-      ],
-      max_tokens: 2000,
-      temperature: 0.7,
+    const content = await llm.complete("analyzeContent", {
+      system: "You are a helpful assistant.",
+      prompt,
+      keys: llmKeys(),
     });
 
-    return { content: response.choices[0].message.content.trim() };
+    return { content };
   } catch (error) {
     console.error("Error analyzing content:", error);
     throw new functions.https.HttpsError(
@@ -476,24 +466,14 @@ exports.generateSuggestions = functions.runWith(AI_SECRETS).https.onCall(async (
 
   try {
     // Use OpenAI to generate suggestions based on the project content
-    const response = await getOpenAI().chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an AI assistant that generates insightful questions based on project content. Generate 3 questions that would help the user analyze or explore their project further. Consider relationships between documents, tasks, notes, and bookmarks.",
-        },
-        {
-          role: "user",
-          content: `Based on the following project content, generate 3 insightful questions. Pay special attention to any documents and how they relate to other project items:\n\n${allContent}`,
-        },
-      ],
-      max_tokens: 200, // Increased to accommodate more complex responses
-      temperature: 0.7,
+    const text = await llm.complete("suggestions", {
+      system:
+        "You are an AI assistant that generates insightful questions based on project content. Generate 3 questions that would help the user analyze or explore their project further. Consider relationships between documents, tasks, notes, and bookmarks.",
+      prompt: `Based on the following project content, generate 3 insightful questions. Pay special attention to any documents and how they relate to other project items:\n\n${allContent}`,
+      keys: llmKeys(),
     });
 
-    const suggestions = response.choices[0].message.content.trim().split("\n");
+    const suggestions = text.split("\n").filter((line) => line.trim());
 
     return { suggestions: suggestions.slice(0, 3) };
   } catch (error) {
@@ -798,10 +778,18 @@ ${fullContent}
         );
       }
 
+      // The synapse content is identical across every call in this request and
+      // across follow-up questions about the same synapse, so it is sent once
+      // as a cacheable block rather than inlined into each prompt. Duplicating
+      // it into the user prompt as well would pay for it twice and cache
+      // neither copy.
+      const synapseContextBlock = `The user has curated a "synapse" - a collection of related items they have intentionally grouped together - named "${synapseName}". Its contents:
+
+${promptContext}`;
+
       // Configure the analysis based on the analysis type
       let specificFocus = "";
       let systemPrompt = "You are an AI assistant specializing in finding meaningful patterns and connections between different types of project items. You provide deep, substantive analysis that goes beyond shallow overviews.";
-      let maxTokens = 2500; // Default token limit
       
       // Add debug logging to see what we're working with
       console.log("Synapse Content Analysis - Input Data:", JSON.stringify({
@@ -900,7 +888,6 @@ EXTREMELY IMPORTANT: Never use generic references like "Item 1" or "Source X". I
 
 Your learning plan must be substantive, detailed, and directly reference the content provided. Avoid generic advice and shallow overviews. The plan should be immediately useful for someone wanting to master this subject matter. Your response should be at least 1500 words to provide sufficient depth.`;
           systemPrompt = "You are an expert educational content designer who creates comprehensive, in-depth learning plans based on source materials. You excel at extracting knowledge from various sources and organizing it into effective learning pathways. You have deep knowledge of programming concepts and can expand on references to programming topics with detailed, accurate information, while still clearly indicating what came from the source materials and what is your expert knowledge. If the source materials are limited, you should clearly indicate that you are supplementing with your knowledge, but still create a thorough, detailed plan. When referencing content, always use specific titles and sources, not generic 'Item X' references.";
-          maxTokens = 4000; // Increase token limit for learning plans
           break;
           
         case "comprehensive":
@@ -914,40 +901,35 @@ Your learning plan must be substantive, detailed, and directly reference the con
 5. Critical analysis of the content, including strengths, gaps, and contradictions
 
 For each point, include specific references to the source content. Avoid shallow generalizations. Your analysis should provide substantive value beyond what's obvious from skimming the items.`;
-          maxTokens = 3000; // Increase token limit for comprehensive analysis
           break;
       }
 
-      // Configure temperature and model based on analysis mode and type
-      let temperature = 0.7;
-      let model = "gpt-3.5-turbo";
+      // Current Claude models reject temperature, top_p and top_k outright, so
+      // the mode knob maps to reasoning effort instead. "Creative" no longer
+      // buys randomness - it asks for divergent thinking in the prompt, which
+      // is what it was reaching for anyway.
+      let effort = "medium";
+      let route = "synapseAnalysis";
       let includesBroaderAnalysis = false;
-      
-      // Always use GPT-4 for learning plans regardless of mode
+
       if (analysisType === "learningPlan") {
-        model = "gpt-4";
-        temperature = 0.6; // Lower temperature for more focused, detailed content
+        route = "synapseLearningPlan";
+        effort = "high";
       }
-      
+
       switch (analysisMode) {
         case "expanded":
-          temperature = 0.7; // Slightly reduced for better depth vs creativity balance
-          model = "gpt-4";
+          effort = "high";
           includesBroaderAnalysis = true;
           systemPrompt += " You provide thorough, in-depth analysis with comprehensive explanations and specific examples.";
           break;
         case "creative":
-          temperature = 0.9; // Slightly reduced from 1.0 to balance creativity with substance
-          model = "gpt-4";
+          effort = "high";
           includesBroaderAnalysis = true;
-          systemPrompt += " You think creatively and provide innovative perspectives while maintaining substantive depth and detailed examples.";
+          systemPrompt += " You think creatively and provide innovative perspectives, unexpected connections and lateral applications, while keeping every claim grounded in the source content.";
           break;
         case "core":
         default:
-          // For comprehensive analysis, still use GPT-4 for more depth
-          if (analysisType === "comprehensive") {
-            model = "gpt-4";
-          }
           includesBroaderAnalysis = false;
           systemPrompt += " You focus on factual, substantive analysis with specific references to source content.";
           break;
@@ -955,10 +937,6 @@ For each point, include specific references to the source content. Avoid shallow
 
       // First, analyze the specific synapse content
       const synapseAnalysisPrompt = `
-You are analyzing a "synapse" - a carefully curated collection of related items that the user has intentionally grouped together. This synapse is named "${synapseName}" and contains the following items:
-
-${promptContext}
-
 ${analysisType === "learningPlan" ? 
 `Your task is to create a comprehensive, detailed learning plan based on this content.` : 
 `Your task is to analyze these specific items and their relationships in depth.`}
@@ -979,20 +957,20 @@ Only reference the items provided above in this analysis.
       
       // If using core mode, just do a single analysis
       if (!includesBroaderAnalysis) {
-        const analysis = await getOpenAI().chat.completions.create({
-          model: model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: synapseAnalysisPrompt },
-          ],
-          temperature: temperature,
-          max_tokens: maxTokens, // Use the type-specific token limit
+        const analysis = await llm.complete(route, {
+          system: systemPrompt,
+          // The synapse itself is the stable half of the prompt, so it is
+          // cached: a follow-up question re-reads it at a fraction of the cost.
+          cacheSystem: synapseContextBlock,
+          prompt: synapseAnalysisPrompt,
+          effort,
+          keys: llmKeys(),
         });
-        
+
         result = `
 ## Analysis of Your Synapse: ${synapseName}
 
-${analysis.choices[0].message.content.trim()}
+${analysis}
 `;
       } else {
         // For expanded or creative modes, include broader analysis
@@ -1015,26 +993,19 @@ Important: Your response should be substantive and directly reference the source
 
         // Make both API calls concurrently
         const [synapseAnalysis, broaderAnalysis] = await Promise.all([
-          getOpenAI().chat.completions.create({
-            model: model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: synapseAnalysisPrompt },
-            ],
-            temperature: temperature,
-            max_tokens: maxTokens, // Use the type-specific token limit
+          llm.complete(route, {
+            system: systemPrompt,
+            cacheSystem: synapseContextBlock,
+            prompt: synapseAnalysisPrompt,
+            effort,
+            keys: llmKeys(),
           }),
-          getOpenAI().chat.completions.create({
-            model: "gpt-4", // Always use GPT-4 for broader analysis
-            messages: [
-              {
-                role: "system",
-                content: "You are an AI assistant that provides in-depth, practical context and substantive connections for collections of related items. You focus on meaningful analysis rather than superficial summaries.",
-              },
-              { role: "user", content: broaderAnalysisPrompt },
-            ],
-            temperature: temperature, // Keep same temperature for consistency
-            max_tokens: Math.min(2000, maxTokens), // Limit to 2000 or the type-specific limit, whichever is smaller
+          llm.complete("synapseBroader", {
+            system:
+              "You are an AI assistant that provides in-depth, practical context and substantive connections for collections of related items. You focus on meaningful analysis rather than superficial summaries.",
+            cacheSystem: synapseContextBlock,
+            prompt: broaderAnalysisPrompt,
+            keys: llmKeys(),
           }),
         ]);
 
@@ -1042,11 +1013,11 @@ Important: Your response should be substantive and directly reference the source
         result = `
 ## Analysis of Your Synapse: ${synapseName}
 
-${synapseAnalysis.choices[0].message.content.trim()}
+${synapseAnalysis}
 
 ## Broader Context & Practical Applications
 
-${broaderAnalysis.choices[0].message.content.trim()}`;
+${broaderAnalysis}`;
       }
       
       // For creative mode, add an additional creative section if appropriate
@@ -1081,27 +1052,22 @@ IMPORTANT:
 
 Do not provide generic advice or shallow overviews. Your suggestions should directly build upon the specific content in this synapse and provide substantive, actionable value.
 
-Here's the content you're working with:
-${promptContext}
+Base every suggestion on the synapse content given above.
 `;
 
         try {
-          const creativeResponse = await getOpenAI().chat.completions.create({
-            model: "gpt-4",
-            messages: [
-              { 
-                role: "system", 
-                content: "You are a creative innovation consultant who specializes in generating substantive, detailed, and innovative applications from existing ideas. You provide depth and specificity, not just surface-level suggestions." 
-              },
-              { role: "user", content: creativePrompt },
-            ],
-            temperature: 0.9, // Slightly reduced for more focused creativity
-            max_tokens: 2000, // Increase token limit for more detailed creative content
+          const creativeResponse = await llm.complete("synapseBroader", {
+            system:
+              "You are a creative innovation consultant who specializes in generating substantive, detailed, and innovative applications from existing ideas. You provide depth and specificity, not just surface-level suggestions.",
+            cacheSystem: synapseContextBlock,
+            prompt: creativePrompt,
+            effort: "high",
+            keys: llmKeys(),
           });
-          
+
           result += `${additionalSection}
 
-${creativeResponse.choices[0].message.content.trim()}`;
+${creativeResponse}`;
         } catch (error) {
           console.error("Error generating creative section:", error);
           // Continue without the creative section if it fails
