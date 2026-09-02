@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { updateAnalytics, getAnalytics } from "../services/firebaseConfig";
 
 export const TimerContext = createContext(null);
@@ -29,38 +36,68 @@ export const TimerProvider = ({ children }) => {
 
   const [lastUpdateTime, setLastUpdateTime] = useState(0);
 
-  // Persist timer state to localStorage
+  // Persist the timer itself only when it actually changes. This used to also
+  // depend on elapsedSeconds, so a running timer re-serialised activeTimer to
+  // localStorage every second even though it had not changed.
   useEffect(() => {
     if (activeTimer) {
       localStorage.setItem("activeTimer", JSON.stringify(activeTimer));
-      localStorage.setItem("elapsedSeconds", elapsedSeconds.toString());
     } else {
       localStorage.removeItem("activeTimer");
       localStorage.removeItem("elapsedSeconds");
+      localStorage.removeItem("remainingTime");
     }
-  }, [activeTimer, elapsedSeconds]);
+  }, [activeTimer]);
+
+  // Counters are persisted on a slow cadence rather than on every tick.
+  // localStorage is synchronous and blocks the main thread; three writes a
+  // second was enough to visibly starve rendering and network callbacks in
+  // Safari, leaving the rest of the app stuck on its loading states while a
+  // timer ran. Losing at most a few seconds of progress on a hard crash is a
+  // fair trade - the counters are also flushed on pause, stop and page hide.
+  const countersRef = useRef({ elapsedSeconds, remainingTime });
+  countersRef.current = { elapsedSeconds, remainingTime };
+
+  const flushCounters = useCallback(() => {
+    const { elapsedSeconds: e, remainingTime: r } = countersRef.current;
+    localStorage.setItem("elapsedSeconds", e.toString());
+    localStorage.setItem("remainingTime", r.toString());
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem("remainingTime", remainingTime.toString());
-  }, [remainingTime]);
+    if (!activeTimer?.isActive) return undefined;
+
+    const interval = setInterval(flushCounters, 5000);
+    window.addEventListener("pagehide", flushCounters);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("pagehide", flushCounters);
+      flushCounters();
+    };
+  }, [activeTimer?.isActive, flushCounters]);
 
   // Handle the countdown and elapsed time tracking
   useEffect(() => {
-    let interval;
-    if (activeTimer?.isActive) {
-      interval = setInterval(() => {
-        setRemainingTime((prev) => {
-          if (prev <= 1) {
-            stopTimer();
-            return 0;
-          }
-          return prev - 1;
-        });
-        setElapsedSeconds((prev) => prev + 1);
-      }, 1000);
-    }
+    if (!activeTimer?.isActive) return undefined;
+
+    const interval = setInterval(() => {
+      // Updaters must stay pure - stopTimer() used to be called from inside
+      // one, which fires a Firestore write during the render phase.
+      setRemainingTime((prev) => (prev <= 1 ? 0 : prev - 1));
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
     return () => clearInterval(interval);
   }, [activeTimer?.isActive]);
+
+  // Stop once the countdown reaches zero, from an effect rather than mid-update.
+  useEffect(() => {
+    if (activeTimer?.isActive && remainingTime === 0) {
+      stopTimer();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remainingTime, activeTimer?.isActive]);
 
   const updateDatabaseAnalytics = async (secondsToAdd) => {
     if (activeTimer && secondsToAdd > 0) {
@@ -112,6 +149,7 @@ export const TimerProvider = ({ children }) => {
           ...prev,
           isActive: false,
         }));
+        flushCounters();
       } catch (error) {
         console.error("Error in pauseTimer:", error);
       }
