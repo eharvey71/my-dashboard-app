@@ -8,24 +8,30 @@ import {
 import { ProjectProvider } from "./contexts/ProjectContext";
 import TimerProviderWithOverlay from "./components/TimerProviderWithOverlay";
 import NavBar from "./components/NavBar";
-import EmailLinkHandler from "./components/EmailLinkHandler";
-import SetupProfile from "./components/SetupProfile";
-import Dashboard from "./components/Dashboard";
-import FullPageNotes from "./components/FullPageNotes";
-import FullPageTasks from "./components/FullPageTasks";
-import FullPageBookmarks from "./components/FullPageBookmarks";
-import FullPageAIAssistant from "./components/FullPageAIAssistant";
-import DocumentEditor from "./components/DocumentEditor";
-import DocumentList from "./components/DocumentList";
-import FocusTimer from "./components/FocusTimer";
-import ProjectList from "./components/ProjectList";
-import Synapse from "./components/Synapse";
+// Route components are loaded on demand. The Suspense boundaries below have
+// always been here; until these imports became dynamic there was simply never
+// anything pending for them to catch, and every route shipped in the initial
+// bundle whether or not it was ever visited.
+import {
+  EmailLinkHandler,
+  SetupProfile,
+  Dashboard,
+  FullPageNotes,
+  FullPageTasks,
+  FullPageBookmarks,
+  FullPageAIAssistant,
+  DocumentEditor,
+  DocumentList,
+  FocusTimer,
+  ProjectList,
+  Synapse,
+  AuthEntry,
+  UserAccount,
+} from "./lazyComponents";
 import { db } from "./services/firebaseConfig";
 import { auth, onAuthStateChanged } from "./services/firebaseAuth";
 import { doc, getDoc } from "firebase/firestore";
 import { getUserProjects } from "./services/firebaseConfig";
-import AuthEntry from "./components/AuthEntry";
-import UserAccount from "./components/UserAccount";
 import LoadingComponent from "./components/LoadingComponent";
 import ErrorBoundary from "./components/ErrorBoundary";
 
