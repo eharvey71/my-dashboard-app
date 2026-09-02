@@ -26,11 +26,6 @@ service cloud.firestore {
       return request.resource.data.userId == resource.data.userId;
     }
 
-    // A user's own profile document, keyed by uid.
-    match /users/{userId} {
-      allow read, write: if signedIn() && request.auth.uid == userId;
-    }
-
     // Projects carry userId but no projectId (they are the project).
     match /projects/{projectId} {
       allow create: if ownsIncoming();
@@ -39,7 +34,8 @@ service cloud.firestore {
     }
 
     // Project-scoped content. Identical shape for each collection: a userId and
-    // a projectId on every document.
+    // a projectId on every document. These previously allowed any signed-in
+    // user to read and write any other user's content.
     match /{collection}/{docId} {
       allow create: if ownsIncoming()
         && collection in ['tasks', 'notes', 'bookmarks', 'documents',
@@ -54,8 +50,7 @@ service cloud.firestore {
     }
 
     // Bookmark chunks: scraped page text plus its embedding, one doc per chunk.
-    // Written only by the scrapeAndIndexBookmark trigger (Admin SDK, which
-    // bypasses rules); clients may read their own but never write.
+    // Written only by Cloud Functions via the Admin SDK, which bypasses rules.
     match /bookmarks/{bookmarkId}/chunks/{chunkId} {
       allow read: if owns(resource);
       allow write: if false;
@@ -66,6 +61,29 @@ service cloud.firestore {
     match /analytics/{analyticsId} {
       allow read, write: if signedIn()
         && analyticsId.split('_')[0] == request.auth.uid;
+    }
+
+    // Unchanged from the deployed rules - these were already stricter than
+    // anything else here, with field allowlists on create and update.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.keys().hasOnly(['email', 'displayName', 'emailVerified', 'lastAccessedProject', 'displayNameSet', 'city', 'timezone', 'unit']);
+
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['displayName', 'city', 'timezone', 'unit', 'educationMode', 'displayNameSet', 'lastAccessedProject']);
+
+      allow delete: if false;
+    }
+
+    // Anything not matched above is denied by default; this makes that explicit.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
