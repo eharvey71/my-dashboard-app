@@ -12,7 +12,7 @@
  * Usage:
  *   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
  *   export OPENAI_API_KEY=sk-...
- *   node scripts/backfill-embeddings.js [--dry-run] [--project=<id>]
+ *   node scripts/backfill-embeddings.cjs [--dry-run] [--project=<id>]
  */
 const crypto = require("crypto");
 const admin = require("firebase-admin");

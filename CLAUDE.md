@@ -167,7 +167,7 @@ the rest of the search still works).
 merged results by cosine similarity computed in-process — `findNearest` in
 `@google-cloud/firestore` 7.x returns matches without their distances.
 
-`scripts/backfill-embeddings.js` embeds pre-existing content. It is idempotent
+`scripts/backfill-embeddings.cjs` embeds pre-existing content. It is idempotent
 (skips anything whose `embeddedHash` already matches) and supports `--dry-run`.
 
 ## Conventions
