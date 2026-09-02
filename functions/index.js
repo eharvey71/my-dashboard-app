@@ -221,6 +221,71 @@ exports.cleanupBookmarkChunks = functions.firestore
   });
 
 // ---------------------------------------------------------------------------
+// Synapse content hydration
+//
+// A Synapse item arrives from the client with `content` set to the bookmark's
+// URL - the scraped page text used to live only in Pinecone, so there was
+// nothing else to send. It now sits in bookmarks/{id}/chunks, so the analysis
+// prompt can include what the page actually says instead of asking the model
+// to infer a whole article from its title and domain.
+// ---------------------------------------------------------------------------
+
+// Bounded because gpt-4's context window is 8K tokens shared with the output.
+// Raise these once the analysis moves to a model with real headroom.
+const BOOKMARK_TEXT_BUDGET = 8000;
+const BOOKMARK_TEXT_PER_ITEM = 4000;
+
+// Backstop for the assembled prompt. gpt-4's 8K window is shared between input
+// and a max_tokens output of up to 4000, so the context has to stay well under
+// it or the call fails outright rather than degrading. Roughly 4K tokens.
+const MAX_CONTEXT_CHARS = 16000;
+
+async function hydrateBookmarkText(items, userId) {
+  const bookmarks = items.filter((item) => item.type === "bookmark" && item.id);
+  if (bookmarks.length === 0) return items;
+
+  const perItem = Math.min(
+    BOOKMARK_TEXT_PER_ITEM,
+    Math.floor(BOOKMARK_TEXT_BUDGET / bookmarks.length)
+  );
+
+  const db = admin.firestore();
+  const texts = new Map();
+
+  await Promise.all(
+    bookmarks.map(async (item) => {
+      try {
+        const snapshot = await db
+          .collection("bookmarks")
+          .doc(item.id)
+          .collection(BOOKMARK_CHUNKS)
+          .orderBy("chunkIndex")
+          .get();
+
+        // Chunks carry a denormalised userId; never read another account's.
+        const text = snapshot.docs
+          .filter((doc) => doc.data().userId === userId)
+          .map((doc) => doc.data().content)
+          .join(" ")
+          .slice(0, perItem);
+
+        if (text) texts.set(item.id, text);
+      } catch (error) {
+        console.error(`Could not read chunks for bookmark ${item.id}:`, error.message);
+      }
+    })
+  );
+
+  console.log(
+    `Hydrated ${texts.size}/${bookmarks.length} bookmarks with scraped text (${perItem} chars each)`
+  );
+
+  return items.map((item) =>
+    texts.has(item.id) ? { ...item, scrapedText: texts.get(item.id) } : item
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Semantic search
 // ---------------------------------------------------------------------------
 
@@ -648,8 +713,14 @@ exports.analyzeSynapseContent = functions.runWith(AI_SECRETS).https.onCall(
     const { synapseContent, synapseName, analysisType = "comprehensive", analysisMode = "core" } = data;
 
     try {
+      // Pull in the scraped page text for any bookmarks in this synapse.
+      const hydratedContent = await hydrateBookmarkText(
+        synapseContent,
+        context.auth.uid
+      );
+
       // Organize content by type
-      const organizedContent = synapseContent.reduce((acc, item) => {
+      const organizedContent = hydratedContent.reduce((acc, item) => {
         if (!acc[item.type]) {
           acc[item.type] = [];
         }
@@ -685,12 +756,17 @@ TITLE: ${title}
 ${url}
 `;
 
-    // If we have no real content from the bookmark, add a note
-    if (!fullContent || fullContent === item.url) {
+    if (item.scrapedText) {
+      // Real page text, so the model reads the article rather than guessing
+      // at it from the title. fullContent is only the URL for bookmarks.
+      fullContent = item.scrapedText;
+    } else if (!fullContent || fullContent === item.url) {
       itemDescription += `
-NOTE: This is a bookmark to a web resource. The content hasn't been fully extracted, 
-but the title and URL suggest this is about "${title}".
+NOTE: Only the title and URL are available for this bookmark - its page text
+could not be retrieved. Do not infer what the page says beyond its title, and
+say so if asked about its contents.
 `;
+      fullContent = "";
     }
   } else {
     itemDescription = `
@@ -710,6 +786,17 @@ ${fullContent}
 `
         )
         .join("\n");
+
+      const promptContext = contextString.length > MAX_CONTEXT_CHARS
+        ? contextString.slice(0, MAX_CONTEXT_CHARS) +
+          "\n\n[Context truncated to fit the model's window - some source content is not shown.]"
+        : contextString;
+
+      if (contextString.length > MAX_CONTEXT_CHARS) {
+        console.warn(
+          `Synapse context truncated: ${contextString.length} chars -> ${MAX_CONTEXT_CHARS}`
+        );
+      }
 
       // Configure the analysis based on the analysis type
       let specificFocus = "";
@@ -870,7 +957,7 @@ For each point, include specific references to the source content. Avoid shallow
       const synapseAnalysisPrompt = `
 You are analyzing a "synapse" - a carefully curated collection of related items that the user has intentionally grouped together. This synapse is named "${synapseName}" and contains the following items:
 
-${contextString}
+${promptContext}
 
 ${analysisType === "learningPlan" ? 
 `Your task is to create a comprehensive, detailed learning plan based on this content.` : 
@@ -994,10 +1081,8 @@ IMPORTANT:
 
 Do not provide generic advice or shallow overviews. Your suggestions should directly build upon the specific content in this synapse and provide substantive, actionable value.
 
-Here's a sample of the content you're working with:
-${contextString.substring(0, 1000)}...
-
-(Note: the above is just a sample; your full analysis should consider all content items.)
+Here's the content you're working with:
+${promptContext}
 `;
 
         try {
