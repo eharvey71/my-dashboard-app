@@ -167,6 +167,10 @@ the rest of the search still works).
 merged results by cosine similarity computed in-process — `findNearest` in
 `@google-cloud/firestore` 7.x returns matches without their distances.
 
+`functions/scripts/rescrape-bookmarks.cjs` re-fetches and chunks existing
+bookmarks. Bookmark page text only ever lived in Pinecone, so nothing local
+survived the migration and the embedding backfill skips them all.
+
 `functions/scripts/backfill-embeddings.cjs` embeds pre-existing content. It is idempotent
 (skips anything whose `embeddedHash` already matches) and supports `--dry-run`.
 
