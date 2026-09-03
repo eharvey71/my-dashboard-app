@@ -28,8 +28,18 @@ function getOpenAI(apiKey) {
   return openaiClient;
 }
 
-function getAnthropic(apiKey) {
-  if (!anthropicClient) anthropicClient = new Anthropic({ apiKey });
+function getAnthropic(apiKey, workspaceId) {
+  if (!anthropicClient) {
+    // An identity-linked API key must name the workspace it acts in, or every
+    // request fails with a 400. A key created directly inside a workspace does
+    // not need this, so the header is only sent when configured.
+    anthropicClient = new Anthropic({
+      apiKey,
+      ...(workspaceId
+        ? { defaultHeaders: { "anthropic-workspace-id": workspaceId } }
+        : {}),
+    });
+  }
   return anthropicClient;
 }
 
@@ -46,7 +56,7 @@ async function callAnthropic({ route, system, prompt, keys, cacheSystem }) {
     });
   }
 
-  const response = await getAnthropic(keys.anthropic).messages.create({
+  const response = await getAnthropic(keys.anthropic, keys.anthropicWorkspaceId).messages.create({
     model: route.model,
     max_tokens: route.maxTokens,
     system: systemBlocks,
@@ -90,7 +100,7 @@ async function callOpenAI({ route, system, prompt, keys, cacheSystem }) {
  * @param {string} opts.system       instructions; stable across calls
  * @param {string} opts.prompt       the request itself
  * @param {string} [opts.cacheSystem] large stable context, cached where supported
- * @param {object} opts.keys         { anthropic, openai }
+ * @param {object} opts.keys         { anthropic, anthropicWorkspaceId, openai }
  * @param {string} [opts.effort]     override the route's effort
  */
 async function complete(routeName, opts) {

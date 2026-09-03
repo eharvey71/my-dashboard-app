@@ -15,6 +15,11 @@ admin.initializeApp();
 //   firebase functions:secrets:set LINKPREVIEW_API_KEY
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+// Only needed for identity-linked Anthropic keys, which must name the
+// workspace they act in. Not a secret - set it in functions/.env.
+const ANTHROPIC_WORKSPACE_ID = defineString("ANTHROPIC_WORKSPACE_ID", {
+  default: "",
+});
 const LINKPREVIEW_API_KEY = defineSecret("LINKPREVIEW_API_KEY");
 
 // Secret sets bound to each function via runWith.
@@ -46,6 +51,7 @@ function llmKeys() {
   return {
     openai: requireSecret(OPENAI_API_KEY, "OPENAI_API_KEY"),
     anthropic: requireSecret(ANTHROPIC_API_KEY, "ANTHROPIC_API_KEY"),
+    anthropicWorkspaceId: ANTHROPIC_WORKSPACE_ID.value() || null,
   };
 }
 
