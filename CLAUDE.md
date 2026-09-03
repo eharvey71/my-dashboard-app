@@ -136,6 +136,11 @@ firebase functions:secrets:set OPENAI_API_KEY
 firebase functions:secrets:set LINKPREVIEW_API_KEY
 ```
 
+`ANTHROPIC_WORKSPACE_ID` is a non-secret `defineString` read from
+`functions/.env`, needed **only** for identity-linked Anthropic keys — those
+must name the workspace they act in or every request 400s. A key created
+directly inside a workspace does not need it, and must not be sent one.
+
 ### Embeddings and search
 
 Embeddings live **on the document they describe**, in an `embedding` field of

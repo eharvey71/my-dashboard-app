@@ -1,6 +1,6 @@
 // functions/index.js
 const functions = require("firebase-functions");
-const { defineSecret } = require("firebase-functions/params");
+const { defineSecret, defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const axios = require("axios");
