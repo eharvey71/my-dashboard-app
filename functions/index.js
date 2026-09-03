@@ -23,7 +23,14 @@ const ANTHROPIC_WORKSPACE_ID = defineString("ANTHROPIC_WORKSPACE_ID", {
 const LINKPREVIEW_API_KEY = defineSecret("LINKPREVIEW_API_KEY");
 
 // Secret sets bound to each function via runWith.
-const AI_SECRETS = { secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY] };
+// 540s is the 1st-gen ceiling. Opus 5 with adaptive thinking over a large
+// synapse routinely runs past the 60s default, which surfaced as a bare
+// "finished with status: timeout" and no error to diagnose.
+const AI_SECRETS = {
+  secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY],
+  timeoutSeconds: 540,
+  memory: "512MB",
+};
 const LINK_SECRETS = { secrets: [LINKPREVIEW_API_KEY] };
 
 // Collections whose documents carry their own embedding, one vector each.

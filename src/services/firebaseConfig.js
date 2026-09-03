@@ -519,8 +519,13 @@ const getLastAccessedProject = async (userId) => {
 };
 
 // Cloud functions
-const querySimilarContent = httpsCallable(functions, "querySimilarContent");
-const analyzeContent = httpsCallable(functions, "analyzeContent");
+// Model-backed callables can run well past the 70s client default.
+const querySimilarContent = httpsCallable(functions, "querySimilarContent", {
+  timeout: 300000,
+});
+const analyzeContent = httpsCallable(functions, "analyzeContent", {
+  timeout: 300000,
+});
 
 export {
   db,

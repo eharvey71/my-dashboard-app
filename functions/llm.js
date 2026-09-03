@@ -56,7 +56,14 @@ async function callAnthropic({ route, system, prompt, keys, cacheSystem }) {
     });
   }
 
-  const response = await getAnthropic(keys.anthropic, keys.anthropicWorkspaceId).messages.create({
+  // Streamed rather than awaited as one response: a long analysis can take
+  // several minutes, and a non-streaming request would hit the SDK's own HTTP
+  // timeout first. The stream is collected here, so callers still get a single
+  // finished string.
+  const stream = getAnthropic(
+    keys.anthropic,
+    keys.anthropicWorkspaceId
+  ).messages.stream({
     model: route.model,
     max_tokens: route.maxTokens,
     system: systemBlocks,
@@ -64,6 +71,8 @@ async function callAnthropic({ route, system, prompt, keys, cacheSystem }) {
     output_config: { effort: route.effort },
     messages: [{ role: "user", content: prompt }],
   });
+
+  const response = await stream.finalMessage();
 
   if (response.usage) {
     console.log(

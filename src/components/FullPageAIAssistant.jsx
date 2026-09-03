@@ -168,9 +168,13 @@ const FullPageAIAssistant = ({ user }) => {
   const [showSynapseContent, setShowSynapseContent] = useState(false);
 
   const functions = getFunctions();
+  // The callable client gives up after 70s by default, which would abandon the
+  // request well before the function itself times out. A synapse analysis can
+  // legitimately run for minutes.
   const analyzeSynapseContent = httpsCallable(
     functions,
-    "analyzeSynapseContent"
+    "analyzeSynapseContent",
+    { timeout: 540000 }
   );
 
   // Load synapses and responses when component mounts
